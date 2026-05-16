@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   return {
-    title: `${post.title} - YoRHa::LaB`,
+    title: `${post.title} - shuai-lab`,
     description: post.excerpt || undefined,
   };
 }

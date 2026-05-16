@@ -55,7 +55,7 @@ export default function Home() {
 
           {/* 标题 */}
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2" style={{ fontFamily: 'Zen Antique Soft, serif', textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
-            YoRHa::LaB
+            shuai-lab
           </h1>
 
           {/* 描述 */}

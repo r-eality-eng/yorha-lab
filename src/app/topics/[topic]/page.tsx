@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const meta = topicMeta[topic];
   if (!meta) return { title: '未找到' };
   return {
-    title: `${meta.title} — YoRHa::LaB`,
+    title: `${meta.title} — shuai-lab`,
     description: meta.description,
   };
 }

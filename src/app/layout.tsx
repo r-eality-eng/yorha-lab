@@ -3,7 +3,7 @@ import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 
 export const metadata: Metadata = {
-  title: "YoRHa::LaB - 技术博客",
+  title: "shuai-lab - 技术博客",
   description: "探索技术与创意的无限可能",
 };
 

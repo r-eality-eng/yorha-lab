@@ -249,7 +249,7 @@ export function Navbar() {
 
         {/* Logo 文字 */}
         <Link href="/" className="nav-logo">
-          YoRHa::LaB
+          shuai-lab
         </Link>
 
         {/* 用户头像插槽 */}
