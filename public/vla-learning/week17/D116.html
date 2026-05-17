@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>D116 π0.5 精讲：Reasoning + Long-Horizon + Hierarchical Action</title>
+  <style>
+    :root{
+      --bg:#f5f7fb;--paper:#fff;--ink:#1f2937;--muted:#667085;--line:#d9e2ee;
+      --navy:#17324d;--blue:#2563eb;--cyan:#0891b2;--green:#238636;--amber:#d97706;--red:#d64545;--violet:#6d5bd0;
+      --soft-blue:#eef6ff;--soft-green:#effaf2;--soft-amber:#fff7e8;--soft-violet:#f5f2ff;
+      --shadow:0 16px 40px rgba(23,50,77,.12);--radius:8px;
+      --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+      --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    }
+    *{box-sizing:border-box}html{scroll-behavior:smooth}
+    body{margin:0;color:var(--ink);font-family:var(--sans);line-height:1.72;background:linear-gradient(180deg,#e5f3ff 0,#f5f7fb 390px)}
+    .progress{position:fixed;top:0;left:0;height:4px;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--green),var(--amber));z-index:50}
+    .layout{width:min(1520px,calc(100% - 36px));margin:0 auto;display:grid;grid-template-columns:310px minmax(0,1fr);gap:26px;padding:28px 0 72px}
+    aside{position:sticky;top:22px;align-self:start;height:calc(100vh - 44px);overflow:auto;padding:18px;background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .brand{padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:12px}.brand strong{display:block;color:var(--navy);font-size:18px}.brand span{display:block;color:var(--muted);font-size:13px}
+    nav a{display:block;text-decoration:none;color:#33415c;border-radius:6px;padding:8px 10px;margin:3px 0;font-size:14px}nav a:hover,nav a.active{background:#e8f2ff;color:#0a5ca8}
+    main{min-width:0}.hero{min-height:560px;display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center;padding:42px;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;color:#fff;background:linear-gradient(135deg,#17324d,#155e75 50%,#0f766e)}
+    .eyebrow{display:inline-flex;padding:5px 10px;border:1px solid rgba(255,255,255,.34);border-radius:999px;color:rgba(255,255,255,.92);font-size:13px}
+    h1{margin:18px 0 12px;font-size:clamp(34px,5vw,60px);line-height:1.05;letter-spacing:0}.hero p{font-size:18px;color:rgba(255,255,255,.9)}
+    .hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}.btn{border:0;border-radius:6px;padding:10px 14px;font:inherit;font-weight:800;text-decoration:none;cursor:pointer;background:#fff;color:#17243a}.btn.secondary{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);color:#fff}
+    section{margin-top:24px;padding:30px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 10px 28px rgba(23,50,77,.08)}
+    section>h2{margin:0 0 14px;color:var(--navy);font-size:28px;line-height:1.25;letter-spacing:0}h3{margin:22px 0 10px;color:#263a5d;font-size:20px;letter-spacing:0}p{margin:10px 0}.lead{font-size:17px;color:#3d4a61}
+    .grid{display:grid;gap:16px}.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .card{padding:18px;border:1px solid var(--line);border-radius:var(--radius);background:#fbfcff}.card h3{margin-top:0}.tag{display:inline-flex;padding:4px 8px;border-radius:999px;background:#e9f4ff;color:#0b5fa5;font-size:12px;font-weight:800}
+    .callout{padding:16px 18px;border-left:4px solid var(--blue);background:#eef7ff;border-radius:0 var(--radius) var(--radius) 0;margin:16px 0}.ok{border-left-color:var(--green);background:var(--soft-green)}.warn{border-left-color:var(--amber);background:var(--soft-amber)}.cool{border-left-color:var(--violet);background:var(--soft-violet)}.danger{border-left-color:var(--red);background:#fff1f1}
+    .svg-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:#fbfdff;padding:10px}svg{max-width:100%;height:auto;display:block}
+    code,pre{font-family:var(--mono)}code{padding:2px 5px;border-radius:4px;background:#eef2f7;color:#243044}
+    pre{overflow:auto;padding:16px;border:1px solid var(--line);border-radius:var(--radius);background:#f6f8fb;color:#243044;line-height:1.58;font-size:13px}
+    table{width:100%;border-collapse:collapse;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#edf5fc;color:var(--navy)}tr:last-child td{border-bottom:0}
+    .tabs{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 16px}.tab-btn{border:1px solid var(--line);background:#f8fbff;color:#33415c;padding:8px 11px;border-radius:6px;cursor:pointer;font-weight:800}.tab-btn.active{background:var(--navy);border-color:var(--navy);color:white}.tab-panel{display:none}.tab-panel.active{display:block}
+    .control{display:grid;gap:8px;margin:12px 0}.control label{font-weight:800;color:var(--navy)}input[type=range],select{width:100%}select{padding:9px;border:1px solid var(--line);border-radius:6px;background:#fff;font:inherit}
+    .metric{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.metric div{padding:12px;border:1px solid var(--line);border-radius:6px;background:#fff}.metric strong{display:block;color:var(--navy);font-size:20px}
+    .timeline{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.phase{padding:14px;border:1px solid var(--line);border-radius:6px;background:#fff}.phase.active{outline:3px solid rgba(37,99,235,.22);border-color:#7ab0ff}.phase strong{display:block;color:var(--navy)}
+    .quiz-card{border:1px solid var(--line);border-radius:var(--radius);padding:16px;background:#fbfcff;margin:12px 0}.answer{display:none;margin-top:10px;padding:12px;border-radius:6px;background:#effbff;color:#073d54}.answer.show{display:block}
+    .top-link{position:fixed;right:22px;bottom:22px;width:42px;height:42px;display:grid;place-items:center;border-radius:50%;color:white;background:var(--navy);text-decoration:none;box-shadow:var(--shadow)}
+    @media(max-width:1040px){.layout{grid-template-columns:1fr}aside{position:relative;height:auto;top:0}.hero{grid-template-columns:1fr;min-height:auto;padding:26px}.cols-2,.cols-3,.cols-4,.metric,.timeline{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+  <div class="layout">
+    <aside>
+      <div class="brand"><strong>D116 π0.5</strong><span>Reasoning · Long-Horizon · Hierarchy</span></div>
+      <nav id="toc">
+        <a href="#overview">学习目标</a>
+        <a href="#why">为什么升级</a>
+        <a href="#architecture">三层架构</a>
+        <a href="#reasoning">推理层</a>
+        <a href="#taskgraph">任务图</a>
+        <a href="#skills">技能层</a>
+        <a href="#statemachine">状态机</a>
+        <a href="#controller">底层控制</a>
+        <a href="#training">训练策略</a>
+        <a href="#longhorizon">长Horizon</a>
+        <a href="#replan-lab">重规划交互</a>
+        <a href="#evaluation">评估指标</a>
+        <a href="#compare">π0对比</a>
+        <a href="#interview">面试表达</a>
+        <a href="#quiz">自测</a>
+        <a href="#summary">最终总结</a>
+      </nav>
+    </aside>
+
+    <main>
+      <header class="hero" id="top">
+        <div>
+          <span class="eyebrow">Week 17 / Day 116 / π0.5 精讲</span>
+          <h1>π0.5：让 VLA 从短动作走向长任务推理</h1>
+          <p>D116 的核心是理解 π0.5 为什么不只是“π0 加 planner”，而是把机器人能力推进到任务分解、技能规划、闭环执行和动态重规划。</p>
+          <div class="hero-actions">
+            <a class="btn" href="#architecture">看三层架构</a>
+            <a class="btn secondary" href="#replan-lab">看重规划交互</a>
+            <a class="btn secondary" href="d116_pi05_long_horizon_reasoning_clean.md">查看 Markdown</a>
+          </div>
+        </div>
+        <div class="svg-wrap" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25)">
+          <svg viewBox="0 0 760 470" role="img" aria-label="pi0.5 hero architecture">
+            <defs><marker id="heroArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#fff"/></marker><filter id="heroShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#10243d" flood-opacity=".28"/></filter></defs>
+            <rect x="28" y="28" width="704" height="414" rx="20" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.28)"/>
+            <g filter="url(#heroShadow)">
+              <rect x="190" y="72" width="380" height="78" rx="14" fill="#fff"/><text x="380" y="105" text-anchor="middle" fill="#0b4f88" font-weight="900" font-size="19">Level 3: Reasoning</text><text x="380" y="130" text-anchor="middle" fill="#667085" font-size="13">理解目标 · 分解任务 · 约束计划</text>
+              <rect x="190" y="194" width="380" height="78" rx="14" fill="#fff"/><text x="380" y="227" text-anchor="middle" fill="#8a4b00" font-weight="900" font-size="19">Level 2: Skill Planning</text><text x="380" y="252" text-anchor="middle" fill="#667085" font-size="13">选择技能 · 填参数 · 管理状态机</text>
+              <rect x="190" y="316" width="380" height="78" rx="14" fill="#fff"/><text x="380" y="349" text-anchor="middle" fill="#1f7a4d" font-weight="900" font-size="19">Level 1: Low-level Action</text><text x="380" y="374" text-anchor="middle" fill="#667085" font-size="13">Flow Matching · action chunk · receding horizon</text>
+            </g>
+            <g stroke="#fff" stroke-width="3" fill="none" marker-end="url(#heroArrow)">
+              <path d="M380 150 L380 194"/><path d="M380 272 L380 316"/>
+            </g>
+            <text x="380" y="424" text-anchor="middle" fill="rgba(255,255,255,.92)" font-weight="800">持续感知 → 结构化推理 → 技能执行 → 失败检测 → 动态重规划</text>
+          </svg>
+        </div>
+      </header>
+
+      <section id="overview">
+        <h2>学习目标：D116 要抓住三层和两个闭环</h2>
+        <div class="grid cols-4">
+          <div class="card"><span class="tag">Layer 3</span><h3>Reasoning</h3><p>把开放语言任务变成结构化子任务、对象、顺序和异常预案。</p></div>
+          <div class="card"><span class="tag">Layer 2</span><h3>Skill</h3><p>把子任务映射到 pick、place、open、wipe、navigate 等可执行技能。</p></div>
+          <div class="card"><span class="tag">Layer 1</span><h3>Action</h3><p>底层仍可用 π0-style Flow Matching controller 输出连续 action chunk。</p></div>
+          <div class="card"><span class="tag">Loop</span><h3>Replan</h3><p>长任务必须持续观察、检查失败、更新上下文和动态重规划。</p></div>
+        </div>
+        <div class="callout warn">准确性口径：本页的 task graph、skill library、state machine 是工程讲解模板，不等同于官方实现。重点是理解 long-horizon VLA 需要结构化接口和闭环执行。</div>
+      </section>
+
+      <section id="why">
+        <h2>为什么从 π0 升级到 π0.5</h2>
+        <table>
+          <thead><tr><th>问题</th><th>π0-style 短 Horizon</th><th>π0.5-style 长任务</th></tr></thead>
+          <tbody>
+            <tr><td>任务长度</td><td>擅长单步/少步操作</td><td>面向多阶段任务和长期依赖</td></tr>
+            <tr><td>任务理解</td><td>主要把指令条件化到动作</td><td>需要分解、排序、约束和异常预案</td></tr>
+            <tr><td>执行方式</td><td>观察后生成短 action chunk</td><td>高层持续重规划，底层短 chunk 执行</td></tr>
+            <tr><td>失败恢复</td><td>通常较弱</td><td>需要失败检测、状态更新和重新规划</td></tr>
+            <tr><td>评估指标</td><td>任务成功率、动作误差</td><td>subtask success、replan success、recovery、安全事件</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="architecture">
+        <h2>三层架构总览</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1220 660" role="img" aria-label="pi0.5 three layer architecture">
+            <defs><marker id="archArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#17324d"/></marker></defs>
+            <rect x="40" y="40" width="1140" height="560" rx="18" fill="#fbfdff" stroke="#d9e2ee"/>
+            <rect x="120" y="92" width="980" height="118" rx="16" fill="#eef6ff" stroke="#aacdec"/>
+            <text x="610" y="130" text-anchor="middle" fill="#0b4f88" font-size="24" font-weight="900">Level 3: VLM Reasoning Layer</text>
+            <text x="610" y="164" text-anchor="middle" fill="#33415c" font-size="15">输入图像 + 指令，输出对象、子任务、执行顺序、异常预案</text>
+            <rect x="120" y="270" width="980" height="118" rx="16" fill="#fff7e8" stroke="#f2c782"/>
+            <text x="610" y="308" text-anchor="middle" fill="#8a4b00" font-size="24" font-weight="900">Level 2: Skill Planning Layer</text>
+            <text x="610" y="342" text-anchor="middle" fill="#33415c" font-size="15">把子任务转成技能序列和参数：navigate → pick → place → wipe</text>
+            <rect x="120" y="448" width="980" height="118" rx="16" fill="#effaf2" stroke="#b7dfc0"/>
+            <text x="610" y="486" text-anchor="middle" fill="#1f7a4d" font-size="24" font-weight="900">Level 1: Low-level Flow Matching Controller</text>
+            <text x="610" y="520" text-anchor="middle" fill="#33415c" font-size="15">根据技能、参数、视觉和本体感受生成连续 action chunk</text>
+            <g stroke="#17324d" stroke-width="3" fill="none" marker-end="url(#archArrow)">
+              <path d="M610 210 L610 270"/><path d="M610 388 L610 448"/>
+            </g>
+            <text x="610" y="245" text-anchor="middle" fill="#667085" font-weight="800">子任务 + 对象位置 + 约束</text>
+            <text x="610" y="423" text-anchor="middle" fill="#667085" font-weight="800">技能 + 参数 + 状态机</text>
+          </svg>
+        </div>
+      </section>
+
+      <section id="reasoning">
+        <h2>Level 3：VLM 推理层</h2>
+        <p class="lead">推理层的核心不是输出一段漂亮文字，而是输出可验证、可执行、可重规划的结构化结果。</p>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>结构化输出</h3>
+            <pre><code>{
+  "objects": [
+    {"name": "bowl", "position": [x,y,z], "state": "dirty"}
+  ],
+  "subtasks": [
+    {"id": 1, "skill": "pick", "target_object": "bowl"},
+    {"id": 2, "skill": "place", "target_object": "sink"}
+  ],
+  "execution_order": [1, 2],
+  "contingency_plans": [...]
+}</code></pre>
+          </div>
+          <div class="card">
+            <h3>为什么要结构化</h3>
+            <table><tbody>
+              <tr><td>可执行</td><td>技能层能读取 skill、object、parameters</td></tr>
+              <tr><td>可检查</td><td>能验证前置条件和依赖关系</td></tr>
+              <tr><td>可恢复</td><td>失败后知道从哪个子任务重规划</td></tr>
+              <tr><td>可评估</td><td>可以统计 subtask success 和 planning quality</td></tr>
+            </tbody></table>
+          </div>
+        </div>
+        <div class="callout danger">不要假设 VLM 文字推理天然可靠。机器人系统需要 schema、约束检查、状态机和失败检测，把自然语言推理限制在可执行空间里。</div>
+      </section>
+
+      <section id="taskgraph">
+        <h2>任务图：把长任务拆成有依赖的子任务</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1120 430" role="img" aria-label="task graph cleanup table">
+            <defs><marker id="taskArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#17324d"/></marker></defs>
+            <rect x="40" y="40" width="1040" height="330" rx="18" fill="#fbfdff" stroke="#d9e2ee"/>
+            <g fill="#fff" stroke="#cbd9e8">
+              <rect x="80" y="170" width="130" height="62" rx="10"/><rect x="270" y="100" width="130" height="62" rx="10"/><rect x="270" y="240" width="130" height="62" rx="10"/>
+              <rect x="470" y="100" width="130" height="62" rx="10"/><rect x="470" y="240" width="130" height="62" rx="10"/><rect x="670" y="170" width="130" height="62" rx="10"/><rect x="860" y="170" width="130" height="62" rx="10"/>
+            </g>
+            <g text-anchor="middle" font-weight="900" fill="#17324d">
+              <text x="145" y="205">识别物体</text><text x="335" y="135">捡垃圾</text><text x="335" y="275">收碗</text><text x="535" y="135">丢垃圾</text><text x="535" y="275">放到水槽</text><text x="735" y="205">收杯子</text><text x="925" y="205">擦桌子</text>
+            </g>
+            <g stroke="#17324d" stroke-width="3" fill="none" marker-end="url(#taskArrow)">
+              <path d="M210 190 L270 140"/><path d="M210 214 L270 260"/><path d="M400 131 L470 131"/><path d="M400 271 L470 271"/><path d="M600 271 C640 258 650 224 670 205"/><path d="M600 131 C640 145 650 176 670 194"/><path d="M800 201 L860 201"/>
+            </g>
+            <text x="560" y="350" text-anchor="middle" fill="#667085" font-weight="800">任务图用于表达顺序依赖、资源冲突和重规划入口。</text>
+          </svg>
+        </div>
+        <div class="grid cols-3">
+          <div class="card"><h3>节点</h3><p>子任务或原子操作，如“捡垃圾”“放到水槽”。</p></div>
+          <div class="card"><h3>边</h3><p>顺序依赖、资源依赖或数据依赖，如必须先抓取再放置。</p></div>
+          <div class="card"><h3>状态</h3><p>pending、ready、running、completed、failed，用于调度和恢复。</p></div>
+        </div>
+      </section>
+
+      <section id="skills">
+        <h2>Level 2：技能规划层</h2>
+        <p class="lead">技能层把“子任务”翻译成机器人已有技能及参数。它不是底层动作控制器，而是计划和执行之间的接口。</p>
+        <table>
+          <thead><tr><th>技能</th><th>参数</th><th>前置条件</th><th>后置效果</th></tr></thead>
+          <tbody>
+            <tr><td>navigate</td><td>target_position, avoid_obstacles</td><td>robot_mobile</td><td>robot_at_target</td></tr>
+            <tr><td>pick</td><td>object_id, grasp_pose, gripper_width</td><td>gripper_empty, object_reachable</td><td>object_grasped</td></tr>
+            <tr><td>place</td><td>target_position, placement_pose</td><td>object_grasped</td><td>object_placed, gripper_empty</td></tr>
+            <tr><td>wipe</td><td>target_area, pattern, pressure</td><td>robot_positioned</td><td>area_clean</td></tr>
+            <tr><td>open/close</td><td>object_id, handle_pose</td><td>object_reachable</td><td>object_open / object_closed</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="statemachine">
+        <h2>技能状态机：把计划变成可控执行</h2>
+        <div class="timeline">
+          <div class="phase active"><strong>IDLE</strong><span>等待任务</span></div>
+          <div class="phase"><strong>EXECUTING</strong><span>执行当前技能</span></div>
+          <div class="phase"><strong>RECOVERING</strong><span>失败恢复</span></div>
+          <div class="phase"><strong>COMPLETED</strong><span>技能序列完成</span></div>
+        </div>
+        <div class="callout ok">状态机的价值是把 VLM 的计划约束到可监控执行流程里。每个技能都有开始、执行、完成、失败和恢复路径。</div>
+        <pre><code>from enum import Enum
+
+class State(Enum):
+    IDLE = "idle"
+    EXECUTING = "executing"
+    RECOVERING = "recovering"
+    COMPLETED = "completed"
+    FAILED = "failed"</code></pre>
+      </section>
+
+      <section id="controller">
+        <h2>Level 1：底层 Flow Matching 控制器</h2>
+        <p class="lead">底层不是一次执行完整长任务，而是接收当前技能和参数，生成短 action chunk，并在 receding horizon 中执行。</p>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>层次化条件</h3>
+            <pre><code>conditions = {
+  "vlm_semantic": vlm_embedding,
+  "skill_params": skill_params,
+  "proprioception": robot_state,
+  "visual_state": visual_features,
+}</code></pre>
+          </div>
+          <div class="card">
+            <h3>生成时注意 device</h3>
+            <pre><code>device = conditions["proprioception"].device
+a_t = torch.randn(batch, 4, 7, device=device)
+t_tensor = torch.full((batch, 1), t, device=device)
+velocity = controller(a_t, t_tensor, conditions)
+a_t = a_t - velocity * dt</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section id="training">
+        <h2>层次化训练策略</h2>
+        <div class="grid cols-4">
+          <div class="card"><span class="tag">Phase 1</span><h3>底层控制</h3><p>大量遥操作数据训练 Flow Matching controller，学习基础运动技能。</p></div>
+          <div class="card"><span class="tag">Phase 2</span><h3>技能规划</h3><p>用技能标注数据学习子任务到技能和参数的映射。</p></div>
+          <div class="card"><span class="tag">Phase 3</span><h3>推理层</h3><p>用高质量任务分解示例训练 VLM reasoning 输出结构化计划。</p></div>
+          <div class="card"><span class="tag">Phase 4</span><h3>端到端微调</h3><p>使用差异学习率整体微调，控制高层遗忘和低层稳定性。</p></div>
+        </div>
+        <div class="callout warn">训练顺序的本质：先让“手”会动，再让“技能”会选，最后让“脑”会分解任务。反过来训练通常更不稳定。</div>
+      </section>
+
+      <section id="longhorizon">
+        <h2>长 Horizon 的两个关键机制：上下文和失败检测</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>上下文管理</h3>
+            <p>长任务不能把所有历史都塞进 prompt。系统需要维护世界状态、任务进度、最近历史和摘要。</p>
+            <pre><code>context = {
+  "world_state": objects,
+  "task_progress": completed / pending / failed,
+  "recent_history": last_10_steps,
+  "summary": compressed_memory,
+}</code></pre>
+          </div>
+          <div class="card">
+            <h3>失败检测</h3>
+            <p>重规划必须有触发条件：物体丢失、位置不符、技能失败、新障碍、超时或安全约束触发。</p>
+            <pre><code>need_replan = (
+  object_missing or
+  position_mismatch or
+  skill_failed or
+  timeout or
+  safety_violation
+)</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section id="replan-lab">
+        <h2>交互：什么时候需要动态重规划</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>模拟执行状态</h3>
+            <div class="control"><label for="failureMode">当前异常</label><select id="failureMode"><option value="none">无异常</option><option value="missing">目标物体消失</option><option value="wrongpos">物体位置偏移</option><option value="skillfail">技能执行失败</option><option value="obstacle">出现新障碍</option><option value="timeout">执行超时</option></select></div>
+            <div class="control"><label for="replans">已重规划次数：<span id="replanVal">1</span></label><input id="replans" type="range" min="0" max="6" value="1" /></div>
+          </div>
+          <div class="card">
+            <h3>决策结果</h3>
+            <div class="metric">
+              <div><strong id="needReplan">否</strong><span>是否重规划</span></div>
+              <div><strong id="strategy">继续</strong><span>策略</span></div>
+              <div><strong id="risk">低</strong><span>风险</span></div>
+              <div><strong id="limit">未超限</strong><span>次数限制</span></div>
+            </div>
+            <div class="callout ok" id="replanAdvice">当前没有异常，继续执行原计划并持续观察。</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="evaluation">
+        <h2>评估指标：长任务不能只看最终成功率</h2>
+        <table>
+          <thead><tr><th>指标</th><th>衡量什么</th><th>为什么重要</th></tr></thead>
+          <tbody>
+            <tr><td>task success</td><td>最终任务是否完成</td><td>整体结果</td></tr>
+            <tr><td>subtask success</td><td>每个子任务是否完成</td><td>定位失败发生在哪一层</td></tr>
+            <tr><td>skill accuracy</td><td>技能选择是否正确</td><td>检查 skill planner</td></tr>
+            <tr><td>planning quality</td><td>步骤是否合理、是否满足约束</td><td>检查 reasoning layer</td></tr>
+            <tr><td>recovery success</td><td>失败后是否恢复</td><td>长任务鲁棒性关键</td></tr>
+            <tr><td>safety events</td><td>碰撞、越界、超力、危险动作</td><td>真实部署必须监控</td></tr>
+          </tbody>
+        </table>
+        <div class="callout warn">不要背教学百分比。真实评估必须在同一机器人、同一任务集、同一数据规模、同一失败定义下比较。</div>
+      </section>
+
+      <section id="compare">
+        <h2>π0 vs π0.5：能力差异</h2>
+        <table>
+          <thead><tr><th>能力维度</th><th>π0</th><th>π0.5</th></tr></thead>
+          <tbody>
+            <tr><td>任务复杂度</td><td>单步/少步</td><td>长 horizon、多阶段</td></tr>
+            <tr><td>推理能力</td><td>较弱或隐式</td><td>显式任务理解和分解</td></tr>
+            <tr><td>执行方式</td><td>短 action chunk</td><td>子任务 + 技能 + action chunk</td></tr>
+            <tr><td>错误恢复</td><td>有限</td><td>动态重规划</td></tr>
+            <tr><td>可解释性</td><td>较弱</td><td>可以查看计划、技能和失败点</td></tr>
+            <tr><td>推理开销</td><td>更低</td><td>更高，需要缓存和异步执行</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="interview">
+        <h2>面试表达：2分钟讲清 π0.5</h2>
+        <div class="tabs" data-tabs="talkTabs">
+          <button class="tab-btn active" data-tab="talk-short">短版</button>
+          <button class="tab-btn" data-tab="talk-deep">深挖版</button>
+          <button class="tab-btn" data-tab="talk-risk">风险版</button>
+        </div>
+        <div id="talk-short" class="tab-panel active" data-panel="talkTabs">
+          <div class="callout ok">π0.5 的核心是把 VLA 从短 horizon action generation 推进到 long-horizon task execution。它通常需要三层结构：高层 VLM reasoning 做任务分解和约束规划，中层 skill planner 把子任务映射成技能和参数，底层 π0-style controller 生成连续 action chunk，并通过失败检测和动态重规划形成闭环。</div>
+        </div>
+        <div id="talk-deep" class="tab-panel" data-panel="talkTabs">
+          <table><tbody>
+            <tr><td>为什么不是一次输出长动作？</td><td>长动作开环误差会累积，环境也会变化；更稳妥是短 chunk 执行和持续重规划。</td></tr>
+            <tr><td>为什么要任务图？</td><td>表达子任务依赖、执行状态和重规划入口。</td></tr>
+            <tr><td>为什么要技能库？</td><td>把自然语言目标约束到机器人可执行技能空间。</td></tr>
+            <tr><td>如何训练？</td><td>底层控制、技能规划、推理分解分阶段训练，再小学习率端到端微调。</td></tr>
+          </tbody></table>
+        </div>
+        <div id="talk-risk" class="tab-panel" data-panel="talkTabs">
+          <div class="callout warn">主要风险包括：VLM 计划幻觉、结构化输出解析失败、技能前置条件不满足、失败检测不可靠、重规划循环、推理延迟过高和安全约束缺失。</div>
+        </div>
+      </section>
+
+      <section id="quiz">
+        <h2>自测：确认你理解 D116</h2>
+        <div class="quiz-card"><strong>1. 为什么长 horizon 不是一次性输出很长动作？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">因为环境会变化，开环误差会累积。更稳妥是高层持续规划，底层执行短 action chunk 并不断重新观察。</div></div>
+        <div class="quiz-card"><strong>2. π0.5 三层分别做什么？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">Reasoning 层做任务理解和分解；Skill 层选择技能和参数；Low-level 层生成连续动作并执行。</div></div>
+        <div class="quiz-card"><strong>3. 任务图有什么用？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">任务图表达子任务依赖、执行状态和失败重规划入口，使长任务可调度、可检查、可恢复。</div></div>
+        <div class="quiz-card"><strong>4. 动态重规划什么时候触发？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">目标物体消失、位置偏移、技能失败、新障碍、超时或安全约束触发时都可能需要重规划。</div></div>
+        <div class="quiz-card"><strong>5. 评估 π0.5 为什么不能只看 success rate？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">因为长任务失败可能发生在推理、技能选择、底层控制或恢复环节，需要 subtask success、skill accuracy、recovery success 和安全事件等分层指标。</div></div>
+      </section>
+
+      <section id="summary">
+        <h2>D116 最终总结</h2>
+        <div class="grid cols-2">
+          <div class="card"><h3>1. 核心变化</h3><p>π0.5 从短动作生成走向推理、规划和执行闭环。</p></div>
+          <div class="card"><h3>2. 三层架构</h3><p>Reasoning 负责分解，Skill 负责计划，Action 负责连续控制。</p></div>
+          <div class="card"><h3>3. 长任务关键</h3><p>持续观察、上下文管理、失败检测和动态重规划。</p></div>
+          <div class="card"><h3>4. 工程接口</h3><p>VLM 输出必须结构化，技能库必须有前置条件和后置效果。</p></div>
+          <div class="card"><h3>5. 评估方式</h3><p>除了最终成功率，还要看子任务、技能、恢复、安全和效率。</p></div>
+          <div class="card"><h3>下一天 D117</h3><p>D117 会进入 FAST / π0-FAST：DCT tokenizer、动作离散化和速度/精度权衡。</p></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <a class="top-link" href="#top" aria-label="返回顶部">↑</a>
+
+  <script>
+    const progress=document.getElementById('progress');
+    const navLinks=Array.from(document.querySelectorAll('#toc a'));
+    const sections=navLinks.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+    function updateProgress(){
+      const scrollTop=document.documentElement.scrollTop||document.body.scrollTop;
+      const height=document.documentElement.scrollHeight-document.documentElement.clientHeight;
+      progress.style.width=(height?scrollTop/height*100:0)+'%';
+      let current='';
+      sections.forEach(sec=>{if(sec.offsetTop-130<=scrollTop)current='#'+sec.id});
+      navLinks.forEach(a=>a.classList.toggle('active',a.getAttribute('href')===current));
+    }
+    window.addEventListener('scroll',updateProgress);updateProgress();
+
+    document.querySelectorAll('[data-tabs]').forEach(group=>{
+      const name=group.getAttribute('data-tabs');
+      group.querySelectorAll('.tab-btn').forEach(button=>{
+        button.addEventListener('click',()=>{
+          group.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+          button.classList.add('active');
+          document.querySelectorAll(`[data-panel="${name}"]`).forEach(panel=>panel.classList.toggle('active',panel.id===button.dataset.tab));
+        });
+      });
+    });
+
+    const phases=document.querySelectorAll('.phase');
+    let phaseIndex=0;
+    setInterval(()=>{phases.forEach((p,i)=>p.classList.toggle('active',i===phaseIndex));phaseIndex=(phaseIndex+1)%phases.length;},1800);
+
+    const mode=document.getElementById('failureMode');
+    const replans=document.getElementById('replans');
+    function updateReplan(){
+      const m=mode.value;
+      const r=Number(replans.value);
+      document.getElementById('replanVal').textContent=r;
+      const abnormal=m!=='none';
+      const over=r>=5;
+      document.getElementById('needReplan').textContent=abnormal&&!over?'是':'否';
+      document.getElementById('limit').textContent=over?'已超限':'未超限';
+      const strategyMap={none:'继续',missing:'重新识别',wrongpos:'更新状态',skillfail:'重试/换技能',obstacle:'绕障规划',timeout:'缩短计划'};
+      document.getElementById('strategy').textContent=over?'停止并请求人工':strategyMap[m];
+      document.getElementById('risk').textContent=over?'高':abnormal?'中':'低';
+      const advice=over?'重规划次数过多，应进入安全停止或请求人工接管。':abnormal?'检测到异常，应更新上下文并生成局部新计划。':'当前没有异常，继续执行原计划并持续观察。';
+      document.getElementById('replanAdvice').textContent=advice;
+      document.getElementById('replanAdvice').className='callout '+(over?'danger':abnormal?'warn':'ok');
+    }
+    mode.addEventListener('change',updateReplan);replans.addEventListener('input',updateReplan);updateReplan();
+
+    document.querySelectorAll('.reveal').forEach(button=>{
+      button.addEventListener('click',()=>{
+        const answer=button.parentElement.querySelector('.answer');
+        answer.classList.toggle('show');
+        button.textContent=answer.classList.contains('show')?'隐藏参考答案':'显示参考答案';
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>D109 OpenVLA 推理、评估与失败分析</title>
+  <style>
+    :root{--bg:#f5f7fb;--paper:#fff;--ink:#1d2433;--muted:#647084;--line:#dce3ee;--navy:#203657;--teal:#0f9d92;--cyan:#2bb8d8;--orange:#f28c38;--purple:#7367d8;--red:#d95f5f;--green:#2f9e64;--shadow:0 18px 45px rgba(32,54,87,.12);--radius:8px;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;--sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--ink);background:linear-gradient(180deg,rgba(115,103,216,.12),rgba(245,247,251,0) 300px),var(--bg);font-family:var(--sans);line-height:1.72}.progress{position:fixed;top:0;left:0;height:4px;width:0;background:linear-gradient(90deg,var(--purple),var(--cyan),var(--teal),var(--orange));z-index:60}
+    .layout{display:grid;grid-template-columns:292px minmax(0,1fr);gap:28px;width:min(1480px,calc(100% - 36px));margin:0 auto;padding:28px 0 64px}aside{position:sticky;top:22px;align-self:start;height:calc(100vh - 44px);overflow:auto;padding:18px;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);backdrop-filter:blur(10px)}.brand{display:grid;gap:6px;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:14px}.brand strong{color:var(--navy);font-size:18px}.brand span{color:var(--muted);font-size:13px}nav a{display:block;padding:9px 10px;margin:3px 0;color:#34415a;text-decoration:none;border-radius:6px;font-size:14px}nav a:hover,nav a.active{color:#073d54;background:rgba(43,184,216,.13)}
+    main{min-width:0}.hero{min-height:540px;display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:center;padding:42px;background:linear-gradient(135deg,#203657,#453a9a 52%,#0f766e);color:white;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}.eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 9px;border:1px solid rgba(255,255,255,.34);border-radius:999px;color:rgba(255,255,255,.88);font-size:13px}h1{margin:18px 0 12px;font-size:clamp(36px,5vw,64px);line-height:1.05;letter-spacing:0}.hero p{max-width:780px;color:rgba(255,255,255,.9);font-size:18px}.hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}.btn{border:0;border-radius:6px;padding:10px 14px;font:inherit;cursor:pointer;text-decoration:none;color:#17243a;background:white;font-weight:800}.btn.secondary{color:white;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28)}.hero-visual{min-height:390px;display:grid;place-items:center}
+    section{margin-top:24px;padding:30px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 10px 28px rgba(32,54,87,.08)}section>h2{margin:0 0 14px;color:var(--navy);font-size:28px;line-height:1.25;letter-spacing:0}h3{margin:24px 0 10px;color:#263a5d;font-size:20px;letter-spacing:0}p{margin:10px 0}.lead{color:#3d4a61;font-size:17px}.grid{display:grid;gap:16px}.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}.card{padding:18px;border:1px solid var(--line);border-radius:var(--radius);background:#fbfcff}.card h3{margin-top:0}.tag{display:inline-flex;padding:4px 8px;border-radius:999px;background:rgba(43,184,216,.12);color:#07516a;font-size:12px;font-weight:800}.callout{padding:16px 18px;border-left:4px solid var(--cyan);background:#effbff;border-radius:0 var(--radius) var(--radius) 0;margin:16px 0}.warn{border-left-color:var(--orange);background:#fff7ed}.cool{border-left-color:var(--purple);background:#f3f1ff}.ok{border-left-color:var(--green);background:#eefaf3}.danger{border-left-color:var(--red);background:#fff3f3}
+    .svg-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:#fbfdff;padding:10px}svg{max-width:100%;height:auto;display:block}.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 16px}.tab-btn{border:1px solid var(--line);background:#f8fbff;color:#33415c;padding:8px 11px;border-radius:6px;cursor:pointer;font-weight:800}.tab-btn.active{background:var(--navy);border-color:var(--navy);color:white}.tab-panel{display:none}.tab-panel.active{display:block}
+    details{border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;background:#fbfcff;margin:10px 0}summary{cursor:pointer;font-weight:800;color:var(--navy)}code,pre{font-family:var(--mono)}code{padding:2px 5px;border-radius:4px;background:#eef2f7;color:#27374f}pre{overflow:auto;padding:16px;border-radius:var(--radius);background:#f6f8fb;color:#243044;border:1px solid var(--line);line-height:1.58;font-size:13px}table{width:100%;border-collapse:collapse;border-radius:var(--radius);border:1px solid var(--line);overflow:hidden}th,td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}th{background:#eef4fa;color:var(--navy)}tr:last-child td{border-bottom:0}.control{display:grid;gap:8px;margin:12px 0}.control label{font-weight:800;color:var(--navy)}input[type="range"]{width:100%}select{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;background:white;color:var(--ink);font:inherit}.metric{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.metric div{padding:12px;border:1px solid var(--line);border-radius:6px;background:#fff}.metric strong{display:block;color:var(--navy);font-size:20px}.quiz-card{border:1px solid var(--line);border-radius:var(--radius);padding:16px;background:#fbfcff;margin:12px 0}.answer{display:none;margin-top:10px;padding:12px;border-radius:6px;background:#effbff;color:#073d54}.answer.show{display:block}.bar{height:18px;border-radius:999px;background:#eef2f7;overflow:hidden}.bar span{display:block;height:100%;background:linear-gradient(90deg,var(--cyan),var(--purple))}.top-link{position:fixed;right:22px;bottom:22px;width:42px;height:42px;display:grid;place-items:center;border-radius:50%;color:white;background:var(--navy);text-decoration:none;box-shadow:var(--shadow)}
+    @media(max-width:1040px){.layout{grid-template-columns:1fr}aside{position:relative;height:auto;top:0}.hero{grid-template-columns:1fr;min-height:auto;padding:26px}.cols-2,.cols-3,.cols-4,.metric{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+  <div class="layout">
+    <aside>
+      <div class="brand"><strong>D109 推理评估失败分析</strong><span>Profiler · Metrics · Failure Cases</span></div>
+      <nav id="toc">
+        <a href="#overview">学习目标</a><a href="#official-api">官方口径</a><a href="#flow">推理总流程</a><a href="#load">模型加载</a><a href="#single">单图推理</a><a href="#profiler">速度分解</a><a href="#timing-method">计时方法</a><a href="#latency-lab">延迟实验</a><a href="#quant">量化对比</a><a href="#eval">评估闭环</a><a href="#metrics">指标体系</a><a href="#failure">失败分类</a><a href="#debug">归因流程</a><a href="#evidence">证据链</a><a href="#improve">优化路线</a><a href="#fast-oft">FAST/OFT</a><a href="#interview">面试问答</a><a href="#next">下一天</a>
+      </nav>
+    </aside>
+    <main>
+      <header class="hero" id="top">
+        <div>
+          <span class="eyebrow">Week 16 / Day 109 / Inference & Evaluation</span>
+          <h1>OpenVLA 推理、评估与失败分析：从能跑到会诊断</h1>
+          <p>D109 的重点是工程闭环：模型能加载只是开始，还要能测延迟、拆瓶颈、跑评估、统计成功率，并把失败 case 归因到视觉、动作、规划、控制或系统问题。</p>
+          <div class="hero-actions"><a class="btn" href="#profiler">看延迟分解</a><a class="btn secondary" href="#failure">看失败模式</a><a class="btn secondary" href="d109_inference_eval_clean.md">查看 Markdown 原文</a></div>
+        </div>
+        <div class="hero-visual">
+          <svg viewBox="0 0 720 430" role="img" aria-label="D109 inference evaluation hero">
+            <defs><marker id="heroArrow109" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#fff"/></marker><filter id="heroShadow109" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#10243d" flood-opacity=".28"/></filter></defs>
+            <rect x="28" y="28" width="664" height="374" rx="18" fill="rgba(255,255,255,.10)" stroke="rgba(255,255,255,.26)"/>
+            <g filter="url(#heroShadow109)">
+              <rect x="70" y="78" width="150" height="72" rx="12" fill="#fff"/><text x="145" y="108" text-anchor="middle" fill="#07516a" font-size="18" font-weight="900">Input</text><text x="145" y="132" text-anchor="middle" fill="#647084" font-size="13">image + prompt</text>
+              <rect x="285" y="78" width="150" height="72" rx="12" fill="#fff"/><text x="360" y="108" text-anchor="middle" fill="#453a9a" font-size="18" font-weight="900">OpenVLA</text><text x="360" y="132" text-anchor="middle" fill="#647084" font-size="13">predict_action</text>
+              <rect x="500" y="78" width="150" height="72" rx="12" fill="#fff"/><text x="575" y="108" text-anchor="middle" fill="#7a4314" font-size="18" font-weight="900">Action</text><text x="575" y="132" text-anchor="middle" fill="#647084" font-size="13">7D control</text>
+              <rect x="98" y="252" width="170" height="72" rx="12" fill="#fff"/><text x="183" y="282" text-anchor="middle" fill="#a33b3b" font-size="18" font-weight="900">Profiler</text><text x="183" y="306" text-anchor="middle" fill="#647084" font-size="13">latency / memory</text>
+              <rect x="455" y="252" width="170" height="72" rx="12" fill="#fff"/><text x="540" y="282" text-anchor="middle" fill="#1f7a4d" font-size="18" font-weight="900">Evaluator</text><text x="540" y="306" text-anchor="middle" fill="#647084" font-size="13">success / failure</text>
+            </g>
+            <g stroke="#fff" stroke-width="3" fill="none" marker-end="url(#heroArrow109)"><path d="M220 114 L285 114"/><path d="M435 114 L500 114"/><path d="M360 150 C330 220 250 238 190 252"/><path d="M575 150 C610 220 595 238 548 252"/></g>
+          </svg>
+        </div>
+      </header>
+
+      <section id="overview">
+        <h2>学习目标：推理不是只跑一行代码</h2>
+        <div class="grid cols-4">
+          <div class="card"><span class="tag">Load</span><h3>会加载</h3><p>知道 dtype、device_map、量化、显存占用和 `trust_remote_code` 的影响。</p></div>
+          <div class="card"><span class="tag">Infer</span><h3>会推理</h3><p>主路径使用 `model.predict_action(...)`，拆 profiling 时才深入 `generate()`。</p></div>
+          <div class="card"><span class="tag">Profile</span><h3>会测量</h3><p>把总延迟拆成 processor、vision、projection、prefill、decode、action decode。</p></div>
+          <div class="card"><span class="tag">Diagnose</span><h3>会归因</h3><p>把失败 case 归到视觉、动作、规划、控制、环境或系统瓶颈。</p></div>
+        </div>
+        <div class="callout ok"><strong>准确口径：</strong>动作 token 默认共享 tokenizer 词表最后 256 个 bin token；主推理接口优先用 `predict_action`，不要手写 `token_id - 32000`。</div>
+      </section>
+
+      <section id="official-api">
+        <h2>官方口径：主入口和内部拆解要分清</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>稳定主路径</h3>
+            <p>正式推理、评估和部署时，把 <code>model.predict_action(...)</code> 当作主入口。它会处理生成、action token 解码和按 <code>unnorm_key</code> 反归一化，减少手写 offset 或漏掉动作统计的风险。</p>
+            <pre><code>with torch.no_grad():
+    action = model.predict_action(
+        **inputs,
+        unnorm_key="bridge_orig",
+        do_sample=False,
+    )</code></pre>
+          </div>
+          <div class="card">
+            <h3>源码级拆解</h3>
+            <p><code>model.vision_backbone</code>、<code>model.projector</code>、<code>model.llm_backbone</code> 适合讲解和 profiler，但它们属于内部结构，分支版本可能变化。拆 <code>generate()</code> 时也应调用官方 ActionTokenizer 解码逻辑。</p>
+            <pre><code># 教学/调试用途：先确认当前版本确实有这些属性
+for name in ["vision_backbone", "projector", "llm_backbone"]:
+    print(name, hasattr(model, name))</code></pre>
+          </div>
+        </div>
+        <div class="callout warn">Processor 主要处理图像和文本输入；动作离散化/反归一化更准确地说属于模型内部 ActionTokenizer 或 <code>predict_action</code> 路径，不应简单说成 AutoProcessor 的公开职责。</div>
+      </section>
+
+      <section id="flow">
+        <h2>推理总流程：从图像到环境动作</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1200 420" role="img" aria-label="OpenVLA inference flow">
+            <defs><marker id="flowArrow109" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#203657"/></marker></defs>
+            <rect x="55" y="80" width="160" height="72" rx="12" fill="#eefaf3" stroke="#a7dec1"/><text x="135" y="110" text-anchor="middle" fill="#1f7a4d" font-weight="900">Image</text><text x="135" y="134" text-anchor="middle" fill="#647084" font-size="13">RGB obs</text>
+            <rect x="270" y="80" width="160" height="72" rx="12" fill="#effbff" stroke="#a6ddee"/><text x="350" y="110" text-anchor="middle" fill="#07516a" font-weight="900">Processor</text><text x="350" y="134" text-anchor="middle" fill="#647084" font-size="13">resize / prompt</text>
+            <rect x="485" y="80" width="160" height="72" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/><text x="565" y="110" text-anchor="middle" fill="#453a9a" font-weight="900">Vision</text><text x="565" y="134" text-anchor="middle" fill="#647084" font-size="13">SigLIP + DINOv2</text>
+            <rect x="700" y="80" width="160" height="72" rx="12" fill="#fff7ed" stroke="#f0c596"/><text x="780" y="110" text-anchor="middle" fill="#7a4314" font-weight="900">LLM</text><text x="780" y="134" text-anchor="middle" fill="#647084" font-size="13">prefill + decode</text>
+            <rect x="915" y="80" width="210" height="72" rx="12" fill="#fff3f3" stroke="#efb3b3"/><text x="1020" y="110" text-anchor="middle" fill="#a33b3b" font-weight="900">Action</text><text x="1020" y="134" text-anchor="middle" fill="#647084" font-size="13">decode + unnormalize</text>
+            <rect x="240" y="250" width="720" height="74" rx="12" fill="#fbfdff" stroke="#dce3ee"/><text x="600" y="284" text-anchor="middle" fill="#203657" font-weight="900">profile every step: latency, memory, success, failure category</text><text x="600" y="310" text-anchor="middle" fill="#647084" font-size="13">没有拆分的“总耗时”很难指导优化</text>
+            <g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#flowArrow109)"><path d="M215 116 L270 116"/><path d="M430 116 L485 116"/><path d="M645 116 L700 116"/><path d="M860 116 L915 116"/><path d="M1020 152 C1000 220 850 250 760 250"/><path d="M350 152 C365 220 455 250 520 250"/></g>
+          </svg>
+        </div>
+      </section>
+
+      <section id="load">
+        <h2>模型加载：dtype、量化和显存</h2>
+        <div class="tabs" data-tabs="loadTabs"><button class="tab-btn active" data-tab="load-bf16">BF16</button><button class="tab-btn" data-tab="load-8bit">INT8</button><button class="tab-btn" data-tab="load-4bit">INT4</button></div>
+        <div id="load-bf16" class="tab-panel active" data-panel="loadTabs"><pre><code>model = AutoModelForVision2Seq.from_pretrained(
+    "openvla/openvla-7b",
+    torch_dtype=torch.bfloat16,
+    low_cpu_mem_usage=True,
+    trust_remote_code=True,
+).to("cuda")
+processor = AutoProcessor.from_pretrained(
+    "openvla/openvla-7b",
+    trust_remote_code=True,
+)</code></pre></div>
+        <div id="load-8bit" class="tab-panel" data-panel="loadTabs"><pre><code>model = AutoModelForVision2Seq.from_pretrained(
+    "openvla/openvla-7b",
+    load_in_8bit=True,
+    torch_dtype=torch.bfloat16,
+    device_map="auto",
+    trust_remote_code=True,
+)</code></pre><div class="callout warn">INT8 通常显存更低，但速度收益取决于 GPU、bitsandbytes、batch size 和算子支持。</div></div>
+        <div id="load-4bit" class="tab-panel" data-panel="loadTabs"><pre><code>bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_compute_dtype=torch.bfloat16,
+)
+model = AutoModelForVision2Seq.from_pretrained(
+    "openvla/openvla-7b",
+    quantization_config=bnb_config,
+    device_map="auto",
+    trust_remote_code=True,
+)</code></pre><div class="callout danger">INT4 更省显存，但动作稳定性和评估成功率必须实测，不能只看延迟。</div></div>
+      </section>
+
+      <section id="single">
+        <h2>单图推理：主路径用 predict_action</h2>
+        <p class="lead">日常评估和部署不要手写 action token 解码。使用官方/模型提供的 `predict_action`，让模型内部处理生成、动作 token 解码和反归一化。</p>
+        <pre><code>image = Image.open("test_image.jpg").convert("RGB")
+prompt = "In: What action should the robot take to pick up the red cup?\nOut:"
+inputs = processor(prompt, image).to("cuda", dtype=torch.bfloat16)
+
+with torch.no_grad():
+    action = model.predict_action(
+        **inputs,
+        unnorm_key="bridge_orig",
+        do_sample=False,
+    )
+
+print(action)  # [dx, dy, dz, droll, dpitch, dyaw, gripper]</code></pre>
+        <div class="callout cool"><strong>什么时候拆 `generate()`？</strong>只有在 profiling、研究 action token 分布、debug logits 或验证 tokenizer 时才拆。拆开以后也要用官方 `decode_token_ids_to_actions()`，不要写死 offset。</div>
+      </section>
+
+      <section id="profiler">
+        <h2>速度分解：OpenVLA 慢在哪里</h2>
+        <p class="lead">推理延迟通常由视觉编码、projection、LLM prefill、LLM decode、动作解码组成。对 VLA 来说，最常见瓶颈是 LLM 自回归 decode 7 个动作 token。</p>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1120 330" role="img" aria-label="latency breakdown">
+            <rect x="70" y="92" width="980" height="74" rx="12" fill="#eef4fa" stroke="#dce3ee"/>
+            <rect x="70" y="92" width="145" height="74" rx="12" fill="#0f9d92"/><text x="142" y="135" text-anchor="middle" fill="#fff" font-weight="900">Processor</text>
+            <rect x="215" y="92" width="185" height="74" fill="#2bb8d8"/><text x="307" y="135" text-anchor="middle" fill="#fff" font-weight="900">Vision</text>
+            <rect x="400" y="92" width="70" height="74" fill="#2f9e64"/><text x="435" y="135" text-anchor="middle" fill="#fff" font-weight="900">Proj</text>
+            <rect x="470" y="92" width="150" height="74" fill="#7367d8"/><text x="545" y="135" text-anchor="middle" fill="#fff" font-weight="900">Prefill</text>
+            <rect x="620" y="92" width="430" height="74" rx="12" fill="#f28c38"/><text x="835" y="135" text-anchor="middle" fill="#fff" font-weight="900">LLM decode 7 tokens</text>
+            <text x="560" y="230" text-anchor="middle" fill="#203657" font-size="18" font-weight="900">优化优先级由占比决定，不由直觉决定</text>
+          </svg>
+        </div>
+        <table><thead><tr><th>阶段</th><th>测什么</th><th>常见瓶颈</th><th>优化方向</th></tr></thead><tbody><tr><td>Processor</td><td>图像 resize、tokenize</td><td>CPU 预处理慢</td><td>缓存、并行、减少重复转换</td></tr><tr><td>Vision</td><td>视觉编码器 forward</td><td>高分辨率、多编码器</td><td>降低分辨率、缓存视觉特征、轻量 backbone</td></tr><tr><td>Prefill</td><td>输入上下文一次性计算</td><td>prompt 太长、visual tokens 多</td><td>截断 prompt、减少 visual tokens</td></tr><tr><td>Decode</td><td>7 个动作 token 自回归生成</td><td>LLM 解码串行</td><td>量化、KV cache、TensorRT、减少动作 token</td></tr></tbody></table>
+      </section>
+
+      <section id="timing-method">
+        <h2>计时方法：墙钟时间和 CUDA 时间</h2>
+        <p class="lead">CUDA 默认异步执行，直接用 <code>time.perf_counter()</code> 包住 GPU forward 可能低估真实耗时。端到端控制频率看墙钟时间，模块级 GPU profiling 更推荐 <code>torch.cuda.Event</code>。</p>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>端到端墙钟时间</h3>
+            <pre><code>torch.cuda.synchronize()
+t0 = time.perf_counter()
+action = model.predict_action(**inputs, unnorm_key="bridge_orig")
+torch.cuda.synchronize()
+latency_ms = (time.perf_counter() - t0) * 1000</code></pre>
+            <p>适合回答“机器人每步到底要等多久”。要把相机采集、预处理、模型推理、env.step 或控制发送分开记录。</p>
+          </div>
+          <div class="card">
+            <h3>CUDA Event 分段时间</h3>
+            <pre><code>start = torch.cuda.Event(enable_timing=True)
+end = torch.cuda.Event(enable_timing=True)
+start.record()
+with torch.no_grad():
+    _ = model.llm_backbone.generate(...)
+end.record()
+torch.cuda.synchronize()
+decode_ms = start.elapsed_time(end)</code></pre>
+            <p>适合拆 vision、prefill、decode。报告时给 mean、p50、p90、p99，机器人控制非常关心长尾延迟。</p>
+          </div>
+        </div>
+        <pre><code>{
+  "latency_ms": {
+    "processor": 12.4,
+    "vision": 31.7,
+    "projection": 4.1,
+    "llm_prefill": 20.8,
+    "llm_decode": 118.6,
+    "action_decode": 1.3,
+    "total": 195.4
+  },
+  "memory_gb": {"allocated": 14.8, "peak": 17.1},
+  "success": false,
+  "failure_type": "action_miscalculation"
+}</code></pre>
+      </section>
+
+      <section id="latency-lab">
+        <h2>交互：控制频率估算</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>延迟输入</h3>
+            <div class="control"><label for="visionMs">Vision + Processor ms：<span id="visionVal">45</span></label><input id="visionMs" type="range" min="10" max="120" step="5" value="45" /></div>
+            <div class="control"><label for="prefillMs">LLM Prefill ms：<span id="prefillVal">20</span></label><input id="prefillMs" type="range" min="5" max="80" step="5" value="20" /></div>
+            <div class="control"><label for="decodeMs">每个 action token decode ms：<span id="decodeVal">16</span></label><input id="decodeMs" type="range" min="4" max="40" step="1" value="16" /></div>
+          </div>
+          <div class="card">
+            <h3>结果</h3>
+            <div class="metric"><div><strong id="totalMs">177</strong><span>总延迟 ms</span></div><div><strong id="freqHz">5.6</strong><span>控制频率 Hz</span></div><div><strong id="decodeShare">63%</strong><span>decode 占比</span></div><div><strong>7</strong><span>动作 token</span></div></div>
+            <div class="callout ok" id="latencyHint">当前瓶颈主要在 decode，优先考虑量化、KV cache、TensorRT 或减少动作 token。</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="quant">
+        <h2>量化对比：不能只看速度</h2>
+        <table><thead><tr><th>模式</th><th>显存</th><th>速度</th><th>风险</th><th>建议</th></tr></thead><tbody><tr><td>BF16</td><td>高</td><td>中等</td><td>成本高</td><td>基准结果、质量评估</td></tr><tr><td>INT8</td><td>中</td><td>可能更快</td><td>少量精度损失</td><td>优先尝试的部署优化</td></tr><tr><td>INT4</td><td>低</td><td>可能最快</td><td>动作稳定性可能下降</td><td>必须跑成功率和动作误差</td></tr></tbody></table>
+        <div class="callout warn"><strong>VLA 的量化评估必须包含动作指标：</strong>平均动作差异、gripper 误差、成功率、失败模式分布。只报告 tokens/sec 不够。</div>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>量化前检查</h3>
+            <table><tbody><tr><td>基线</td><td>先保存 BF16 latency、memory、success rate、动作轨迹。</td></tr><tr><td>任务集</td><td>至少覆盖容易、困难、遮挡、长程、抓取失败高发任务。</td></tr><tr><td>日志</td><td>记录模型 revision、torch/bnb 版本、GPU、batch、prompt。</td></tr></tbody></table>
+          </div>
+          <div class="card">
+            <h3>量化后判断</h3>
+            <table><tbody><tr><td>动作差异</td><td>逐维比较 <code>mean_abs_diff</code>、gripper 翻转率、动作饱和率。</td></tr><tr><td>闭环表现</td><td>成功率、失败类型分布、p99 延迟必须同时看。</td></tr><tr><td>上线条件</td><td>不能只因速度更快就上线，必须证明失败类型没有恶化。</td></tr></tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <section id="eval">
+        <h2>评估闭环：SimplerEnv / 离线数据 / 真机</h2>
+        <pre><code>obs = env.reset()
+for t in range(max_steps):
+    image = Image.fromarray(obs["image"])
+    inputs = processor(prompt, image).to(device, dtype=torch.bfloat16)
+    action = model.predict_action(
+        **inputs,
+        unnorm_key="bridge_orig",
+        do_sample=False,
+    )
+    obs, reward, done, info = env.step(action)
+    if done:
+        break
+
+success = info.get("success", False)</code></pre>
+        <div class="grid cols-3"><div class="card"><h3>离线评估</h3><p>对已有数据比较 action error，便宜但不能验证闭环稳定性。</p></div><div class="card"><h3>仿真评估</h3><p>能看闭环成功率和失败视频，适合快速迭代。</p></div><div class="card"><h3>真机评估</h3><p>最终标准，但成本高、可重复性差，需要严格记录环境条件。</p></div></div>
+      </section>
+
+      <section id="metrics">
+        <h2>指标体系：成功率只是第一层</h2>
+        <table><thead><tr><th>指标</th><th>含义</th><th>用途</th></tr></thead><tbody><tr><td>Success Rate</td><td>episode 是否完成任务</td><td>主要横向比较指标</td></tr><tr><td>Latency / Hz</td><td>每步推理耗时和控制频率</td><td>判断能否实时控制</td></tr><tr><td>Memory Peak</td><td>峰值显存</td><td>判断部署硬件需求</td></tr><tr><td>Action Error</td><td>预测动作和数据动作差异</td><td>离线诊断动作质量</td></tr><tr><td>Failure Category</td><td>失败类型分布</td><td>指导下一步改进</td></tr></tbody></table>
+      </section>
+
+      <section id="failure">
+        <h2>失败分类：不要把所有失败都叫模型不行</h2>
+        <div class="control"><label for="failureSelect">选择失败现象</label><select id="failureSelect"><option value="visual">看错目标或抓错物体</option><option value="action">动作方向明显不对</option><option value="grasp">碰到物体但抓不起来</option><option value="long">多步任务中途乱掉</option><option value="latency">动作滞后或抖动</option></select></div>
+        <div class="callout ok" id="failureAnswer">优先归因为视觉识别/定位问题：检查图像预处理、相机视角、遮挡、光照和目标是否出现在训练数据分布中。</div>
+        <table><thead><tr><th>失败类型</th><th>现象</th><th>常见原因</th><th>改进方向</th></tr></thead><tbody><tr><td>视觉误识别</td><td>抓错对象</td><td>遮挡、光照、目标太小</td><td>数据增强、多视角、更强视觉编码器</td></tr><tr><td>动作计算错误</td><td>方向/尺度不对</td><td>`unnorm_key` 错、动作统计不匹配</td><td>校准 action stats，检查反归一化</td></tr><tr><td>抓取失败</td><td>碰到但夹不住</td><td>抓取点、夹爪时机、接触动力学</td><td>抓取数据增强、闭环纠偏、真机微调</td></tr><tr><td>长程失败</td><td>前几步对，后面偏离</td><td>误差累积、缺少高层规划</td><td>分层策略、子目标、历史观测</td></tr><tr><td>系统延迟</td><td>动作慢半拍</td><td>LLM decode 慢、控制频率低</td><td>量化、TensorRT、异步执行</td></tr></tbody></table>
+      </section>
+
+      <section id="debug">
+        <h2>归因流程：失败 case 怎么分析</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1120 430" role="img" aria-label="failure diagnosis tree">
+            <defs><marker id="diagArrow109" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#203657"/></marker></defs>
+            <rect x="430" y="45" width="260" height="60" rx="12" fill="#fff7ed" stroke="#f0c596"/><text x="560" y="82" text-anchor="middle" fill="#7a4314" font-weight="900">失败 episode</text>
+            <rect x="70" y="170" width="200" height="70" rx="12" fill="#effbff" stroke="#a6ddee"/><text x="170" y="202" text-anchor="middle" fill="#07516a" font-weight="900">视频/图像</text><text x="170" y="226" text-anchor="middle" fill="#647084" font-size="13">是否看错</text>
+            <rect x="330" y="170" width="200" height="70" rx="12" fill="#eefaf3" stroke="#a7dec1"/><text x="430" y="202" text-anchor="middle" fill="#1f7a4d" font-weight="900">动作日志</text><text x="430" y="226" text-anchor="middle" fill="#647084" font-size="13">尺度/方向</text>
+            <rect x="590" y="170" width="200" height="70" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/><text x="690" y="202" text-anchor="middle" fill="#453a9a" font-weight="900">环境状态</text><text x="690" y="226" text-anchor="middle" fill="#647084" font-size="13">接触/约束</text>
+            <rect x="850" y="170" width="200" height="70" rx="12" fill="#fff3f3" stroke="#efb3b3"/><text x="950" y="202" text-anchor="middle" fill="#a33b3b" font-weight="900">系统指标</text><text x="950" y="226" text-anchor="middle" fill="#647084" font-size="13">延迟/显存</text>
+            <rect x="250" y="320" width="620" height="60" rx="12" fill="#fbfdff" stroke="#dce3ee"/><text x="560" y="356" text-anchor="middle" fill="#203657" font-weight="900">形成假设 → 做消融 → 重新评估 → 更新失败模式表</text>
+            <g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#diagArrow109)"><path d="M560 105 L170 170"/><path d="M560 105 L430 170"/><path d="M560 105 L690 170"/><path d="M560 105 L950 170"/><path d="M170 240 C220 290 300 318 350 320"/><path d="M430 240 L460 320"/><path d="M690 240 L650 320"/><path d="M950 240 C900 290 820 318 770 320"/></g>
+          </svg>
+        </div>
+      </section>
+
+      <section id="evidence">
+        <h2>证据链：失败归因要能复盘</h2>
+        <p class="lead">看到失败视频后直接说“泛化不好”不够。一个可用的失败分析，需要把现象、日志、假设和消融实验连起来。</p>
+        <table><thead><tr><th>证据层</th><th>记录内容</th><th>判断问题</th></tr></thead><tbody><tr><td>任务条件</td><td>指令、物体、相机、光照、初始位姿</td><td>是否集中在某类场景</td></tr><tr><td>视觉证据</td><td>原图、裁剪、遮挡、目标位置、注意力/检测结果</td><td>是否看错目标</td></tr><tr><td>动作证据</td><td>7D action、动作差分、jerk、gripper 时机</td><td>方向、尺度和平滑性是否异常</td></tr><tr><td>系统证据</td><td>latency、Hz、显存、env step time</td><td>是否闭环滞后</td></tr><tr><td>消融证据</td><td>换视角、换 prompt、换 unnorm_key、加平滑</td><td>哪个变量真正影响成功率</td></tr></tbody></table>
+        <pre><code>{
+  "episode_id": "task17_seed004",
+  "instruction": "pick up the red cup",
+  "result": "failure",
+  "failure_type": "visual_misrecognition",
+  "failure_step": 23,
+  "evidence": {
+    "image_paths": ["frames/000.png", "frames/023.png"],
+    "action_trace_path": "actions.npy",
+    "latency_trace_path": "latency.jsonl",
+    "video_path": "episode.mp4"
+  },
+  "hypothesis": "模型把 red bowl 当成 red cup",
+  "planned_ablation": ["裁剪目标区域", "提高光照", "改成更明确的prompt"]
+}</code></pre>
+      </section>
+
+      <section id="improve">
+        <h2>优化路线：根据瓶颈选择方案</h2>
+        <table><thead><tr><th>目标</th><th>优先方案</th><th>代价</th><th>验证方式</th></tr></thead><tbody><tr><td>降低延迟</td><td>INT8/INT4、KV cache、TensorRT</td><td>可能影响动作质量</td><td>延迟 + 成功率 + 动作误差</td></tr><tr><td>提升视觉鲁棒性</td><td>图像增强、更多视角、改视觉编码器</td><td>训练成本上升</td><td>Variant success rate</td></tr><tr><td>提升抓取</td><td>抓取失败数据、真机微调、闭环纠偏</td><td>数据采集成本</td><td>grasp success / contact video</td></tr><tr><td>提升长程任务</td><td>分层规划、子目标、历史帧</td><td>系统复杂度上升</td><td>partial success 曲线</td></tr></tbody></table>
+      </section>
+
+      <section id="fast-oft">
+        <h2>FAST / OFT：更贴近 VLA 的优化方向</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>FAST action tokenizer</h3>
+            <p>通用量化主要降低模型计算成本，FAST 更聚焦动作表示本身。它的目标是用更高效的动作 tokenization 降低自回归动作生成负担，同时维持动作表达能力。</p>
+            <table><tbody><tr><td>适用问题</td><td>LLM decode 占比高、动作 token 生成拖慢控制频率。</td></tr><tr><td>验证方式</td><td>每步延迟、动作平滑度、成功率、失败类型分布。</td></tr></tbody></table>
+          </div>
+          <div class="card">
+            <h3>OFT / 任务微调</h3>
+            <p>如果失败来自新任务、新机器人或数据分布差异，量化不会自动提高成功率。OFT/LoRA/任务数据微调应和推理优化分开评估。</p>
+            <table><tbody><tr><td>适用问题</td><td>新场景失败、目标物体分布变化、动作习惯不匹配。</td></tr><tr><td>验证方式</td><td>held-out success rate、泛化任务、失败模式变化。</td></tr></tbody></table>
+          </div>
+        </div>
+        <div class="callout cool">工程排序建议：先用 D109 的 profiler 和失败表定位问题，再决定是做量化/FAST 降延迟，还是做 OFT/LoRA 提升任务适配。不要把所有失败都交给同一种优化手段。</div>
+      </section>
+
+      <section id="interview">
+        <h2>面试问答：D109 高频问题</h2>
+        <div class="quiz-card"><strong>1. 请描述 OpenVLA 推理完整流程。</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">图像和指令先进入 processor；视觉编码器提取 visual tokens；projector 对齐到 LLM hidden space；LLM 根据 visual tokens 和 text tokens 自回归生成动作 token；ActionTokenizer 解码为连续动作，并按 `unnorm_key` 反归一化到环境动作空间。</div></div>
+        <div class="quiz-card"><strong>2. LLM decode 是主要瓶颈，怎么优化？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">先确认 KV cache 和 profiler；再尝试 INT8/INT4、FlashAttention/TensorRT、缩短 prompt、减少 visual/action tokens、异步执行。每个优化都要同时报告延迟、显存、动作误差和成功率。</div></div>
+        <div class="quiz-card"><strong>3. 成功率只有 60%，如何分析？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">收集失败 episode 的视频、动作、状态、延迟；按视觉误识别、动作尺度错误、抓取失败、长程规划失败、系统延迟分类；和成功样本对比，提出假设并做消融。</div></div>
+      </section>
+
+      <section id="next">
+        <h2>D109 → D110：从评估问题进入微调解决方案</h2>
+        <p class="lead">D109 负责找出问题在哪里。D110 会继续讲 LoRA/任务微调、训练曲线诊断、pretrain vs fine-tune 的差异和微调后评估。</p>
+      </section>
+    </main>
+  </div>
+  <a class="top-link" href="#top" aria-label="返回顶部">↑</a>
+  <script>
+    const progress=document.getElementById('progress');const navLinks=Array.from(document.querySelectorAll('#toc a'));const sections=navLinks.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);function updateProgress(){const s=window.scrollY||document.documentElement.scrollTop;const h=document.documentElement.scrollHeight-window.innerHeight;progress.style.width=(h>0?s/h*100:0)+'%';let current=sections[0];for(const section of sections)if(section.getBoundingClientRect().top<=120)current=section;navLinks.forEach(a=>a.classList.toggle('active',current&&a.getAttribute('href')==='#'+current.id))}window.addEventListener('scroll',updateProgress,{passive:true});window.addEventListener('resize',updateProgress);updateProgress();
+    document.querySelectorAll('[data-tabs]').forEach(group=>{const name=group.getAttribute('data-tabs');group.querySelectorAll('.tab-btn').forEach(button=>{button.addEventListener('click',()=>{group.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));button.classList.add('active');document.querySelectorAll(`[data-panel="${name}"]`).forEach(panel=>panel.classList.toggle('active',panel.id===button.dataset.tab))})})});
+    const visionMs=document.getElementById('visionMs'),prefillMs=document.getElementById('prefillMs'),decodeMs=document.getElementById('decodeMs'),visionVal=document.getElementById('visionVal'),prefillVal=document.getElementById('prefillVal'),decodeVal=document.getElementById('decodeVal'),totalMs=document.getElementById('totalMs'),freqHz=document.getElementById('freqHz'),decodeShare=document.getElementById('decodeShare'),latencyHint=document.getElementById('latencyHint');function updateLatency(){const v=Number(visionMs.value),p=Number(prefillMs.value),d=Number(decodeMs.value),dec=d*7,total=v+p+dec;visionVal.textContent=v;prefillVal.textContent=p;decodeVal.textContent=d;totalMs.textContent=total.toFixed(0);freqHz.textContent=(1000/total).toFixed(1);decodeShare.textContent=Math.round(dec/total*100)+'%';latencyHint.textContent=dec/total>0.55?'当前瓶颈主要在 decode，优先考虑量化、KV cache、TensorRT 或减少动作 token。':'当前延迟较均衡，继续拆 processor、vision 和 prefill，避免只优化 LLM。'}[visionMs,prefillMs,decodeMs].forEach(el=>el&&el.addEventListener('input',updateLatency));updateLatency();
+    const failureSelect=document.getElementById('failureSelect'),failureAnswer=document.getElementById('failureAnswer');const failureMap={visual:'优先归因为视觉识别/定位问题：检查图像预处理、相机视角、遮挡、光照和目标是否出现在训练数据分布中。',action:'优先归因为动作尺度/方向问题：检查 action stats、unnorm_key、gripper 编码和环境动作空间。',grasp:'优先归因为抓取接触问题：检查抓取点、夹爪闭合时机、物体材质和仿真/真机动力学差异。',long:'优先归因为长程规划和误差累积：检查 partial success、子目标、历史观测和高层任务分解。',latency:'优先归因为系统延迟：检查 decode 占比、控制频率、异步执行和动作平滑。'};if(failureSelect)failureSelect.addEventListener('change',()=>{failureAnswer.textContent=failureMap[failureSelect.value]});
+    document.querySelectorAll('.reveal').forEach(button=>{button.addEventListener('click',()=>{const answer=button.parentElement.querySelector('.answer');if(!answer)return;answer.classList.toggle('show');button.textContent=answer.classList.contains('show')?'隐藏参考答案':'显示参考答案'})});
+  </script>
+</body>
+</html>

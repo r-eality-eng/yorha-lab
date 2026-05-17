@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>D119 VLA 大对比：技术演进图与 Trade-off 总复盘</title>
+  <style>
+    :root{
+      --bg:#f5f7fb;--paper:#fff;--ink:#1f2937;--muted:#667085;--line:#d9e2ee;
+      --navy:#17324d;--blue:#2563eb;--cyan:#0891b2;--green:#238636;--amber:#d97706;--red:#d64545;--violet:#6d5bd0;
+      --soft-blue:#eef6ff;--soft-green:#effaf2;--soft-amber:#fff7e8;--soft-violet:#f5f2ff;--soft-cyan:#ecfeff;
+      --shadow:0 16px 40px rgba(23,50,77,.12);--radius:8px;
+      --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+      --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    }
+    *{box-sizing:border-box}html{scroll-behavior:smooth}
+    body{margin:0;color:var(--ink);font-family:var(--sans);line-height:1.72;background:linear-gradient(180deg,#e8f7ff 0,#f5f7fb 420px)}
+    .progress{position:fixed;top:0;left:0;height:4px;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--green),var(--amber));z-index:20}
+    .layout{width:min(1520px,calc(100% - 36px));margin:0 auto;display:grid;grid-template-columns:310px minmax(0,1fr);gap:26px;padding:28px 0 72px}
+    aside{position:sticky;top:22px;align-self:start;height:calc(100vh - 44px);overflow:auto;padding:18px;background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .brand{padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:12px}.brand strong{display:block;color:var(--navy);font-size:18px}.brand span{display:block;color:var(--muted);font-size:13px}
+    nav a{display:block;text-decoration:none;color:#33415c;border-radius:6px;padding:8px 10px;margin:3px 0;font-size:14px}nav a:hover,nav a.active{background:#e8f2ff;color:#0a5ca8}
+    main{min-width:0}.hero{min-height:560px;display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center;padding:42px;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;color:#fff;background:linear-gradient(135deg,#17324d,#155e75 50%,#4c3f91)}
+    .eyebrow{display:inline-flex;padding:5px 10px;border:1px solid rgba(255,255,255,.34);border-radius:999px;color:rgba(255,255,255,.92);font-size:13px}
+    h1{margin:18px 0 12px;font-size:clamp(34px,5vw,60px);line-height:1.05;letter-spacing:0}.hero p{font-size:18px;color:rgba(255,255,255,.9)}
+    .hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}.btn{border:0;border-radius:6px;padding:10px 14px;font:inherit;font-weight:800;text-decoration:none;cursor:pointer;background:#fff;color:#17243a}.btn.secondary{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);color:#fff}
+    section{margin-top:24px;padding:30px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 10px 28px rgba(23,50,77,.08)}
+    section>h2{margin:0 0 14px;color:var(--navy);font-size:28px;line-height:1.25;letter-spacing:0}h3{margin:22px 0 10px;color:#263a5d;font-size:20px;letter-spacing:0}p{margin:10px 0}.lead{font-size:17px;color:#3d4a61}
+    .grid{display:grid;gap:16px}.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .card{padding:18px;border:1px solid var(--line);border-radius:var(--radius);background:#fbfcff}.card h3{margin-top:0}.tag{display:inline-flex;padding:4px 8px;border-radius:999px;background:#e9f4ff;color:#0b5fa5;font-size:12px;font-weight:800}
+    .callout{padding:16px 18px;border-left:4px solid var(--blue);background:#eef7ff;border-radius:0 var(--radius) var(--radius) 0;margin:16px 0}.ok{border-left-color:var(--green);background:var(--soft-green)}.warn{border-left-color:var(--amber);background:var(--soft-amber)}.cool{border-left-color:var(--violet);background:var(--soft-violet)}.danger{border-left-color:var(--red);background:#fff1f1}
+    .svg-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:#fbfdff;padding:10px}svg{max-width:100%;height:auto;display:block}
+    code,pre{font-family:var(--mono)}code{padding:2px 5px;border-radius:4px;background:#eef2f7;color:#243044}
+    pre{overflow:auto;padding:16px;border:1px solid var(--line);border-radius:var(--radius);background:#f6f8fb;color:#243044;line-height:1.58;font-size:13px}
+    table{width:100%;border-collapse:collapse;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#edf5fc;color:var(--navy)}tr:last-child td{border-bottom:0}
+    .control{display:grid;gap:8px;margin:12px 0}.control label{font-weight:800;color:var(--navy)}input[type=range],select{width:100%}select{padding:9px;border:1px solid var(--line);border-radius:6px;background:#fff;font:inherit}
+    .score{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.score div{padding:14px;border:1px solid var(--line);border-radius:6px;background:#fff}.score strong{display:block;font-size:24px;color:var(--navy)}
+    .bars{display:grid;gap:8px;margin-top:12px}.bar{height:32px;border-radius:6px;background:#edf2f7;overflow:hidden;border:1px solid var(--line)}.bar span{display:block;height:100%;min-width:42px;background:linear-gradient(90deg,#2563eb,#0891b2);color:#fff;font-weight:900;padding-left:10px;line-height:32px;white-space:nowrap}
+    .tabs{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 16px}.tab-btn{border:1px solid var(--line);background:#f8fbff;color:#33415c;padding:8px 11px;border-radius:6px;cursor:pointer;font-weight:800}.tab-btn.active{background:var(--navy);border-color:var(--navy);color:white}.tab-panel{display:none}.tab-panel.active{display:block}
+    .quiz-card{border:1px solid var(--line);border-radius:var(--radius);padding:16px;background:#fbfcff;margin:12px 0}.answer{display:none;margin-top:10px;padding:12px;border-radius:6px;background:#effbff;color:#073d54}.answer.show{display:block}
+    .top-link{position:fixed;right:22px;bottom:22px;width:42px;height:42px;display:grid;place-items:center;border-radius:50%;color:white;background:var(--navy);text-decoration:none;box-shadow:var(--shadow)}
+    @media(max-width:1040px){.layout{grid-template-columns:1fr}aside{position:relative;height:auto;top:0}.hero{grid-template-columns:1fr;min-height:auto;padding:26px}.cols-2,.cols-3,.cols-4,.score{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+  <div class="layout">
+    <aside>
+      <div class="brand"><strong>D119 VLA 总复盘</strong><span>演进图 · 对比表 · Trade-off</span></div>
+      <nav id="toc">
+        <a href="#overview">学习目标</a>
+        <a href="#timeline">演进时间线</a>
+        <a href="#branches">技术路线</a>
+        <a href="#matrix">模型矩阵</a>
+        <a href="#tradeoff">Trade-off</a>
+        <a href="#selector">场景选择器</a>
+        <a href="#pareto">Pareto 图</a>
+        <a href="#interview">面试脚本</a>
+        <a href="#flashcard">速查卡</a>
+        <a href="#checklist">报告口径</a>
+        <a href="#week">全周复盘</a>
+        <a href="#homework">作业闭环</a>
+        <a href="#quiz">自测</a>
+        <a href="#summary">最终总结</a>
+      </nav>
+    </aside>
+
+    <main>
+      <header class="hero" id="top">
+        <div>
+          <span class="eyebrow">Week 17 / Day 119 / VLA Final Review</span>
+          <h1>VLA 大对比：用演进图讲清所有 Trade-off</h1>
+          <p>D119 是第17周的总复盘：把 RT-1/RT-2、Octo、OpenVLA、π0、π0.5、FAST、HPT、RDT、DiT 串成一张能面试讲清楚的技术地图。</p>
+          <div class="hero-actions">
+            <a class="btn" href="#timeline">看演进图</a>
+            <a class="btn secondary" href="#selector">打开选择器</a>
+            <a class="btn secondary" href="d119_vla_comparison_tradeoff_clean.md">查看 Markdown</a>
+          </div>
+        </div>
+        <div class="svg-wrap" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25)">
+          <svg viewBox="0 0 760 470" role="img" aria-label="VLA overview">
+            <defs><marker id="heroArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#fff"/></marker></defs>
+            <rect x="38" y="42" width="684" height="384" rx="20" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.28)"/>
+            <g fill="#fff">
+              <rect x="80" y="120" width="92" height="52" rx="10"/><rect x="208" y="120" width="92" height="52" rx="10"/><rect x="336" y="120" width="92" height="52" rx="10"/><rect x="464" y="120" width="92" height="52" rx="10"/><rect x="592" y="120" width="92" height="52" rx="10"/>
+            </g>
+            <g fill="#17324d" font-weight="900" text-anchor="middle"><text x="126" y="153">RT-1</text><text x="254" y="153">RT-2</text><text x="382" y="153">π0</text><text x="510" y="153">π0.5</text><text x="638" y="153">RDT</text></g>
+            <g stroke="#fff" stroke-width="3" marker-end="url(#heroArrow)"><path d="M172 146 L208 146"/><path d="M300 146 L336 146"/><path d="M428 146 L464 146"/><path d="M556 146 L592 146"/></g>
+            <rect x="96" y="248" width="568" height="74" rx="14" fill="rgba(255,255,255,.18)" stroke="rgba(255,255,255,.35)"/>
+            <text x="380" y="278" text-anchor="middle" fill="#fff" font-weight="900" font-size="20">从任务特化 → VLM 泛化 → 连续生成 → 长 Horizon → 多范式融合</text>
+            <text x="380" y="308" text-anchor="middle" fill="rgba(255,255,255,.9)">核心不是背模型名，而是讲清速度、质量、泛化、部署之间的取舍</text>
+          </svg>
+        </div>
+      </header>
+
+      <section id="overview">
+        <h2>学习目标：D119 是面试总复盘</h2>
+        <div class="grid cols-4">
+          <div class="card"><span class="tag">全景</span><h3>技术演进</h3><p>能按时间线讲清 VLA 从 RT-1 到 π0.5 / RDT / HPT 的演进。</p></div>
+          <div class="card"><span class="tag">机制</span><h3>动作路线</h3><p>能区分离散 token、连续回归、Flow Matching、Diffusion、FAST tokenizer。</p></div>
+          <div class="card"><span class="tag">取舍</span><h3>Trade-off</h3><p>能讲速度 vs 质量、泛化 vs 部署、确定性 vs 多样性、短任务 vs 长任务。</p></div>
+          <div class="card"><span class="tag">表达</span><h3>面试脚本</h3><p>能在 5 分钟内结构化回答 VLA 技术演进问题。</p></div>
+        </div>
+        <div class="callout warn">重要口径：本页所有跨论文对比均用于趋势理解。真实报告不能把不同机器人、不同任务、不同硬件上的成功率直接相减。</div>
+      </section>
+
+      <section id="timeline">
+        <h2>VLA 技术演进时间线</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1280 560" role="img" aria-label="VLA timeline">
+            <defs><marker id="timeArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#17324d"/></marker></defs>
+            <rect x="42" y="50" width="1196" height="410" rx="18" fill="#fbfdff" stroke="#d9e2ee"/>
+            <line x1="110" y1="250" x2="1160" y2="250" stroke="#17324d" stroke-width="4" marker-end="url(#timeArrow)"/>
+            <g>
+              <rect x="100" y="150" width="120" height="80" rx="12" fill="#eef6ff" stroke="#aacdec"/><text x="160" y="184" text-anchor="middle" fill="#0b4f88" font-weight="900">RT-1</text><text x="160" y="210" text-anchor="middle" fill="#667085">任务特化</text>
+              <rect x="260" y="270" width="120" height="80" rx="12" fill="#fff7e8" stroke="#f2c782"/><text x="320" y="304" text-anchor="middle" fill="#8a4b00" font-weight="900">RT-2</text><text x="320" y="330" text-anchor="middle" fill="#667085">VLM迁移</text>
+              <rect x="420" y="150" width="120" height="80" rx="12" fill="#ecfeff" stroke="#9bdce5"/><text x="480" y="184" text-anchor="middle" fill="#0f6875" font-weight="900">Octo</text><text x="480" y="210" text-anchor="middle" fill="#667085">开源多机器人</text>
+              <rect x="580" y="270" width="120" height="80" rx="12" fill="#effaf2" stroke="#b7dfc0"/><text x="640" y="304" text-anchor="middle" fill="#1f7a4d" font-weight="900">OpenVLA</text><text x="640" y="330" text-anchor="middle" fill="#667085">开源VLM</text>
+              <rect x="740" y="150" width="120" height="80" rx="12" fill="#f5f2ff" stroke="#cabdf8"/><text x="800" y="184" text-anchor="middle" fill="#5842b0" font-weight="900">π0</text><text x="800" y="210" text-anchor="middle" fill="#667085">Flow Matching</text>
+              <rect x="900" y="270" width="120" height="80" rx="12" fill="#fff1f1" stroke="#efb3b3"/><text x="960" y="304" text-anchor="middle" fill="#b42318" font-weight="900">π0.5</text><text x="960" y="330" text-anchor="middle" fill="#667085">长Horizon</text>
+              <rect x="1060" y="150" width="120" height="80" rx="12" fill="#eef6ff" stroke="#aacdec"/><text x="1120" y="184" text-anchor="middle" fill="#0b4f88" font-weight="900">HPT/RDT</text><text x="1120" y="210" text-anchor="middle" fill="#667085">多范式融合</text>
+            </g>
+            <text x="640" y="420" text-anchor="middle" fill="#33415c" font-weight="900">演进主线：更强泛化、更高动作质量、更长任务、更复杂工程取舍</text>
+          </svg>
+        </div>
+      </section>
+
+      <section id="branches">
+        <h2>三条技术路线</h2>
+        <div class="grid cols-3">
+          <div class="card"><span class="tag">VLM-based</span><h3>RT-2 / OpenVLA</h3><p>把视觉语言模型的知识迁移到机器人动作。优势是语言和视觉理解强，代价是动作离散化、延迟和部署复杂度。</p></div>
+          <div class="card"><span class="tag">Continuous Generation</span><h3>π0 / RDT / DiT</h3><p>用 Flow Matching、Diffusion 或 DiT 生成连续动作。优势是精度和多峰分布，代价是采样/求解成本。</p></div>
+          <div class="card"><span class="tag">Hybrid</span><h3>π0.5 / FAST / HPT</h3><p>通过层次化推理、动作 tokenizer 或异构表征组合能力。优势是可扩展，代价是系统复杂。</p></div>
+        </div>
+      </section>
+
+      <section id="matrix">
+        <h2>模型对比矩阵</h2>
+        <table>
+          <thead><tr><th>模型</th><th>核心机制</th><th>优势</th><th>主要代价</th><th>面试关键词</th></tr></thead>
+          <tbody>
+            <tr><td>RT-1</td><td>端到端视觉动作模型</td><td>实时、简单、任务闭环直接</td><td>泛化和语言能力弱</td><td>task-specific, fast</td></tr>
+            <tr><td>RT-2</td><td>VLM + 离散 action token</td><td>语言理解和泛化强</td><td>模型大、动作离散误差</td><td>VLM transfer</td></tr>
+            <tr><td>Octo</td><td>开源多机器人策略</td><td>复现友好、多机器人</td><td>语言和长任务能力有限</td><td>open-source, embodiment</td></tr>
+            <tr><td>OpenVLA</td><td>开源 VLM-based VLA</td><td>开源、可微调、语言能力强</td><td>部署和动作 token 设计仍有成本</td><td>Llama, action token</td></tr>
+            <tr><td>π0</td><td>VLM + Flow Matching action expert</td><td>连续动作质量高</td><td>需要采样/ODE 步数权衡</td><td>FM, action expert</td></tr>
+            <tr><td>π0.5</td><td>层次化长 horizon VLA</td><td>更适合长任务和重规划</td><td>系统复杂、评估困难</td><td>reasoning, hierarchy</td></tr>
+            <tr><td>FAST</td><td>DCT/action tokenizer</td><td>动作 token 更少，生成更高效</td><td>tokenizer 训练和重建误差</td><td>DCT, token efficiency</td></tr>
+            <tr><td>HPT</td><td>Stem-Trunk-Head</td><td>异构迁移、低延迟、工程可控</td><td>多峰动作能力弱</td><td>heterogeneous, adapter</td></tr>
+            <tr><td>RDT/DiT</td><td>Diffusion Transformer</td><td>高质量、多样性、可缩放</td><td>采样延迟和训练成本</td><td>denoise, scaling</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="tradeoff">
+        <h2>核心 Trade-off</h2>
+        <div class="grid cols-2">
+          <div class="card"><h3>速度 vs 质量</h3><p>离散 token 和回归 head 快；Flow/Diffusion 动作质量强，但要控制采样步数。</p></div>
+          <div class="card"><h3>泛化 vs 部署</h3><p>大 VLM 泛化强，但延迟、显存、量化、安全边界和工程成本更高。</p></div>
+          <div class="card"><h3>确定性 vs 多样性</h3><p>回归稳定但可能平均化；扩散采样能覆盖多解动作，但要控随机性和安全。</p></div>
+          <div class="card"><h3>短 Horizon vs 长 Horizon</h3><p>短 action chunk 易训练；长任务需要任务图、技能状态机、失败检测和重规划。</p></div>
+        </div>
+      </section>
+
+      <section id="selector">
+        <h2>交互式场景选择器</h2>
+        <div class="grid cols-2">
+          <div>
+            <div class="control"><label>实时性要求：<span id="speedVal">8</span></label><input id="speed" type="range" min="0" max="10" value="8"></div>
+            <div class="control"><label>语言/泛化要求：<span id="generalVal">7</span></label><input id="general" type="range" min="0" max="10" value="7"></div>
+            <div class="control"><label>动作质量/多样性：<span id="qualityVal">7</span></label><input id="quality" type="range" min="0" max="10" value="7"></div>
+            <div class="control"><label>长 Horizon 要求：<span id="horizonVal">6</span></label><input id="horizon" type="range" min="0" max="10" value="6"></div>
+          </div>
+          <div>
+            <div class="score">
+              <div><strong id="tokenScore">0</strong><span>Token/VLM</span></div>
+              <div><strong id="flowScore">0</strong><span>Flow</span></div>
+              <div><strong id="diffScore">0</strong><span>Diffusion</span></div>
+              <div><strong id="hierScore">0</strong><span>Hierarchical</span></div>
+            </div>
+            <div class="callout cool" id="selectNote">调节滑块查看推荐路线。</div>
+            <div class="bars">
+              <div class="bar"><span id="tokenBar">Token/VLM</span></div>
+              <div class="bar"><span id="flowBar">Flow</span></div>
+              <div class="bar"><span id="diffBar">Diffusion</span></div>
+              <div class="bar"><span id="hierBar">Hierarchical</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="pareto">
+        <h2>Pareto 交互图：没有单一最优模型</h2>
+        <p class="lead">选择两个维度，观察哪些模型更接近右上角。右上角代表两个指标都更好，但真实工程往往需要在多个 Pareto 候选中继续按约束筛选。</p>
+        <div class="grid cols-2">
+          <div>
+            <div class="control"><label>X 轴指标</label><select id="xMetric"><option value="speed">速度</option><option value="quality">质量</option><option value="general">泛化</option><option value="deploy">部署</option><option value="diverse">多样性</option><option value="horizon">长Horizon</option></select></div>
+            <div class="control"><label>Y 轴指标</label><select id="yMetric"><option value="quality">质量</option><option value="speed">速度</option><option value="general">泛化</option><option value="deploy">部署</option><option value="diverse">多样性</option><option value="horizon">长Horizon</option></select></div>
+            <div class="callout cool" id="paretoNote">选择指标查看 Pareto 候选。</div>
+            <pre><code>python3 week17_html/d119_vla_tradeoff_experiment.py</code></pre>
+          </div>
+          <div class="svg-wrap">
+            <svg id="paretoSvg" viewBox="0 0 720 460" role="img" aria-label="VLA Pareto chart"></svg>
+          </div>
+        </div>
+      </section>
+
+      <section id="interview">
+        <h2>五分钟面试脚本</h2>
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="s1">0-30秒</button>
+          <button class="tab-btn" data-tab="s2">30-90秒</button>
+          <button class="tab-btn" data-tab="s3">90-210秒</button>
+          <button class="tab-btn" data-tab="s4">210-300秒</button>
+        </div>
+        <div class="tab-panel active" id="s1"><p>先定义问题：VLA 是把视觉、语言和机器人动作统一起来，让模型能根据图像观测和自然语言指令输出可执行动作。</p></div>
+        <div class="tab-panel" id="s2"><p>讲演进：RT-1 任务特化，RT-2 引入 VLM 迁移，Octo/OpenVLA 推动开源复现，π0 用 Flow Matching 改善连续动作，π0.5/FAST/HPT/RDT/DiT 分别推进长任务、动作表示、异构表征和扩散缩放。</p></div>
+        <div class="tab-panel" id="s3"><p>讲路线：VLM-based 强在语言视觉理解，continuous generation 强在连续动作质量，hybrid/hierarchical 强在长任务和工程组合。</p></div>
+        <div class="tab-panel" id="s4"><p>给判断：实际项目按约束选，不背模型名。低延迟选 compact/HPT，复杂动作选 π0/RDT/DiT，长 horizon 选层次化，正式报告必须带统一 benchmark 和延迟统计。</p></div>
+      </section>
+
+      <section id="flashcard">
+        <h2>面试速查卡</h2>
+        <div class="grid cols-2">
+          <div class="card"><h3>RT-2 / OpenVLA</h3><p>共同点是 VLM-based：利用视觉语言预训练能力迁移到机器人动作。回答时强调语言泛化和动作 token 的取舍。</p></div>
+          <div class="card"><h3>π0</h3><p>关键是 VLM 理解 + Flow Matching action expert，代表从离散动作 token 转向高质量连续动作生成。</p></div>
+          <div class="card"><h3>FAST</h3><p>解决 action token 效率：沿时间维做频域压缩，用更少 token 表示更长、更平滑的动作 chunk。</p></div>
+          <div class="card"><h3>HPT</h3><p>适合多机器人、多模态、多任务的统一表征和迁移，优势是模块化和低延迟。</p></div>
+          <div class="card"><h3>RDT / DiT</h3><p>适合复杂连续动作、多峰轨迹和高质量生成，代价是采样延迟和训练部署成本。</p></div>
+          <div class="card"><h3>π0.5</h3><p>回答长 horizon 时重点讲任务分解、技能规划、失败检测和动态重规划，不是简单预测更长动作序列。</p></div>
+        </div>
+      </section>
+
+      <section id="checklist">
+        <h2>正式报告口径检查表</h2>
+        <table>
+          <thead><tr><th>检查项</th><th>必须说明什么</th></tr></thead>
+          <tbody>
+            <tr><td>模型版本</td><td>checkpoint、参数量、是否微调、是否量化</td></tr>
+            <tr><td>机器人平台</td><td>单臂/双臂/移动机械臂、夹爪、动作频率</td></tr>
+            <tr><td>任务集合</td><td>任务数量、难度、是否长 horizon、episode 数</td></tr>
+            <tr><td>动作空间</td><td>末端/关节、delta/absolute、gripper、normalization</td></tr>
+            <tr><td>推理设置</td><td>action chunk、采样步数、beam/sample 数、缓存策略</td></tr>
+            <tr><td>评估指标</td><td>success、failure case、latency p50/p90/p99、安全事件</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="week">
+        <h2>第17周全周复盘</h2>
+        <table>
+          <thead><tr><th>天数</th><th>一句话总结</th><th>关键词</th></tr></thead>
+          <tbody>
+            <tr><td>D113</td><td>π0 用 VLM 理解、Flow Matching action expert 生成连续动作。</td><td>dual tower, FM</td></tr>
+            <tr><td>D114</td><td>π0 难点在条件注入、动作空间和训练策略。</td><td>condition, action chunk</td></tr>
+            <tr><td>D115</td><td>Toy FM generator 把条件、插值、速度场、采样跑通。</td><td>velocity target</td></tr>
+            <tr><td>D116</td><td>长 horizon 需要推理、技能规划、底层控制分工。</td><td>task graph, replanning</td></tr>
+            <tr><td>D117</td><td>FAST 用频域压缩动作，提高 action token 效率。</td><td>DCT, token efficiency</td></tr>
+            <tr><td>D118</td><td>HPT/RDT/DiT 是表征迁移、扩散生成、缩放设计三种路线。</td><td>stem-trunk-head, diffusion</td></tr>
+            <tr><td>D119</td><td>用演进图讲清 VLA 的速度、质量、泛化、部署取舍。</td><td>roadmap, trade-off</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="homework">
+        <h2>D119 作业与验收</h2>
+        <div class="grid cols-3">
+          <div class="card"><h3>作业1：画完整演进图</h3><p>必须包含 RT-1、RT-2、Octo、OpenVLA、π0、π0.5、FAST、HPT、RDT、DiT。</p></div>
+          <div class="card"><h3>作业2：写模型速查表</h3><p>按动作表示、生成方式、语言能力、延迟、长 horizon、开源复现 6 个维度对比。</p></div>
+          <div class="card"><h3>作业3：录 5 分钟回答</h3><p>讲清三条路线和四个 trade-off，不直接横向排名不同论文成功率。</p></div>
+        </div>
+      </section>
+
+      <section id="quiz">
+        <h2>自测</h2>
+        <div class="quiz-card"><strong>1. 为什么不能直接比较不同论文的成功率？</strong><br><button class="btn" data-answer="a1">显示答案</button><div class="answer" id="a1">因为机器人、任务集、硬件、控制频率、采样步数、episode 数和失败判定都可能不同。没有统一 benchmark 时只能讲趋势。</div></div>
+        <div class="quiz-card"><strong>2. π0 相比 RT-2/OpenVLA 的关键变化是什么？</strong><br><button class="btn" data-answer="a2">显示答案</button><div class="answer" id="a2">从离散 action token 路线转向 VLM + Flow Matching action expert，更强调连续动作生成质量。</div></div>
+        <div class="quiz-card"><strong>3. 长 horizon VLA 为什么需要层次化？</strong><br><button class="btn" data-answer="a3">显示答案</button><div class="answer" id="a3">因为长任务不只是输出更长动作序列，还需要任务分解、状态跟踪、失败检测、技能选择和动态重规划。</div></div>
+      </section>
+
+      <section id="summary">
+        <h2>最终总结</h2>
+        <div class="callout ok">D119 的一句话总结：VLA 演进不是单一路线胜出，而是在速度、质量、泛化、部署、确定性、多样性和长 horizon 之间不断重新分配工程预算。</div>
+      </section>
+    </main>
+  </div>
+  <a class="top-link" href="#top">↑</a>
+
+  <script>
+    const progress=document.getElementById('progress');
+    const links=[...document.querySelectorAll('nav a')];
+    const sections=links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+    window.addEventListener('scroll',()=>{const h=document.documentElement;progress.style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+'%';let current=sections[0];for(const s of sections)if(s.offsetTop-120<=scrollY)current=s;links.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+current.id));});
+    function updateSelector(){
+      const speed=+document.getElementById('speed').value,general=+document.getElementById('general').value,quality=+document.getElementById('quality').value,horizon=+document.getElementById('horizon').value;
+      document.getElementById('speedVal').textContent=speed;document.getElementById('generalVal').textContent=general;document.getElementById('qualityVal').textContent=quality;document.getElementById('horizonVal').textContent=horizon;
+      const token=speed*.35+general*.35+(10-quality)*.15+(10-horizon)*.15;
+      const flow=quality*.34+speed*.24+general*.20+horizon*.22;
+      const diff=quality*.48+horizon*.22+(10-speed)*.20+general*.10;
+      const hier=horizon*.42+general*.25+quality*.22+(10-speed)*.11;
+      const scores={Token:token,Flow:flow,Diffusion:diff,Hierarchical:hier};
+      document.getElementById('tokenScore').textContent=token.toFixed(1);document.getElementById('flowScore').textContent=flow.toFixed(1);document.getElementById('diffScore').textContent=diff.toFixed(1);document.getElementById('hierScore').textContent=hier.toFixed(1);
+      const max=Math.max(token,flow,diff,hier);
+      [['tokenBar',token,'Token/VLM'],['flowBar',flow,'Flow'],['diffBar',diff,'Diffusion'],['hierBar',hier,'Hierarchical']].forEach(([id,v,name])=>{const el=document.getElementById(id);el.style.width=Math.max(8,v/max*100)+'%';el.textContent=name+' '+v.toFixed(1);});
+      const winner=Object.entries(scores).sort((a,b)=>b[1]-a[1])[0][0];
+      const notes={Token:'更偏 VLM/action token 路线：适合语言泛化和较快生成，但要注意离散误差。',Flow:'更偏 π0/Flow Matching：适合连续动作质量和中等实时性折中。',Diffusion:'更偏 RDT/DiT：适合复杂多峰动作，但采样延迟要优化。',Hierarchical:'更偏 π0.5/层次化：适合长 horizon、任务分解和动态重规划。'};
+      document.getElementById('selectNote').textContent=notes[winner];
+    }
+    ['speed','general','quality','horizon'].forEach(id=>document.getElementById(id).addEventListener('input',updateSelector));updateSelector();
+    const modelMetrics={
+      'RT-1':{speed:.95,quality:.62,general:.45,deploy:.90,diverse:.20,horizon:.20},
+      'RT-2':{speed:.25,quality:.76,general:.90,deploy:.18,diverse:.45,horizon:.45},
+      'Octo':{speed:.82,quality:.70,general:.72,deploy:.78,diverse:.55,horizon:.55},
+      'OpenVLA':{speed:.55,quality:.78,general:.86,deploy:.55,diverse:.48,horizon:.52},
+      'π0':{speed:.72,quality:.90,general:.84,deploy:.60,diverse:.72,horizon:.70},
+      'π0.5':{speed:.50,quality:.92,general:.88,deploy:.45,diverse:.78,horizon:.95},
+      'HPT':{speed:.90,quality:.70,general:.80,deploy:.85,diverse:.25,horizon:.42},
+      'RDT':{speed:.35,quality:.90,general:.75,deploy:.45,diverse:.95,horizon:.75}
+    };
+    const labelMap={speed:'速度',quality:'质量',general:'泛化',deploy:'部署',diverse:'多样性',horizon:'长Horizon'};
+    function pareto(metricX,metricY){
+      return Object.entries(modelMetrics).filter(([name,m])=>!Object.entries(modelMetrics).some(([o,om])=>o!==name&&om[metricX]>=m[metricX]&&om[metricY]>=m[metricY]&&(om[metricX]>m[metricX]||om[metricY]>m[metricY]))).map(([name])=>name);
+    }
+    function drawPareto(){
+      const x=document.getElementById('xMetric').value,y=document.getElementById('yMetric').value,front=pareto(x,y);
+      const svg=document.getElementById('paretoSvg');svg.innerHTML='';
+      const add=(tag,attrs,text)=>{const el=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));if(text)el.textContent=text;svg.appendChild(el);return el;};
+      add('rect',{x:24,y:24,width:672,height:400,rx:14,fill:'#fff',stroke:'#d9e2ee'});
+      add('line',{x1:80,y1:360,x2:650,y2:360,stroke:'#17324d','stroke-width':3});
+      add('line',{x1:80,y1:360,x2:80,y2:70,stroke:'#17324d','stroke-width':3});
+      add('text',{x:365,y:405,'text-anchor':'middle',fill:'#17324d','font-weight':900},labelMap[x]);
+      add('text',{x:35,y:215,'text-anchor':'middle',fill:'#17324d','font-weight':900,transform:'rotate(-90 35 215)'},labelMap[y]);
+      Object.entries(modelMetrics).forEach(([name,m])=>{
+        const px=80+m[x]*570,py=360-m[y]*290,isFront=front.includes(name);
+        add('circle',{cx:px,cy:py,r:isFront?10:7,fill:isFront?'#238636':'#2563eb',opacity:isFront?1:.72});
+        add('text',{x:px+12,y:py+4,fill:'#243044','font-size':13,'font-weight':isFront?900:700},name);
+      });
+      document.getElementById('paretoNote').textContent='当前 Pareto 候选：'+front.join('、')+'。右上角越强，但最终还要看部署和任务约束。';
+    }
+    ['xMetric','yMetric'].forEach(id=>document.getElementById(id).addEventListener('change',drawPareto));drawPareto();
+    document.querySelectorAll('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById(btn.dataset.tab).classList.add('active');}));
+    document.querySelectorAll('[data-answer]').forEach(btn=>btn.addEventListener('click',()=>document.getElementById(btn.dataset.answer).classList.toggle('show')));
+  </script>
+</body>
+</html>

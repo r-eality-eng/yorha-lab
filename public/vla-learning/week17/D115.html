@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>D115 π0 Action Head 实操：Flow Matching Toy Generator</title>
+  <style>
+    :root{
+      --bg:#f5f7fb;--paper:#fff;--ink:#1f2937;--muted:#667085;--line:#d9e2ee;
+      --navy:#17324d;--blue:#2563eb;--cyan:#0891b2;--green:#238636;--amber:#d97706;--red:#d64545;--violet:#6d5bd0;
+      --soft-blue:#eef6ff;--soft-green:#effaf2;--soft-amber:#fff7e8;--soft-violet:#f5f2ff;
+      --shadow:0 16px 40px rgba(23,50,77,.12);--radius:8px;
+      --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+      --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;color:var(--ink);font-family:var(--sans);line-height:1.72;background:linear-gradient(180deg,#e5f3ff 0,#f5f7fb 390px)}
+    .progress{position:fixed;top:0;left:0;height:4px;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--green),var(--amber));z-index:50}
+    .layout{width:min(1520px,calc(100% - 36px));margin:0 auto;display:grid;grid-template-columns:310px minmax(0,1fr);gap:26px;padding:28px 0 72px}
+    aside{position:sticky;top:22px;align-self:start;height:calc(100vh - 44px);overflow:auto;padding:18px;background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .brand{padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:12px}.brand strong{display:block;color:var(--navy);font-size:18px}.brand span{display:block;color:var(--muted);font-size:13px}
+    nav a{display:block;text-decoration:none;color:#33415c;border-radius:6px;padding:8px 10px;margin:3px 0;font-size:14px}nav a:hover,nav a.active{background:#e8f2ff;color:#0a5ca8}
+    main{min-width:0}.hero{min-height:560px;display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center;padding:42px;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;color:#fff;background:linear-gradient(135deg,#17324d,#155e75 50%,#0f766e)}
+    .eyebrow{display:inline-flex;padding:5px 10px;border:1px solid rgba(255,255,255,.34);border-radius:999px;color:rgba(255,255,255,.92);font-size:13px}
+    h1{margin:18px 0 12px;font-size:clamp(34px,5vw,60px);line-height:1.05;letter-spacing:0}.hero p{font-size:18px;color:rgba(255,255,255,.9)}
+    .hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}.btn{border:0;border-radius:6px;padding:10px 14px;font:inherit;font-weight:800;text-decoration:none;cursor:pointer;background:#fff;color:#17243a}.btn.secondary{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);color:#fff}
+    section{margin-top:24px;padding:30px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 10px 28px rgba(23,50,77,.08)}
+    section>h2{margin:0 0 14px;color:var(--navy);font-size:28px;line-height:1.25;letter-spacing:0}h3{margin:22px 0 10px;color:#263a5d;font-size:20px;letter-spacing:0}p{margin:10px 0}.lead{font-size:17px;color:#3d4a61}
+    .grid{display:grid;gap:16px}.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .card{padding:18px;border:1px solid var(--line);border-radius:var(--radius);background:#fbfcff}.card h3{margin-top:0}.tag{display:inline-flex;padding:4px 8px;border-radius:999px;background:#e9f4ff;color:#0b5fa5;font-size:12px;font-weight:800}
+    .callout{padding:16px 18px;border-left:4px solid var(--blue);background:#eef7ff;border-radius:0 var(--radius) var(--radius) 0;margin:16px 0}.ok{border-left-color:var(--green);background:var(--soft-green)}.warn{border-left-color:var(--amber);background:var(--soft-amber)}.cool{border-left-color:var(--violet);background:var(--soft-violet)}.danger{border-left-color:var(--red);background:#fff1f1}
+    .svg-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:#fbfdff;padding:10px}svg{max-width:100%;height:auto;display:block}
+    code,pre{font-family:var(--mono)}code{padding:2px 5px;border-radius:4px;background:#eef2f7;color:#243044}
+    pre{overflow:auto;padding:16px;border:1px solid var(--line);border-radius:var(--radius);background:#f6f8fb;color:#243044;line-height:1.58;font-size:13px}
+    table{width:100%;border-collapse:collapse;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#edf5fc;color:var(--navy)}tr:last-child td{border-bottom:0}
+    .tabs{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 16px}.tab-btn{border:1px solid var(--line);background:#f8fbff;color:#33415c;padding:8px 11px;border-radius:6px;cursor:pointer;font-weight:800}.tab-btn.active{background:var(--navy);border-color:var(--navy);color:white}.tab-panel{display:none}.tab-panel.active{display:block}
+    .control{display:grid;gap:8px;margin:12px 0}.control label{font-weight:800;color:var(--navy)}input[type=range]{width:100%}
+    .metric{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.metric div{padding:12px;border:1px solid var(--line);border-radius:6px;background:#fff}.metric strong{display:block;color:var(--navy);font-size:20px}
+    .flow-lab{position:relative;height:148px;margin:18px 0;border:1px solid var(--line);border-radius:var(--radius);background:linear-gradient(90deg,#effaf2,#fff7e8,#fff1f1);overflow:hidden}.flow-line{position:absolute;left:7%;right:7%;top:70px;height:5px;background:#17324d;border-radius:99px}.flow-dot{position:absolute;top:48px;left:7%;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:#fff;border:4px solid var(--cyan);box-shadow:0 8px 18px rgba(23,50,77,.18);font-weight:900;color:var(--navy);transform:translateX(-50%);transition:left .12s ease}.flow-labels{position:absolute;left:7%;right:7%;top:102px;display:flex;justify-content:space-between;color:#33415c;font-weight:800}
+    .step-list{counter-reset:step;display:grid;gap:10px}.step{position:relative;padding:14px 14px 14px 52px;border:1px solid var(--line);border-radius:6px;background:#fff}.step::before{counter-increment:step;content:counter(step);position:absolute;left:14px;top:15px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#e8f2ff;color:#0a5ca8;font-weight:900}
+    .quiz-card{border:1px solid var(--line);border-radius:var(--radius);padding:16px;background:#fbfcff;margin:12px 0}.answer{display:none;margin-top:10px;padding:12px;border-radius:6px;background:#effbff;color:#073d54}.answer.show{display:block}
+    .top-link{position:fixed;right:22px;bottom:22px;width:42px;height:42px;display:grid;place-items:center;border-radius:50%;color:white;background:var(--navy);text-decoration:none;box-shadow:var(--shadow)}
+    @media(max-width:1040px){.layout{grid-template-columns:1fr}aside{position:relative;height:auto;top:0}.hero{grid-template-columns:1fr;min-height:auto;padding:26px}.cols-2,.cols-3,.cols-4,.metric{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+  <div class="layout">
+    <aside>
+      <div class="brand"><strong>D115 Action Head 实操</strong><span>Flow Matching · Toy Generator · AR对比</span></div>
+      <nav id="toc">
+        <a href="#overview">学习目标</a>
+        <a href="#boundary">实操边界</a>
+        <a href="#architecture">架构图</a>
+        <a href="#dataset">Toy数据</a>
+        <a href="#fm">FM核心</a>
+        <a href="#ode-lab">ODE方向演示</a>
+        <a href="#ar">AR对比</a>
+        <a href="#code-tabs">代码拆解</a>
+        <a href="#solver">Solver对比</a>
+        <a href="#speed-lab">速度估算</a>
+        <a href="#quality">结果解读</a>
+        <a href="#real">Toy到Real</a>
+        <a href="#debug">运行排查</a>
+        <a href="#checklist">实操检查</a>
+        <a href="#interview">面试表达</a>
+        <a href="#quiz">自测</a>
+        <a href="#summary">最终总结</a>
+      </nav>
+    </aside>
+
+    <main>
+      <header class="hero" id="top">
+        <div>
+          <span class="eyebrow">Week 17 / Day 115 / π0 Action Head 实操</span>
+          <h1>用 Flow Matching 写一个 Toy Action Generator</h1>
+          <p>D115 的目标是把 D113/D114 的理论落到代码：condition 输入、速度场训练、ODE 反向积分、生成连续 action chunk，并和自回归生成做公平对比。</p>
+          <div class="hero-actions">
+            <a class="btn" href="#architecture">看流程图</a>
+            <a class="btn secondary" href="#code-tabs">看代码拆解</a>
+            <a class="btn secondary" href="d115_pi0_action_head_toy_fm_clean.md">查看 Markdown</a>
+          </div>
+        </div>
+        <div class="svg-wrap" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25)">
+          <svg viewBox="0 0 760 470" role="img" aria-label="D115 toy flow matching hero">
+            <defs><marker id="heroArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#fff"/></marker><filter id="heroShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#10243d" flood-opacity=".28"/></filter></defs>
+            <rect x="28" y="28" width="704" height="414" rx="20" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.28)"/>
+            <g filter="url(#heroShadow)">
+              <rect x="76" y="90" width="190" height="84" rx="14" fill="#fff"/><text x="171" y="123" text-anchor="middle" fill="#0b4f88" font-weight="900" font-size="18">condition</text><text x="171" y="148" text-anchor="middle" fill="#667085" font-size="13">模拟VLM embedding</text>
+              <rect x="286" y="90" width="190" height="84" rx="14" fill="#fff"/><text x="381" y="123" text-anchor="middle" fill="#8a4b00" font-weight="900" font-size="18">noisy action</text><text x="381" y="148" text-anchor="middle" fill="#667085" font-size="13">aₜ + t</text>
+              <rect x="496" y="90" width="190" height="84" rx="14" fill="#fff"/><text x="591" y="123" text-anchor="middle" fill="#1f7a4d" font-weight="900" font-size="18">velocity field</text><text x="591" y="148" text-anchor="middle" fill="#667085" font-size="13">vθ(aₜ,t,c)</text>
+              <rect x="178" y="286" width="404" height="76" rx="14" fill="#fff"/><text x="380" y="318" text-anchor="middle" fill="#6d5bd0" font-size="18" font-weight="900">ODE reverse integration</text><text x="380" y="344" text-anchor="middle" fill="#667085" font-size="13">noise → continuous action chunk</text>
+            </g>
+            <g stroke="#fff" stroke-width="3" fill="none" marker-end="url(#heroArrow)">
+              <path d="M266 132 L286 132"/><path d="M476 132 L496 132"/><path d="M591 174 C570 242 500 278 452 286"/><path d="M171 174 C195 250 270 278 318 286"/>
+            </g>
+            <text x="380" y="230" text-anchor="middle" fill="rgba(255,255,255,.92)" font-weight="800">训练学 data → noise 速度；推理从 noise → data 反向积分</text>
+          </svg>
+        </div>
+      </header>
+
+      <section id="overview">
+        <h2>学习目标：D115 要真正写明白什么</h2>
+        <div class="grid cols-4">
+          <div class="card"><span class="tag">目标1</span><h3>会构造Toy数据</h3><p>condition 必须和 action 有可学习关系，否则模型只能学边缘分布。</p></div>
+          <div class="card"><span class="tag">目标2</span><h3>会写FM损失</h3><p>采样 <code>t</code>、噪声和插值动作，让模型预测 <code>ε - a0</code>。</p></div>
+          <div class="card"><span class="tag">目标3</span><h3>会写推理ODE</h3><p>从纯噪声开始，沿相反方向积分，得到连续 action chunk。</p></div>
+          <div class="card"><span class="tag">目标4</span><h3>会公平比较AR</h3><p>比较前向次数、模型大小、batch、硬件和同步计时，而不是直接说谁一定快。</p></div>
+        </div>
+      </section>
+
+      <section id="boundary">
+        <h2>实操边界：这是理解版，不是官方 π0 复刻</h2>
+        <table>
+          <thead><tr><th>模块</th><th>Toy版</th><th>真实π0-style系统</th><th>为什么这样简化</th></tr></thead>
+          <tbody>
+            <tr><td>condition</td><td>随机向量，并人工构造到动作的映射</td><td>VLM 中间层视觉语言表征</td><td>先专注 action head 和 FM 机制</td></tr>
+            <tr><td>Action Expert</td><td>MLP 预测速度场</td><td>Transformer + cross-attention</td><td>减少工程噪声，让公式和形状更清楚</td></tr>
+            <tr><td>动作数据</td><td>相关的 toy trajectory</td><td>真实机器人 demonstration / RLDS</td><td>可快速训练和可视化</td></tr>
+            <tr><td>推理</td><td>Euler ODE，多步反向积分</td><td>更复杂solver、缓存、限幅和安全控制</td><td>先掌握方向和接口</td></tr>
+          </tbody>
+        </table>
+        <div class="callout warn">关键修正：toy 数据里的 action 必须依赖 condition。否则 condition 输入没有监督意义，模型只能学动作分布，无法学“给定任务条件生成动作”。</div>
+      </section>
+
+      <section id="architecture">
+        <h2>整体架构：从条件到连续动作序列</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1220 540" role="img" aria-label="toy action generator architecture">
+            <defs><marker id="archArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#17324d"/></marker></defs>
+            <rect x="40" y="40" width="1140" height="440" rx="18" fill="#fbfdff" stroke="#d9e2ee"/>
+            <rect x="90" y="120" width="190" height="92" rx="12" fill="#eef6ff" stroke="#aacdec"/><text x="185" y="156" text-anchor="middle" fill="#0b4f88" font-weight="900">condition c</text><text x="185" y="184" text-anchor="middle" fill="#667085" font-size="13">[B,128]</text>
+            <rect x="90" y="300" width="190" height="92" rx="12" fill="#fff1f1" stroke="#e8b1b1"/><text x="185" y="336" text-anchor="middle" fill="#a32828" font-weight="900">noise ε</text><text x="185" y="364" text-anchor="middle" fill="#667085" font-size="13">[B,K,D]</text>
+            <rect x="360" y="122" width="220" height="88" rx="12" fill="#fff7e8" stroke="#f2c782"/><text x="470" y="156" text-anchor="middle" fill="#8a4b00" font-weight="900">Encoder</text><text x="470" y="184" text-anchor="middle" fill="#667085" font-size="13">condition/action/time</text>
+            <rect x="360" y="302" width="220" height="88" rx="12" fill="#effaf2" stroke="#b7dfc0"/><text x="470" y="336" text-anchor="middle" fill="#1f7a4d" font-weight="900">Interpolation</text><text x="470" y="364" text-anchor="middle" fill="#667085" font-size="13">aₜ=(1-t)a₀+tε</text>
+            <rect x="670" y="182" width="230" height="130" rx="14" fill="#fff" stroke="#cbd9e8"/><text x="785" y="224" text-anchor="middle" fill="#17324d" font-size="21" font-weight="900">Velocity Net</text><text x="785" y="254" text-anchor="middle" fill="#667085" font-size="13">MLP toy action head</text><text x="785" y="282" text-anchor="middle" fill="#667085" font-size="13">vθ(aₜ,t,c)</text>
+            <rect x="980" y="206" width="146" height="82" rx="12" fill="#f5f2ff" stroke="#c7bdf4"/><text x="1053" y="240" text-anchor="middle" fill="#5a46b5" font-weight="900">action chunk</text><text x="1053" y="266" text-anchor="middle" fill="#667085" font-size="12">[B,K,D]</text>
+            <g stroke="#17324d" stroke-width="3" fill="none" marker-end="url(#archArrow)">
+              <path d="M280 166 L360 166"/><path d="M280 346 L360 346"/><path d="M580 166 L670 220"/><path d="M580 346 L670 276"/><path d="M900 247 L980 247"/>
+            </g>
+            <text x="610" y="452" text-anchor="middle" fill="#33415c" font-weight="800">训练：预测 ε-a₀；推理：从噪声开始，反向积分到 action chunk。</text>
+          </svg>
+        </div>
+      </section>
+
+      <section id="dataset">
+        <h2>Toy 数据：condition 必须真的控制 action</h2>
+        <p class="lead">D115 的原始目标是模拟 “VLM condition → action sequence”。因此 toy dataset 不能让 condition 和 action 完全独立。否则无论模型多强，都无法学到条件控制。</p>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>错误设计</h3>
+            <pre><code>condition = randn([N, C])
+actions = randn([N, K, D])
+
+# 问题：condition 与 action 无关
+# 模型学不到 c -> action，只能学 action 边缘分布</code></pre>
+          </div>
+          <div class="card">
+            <h3>更合理的 Toy 设计</h3>
+            <pre><code>condition = randn([N, C])
+base = tanh(condition @ W)
+mode = sign(condition[:, 0])
+base[:, 0] += 0.4 * mode
+
+actions[t] = 0.7 * actions[t-1] + noise</code></pre>
+          </div>
+        </div>
+        <div class="callout ok">这样模型至少要学三件事：condition 到基础动作的映射、时间步之间的相关性、不同 mode 下的动作偏向。</div>
+      </section>
+
+      <section id="fm">
+        <h2>Flow Matching 核心：训练学 forward velocity，推理反向积分</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>训练公式</h3>
+            <pre><code>a_t = (1 - t) * a_0 + t * ε
+
+t = 0: clean action a_0
+t = 1: noise ε
+
+target_velocity = ε - a_0
+loss = || vθ(a_t, t, c) - target_velocity ||²</code></pre>
+          </div>
+          <div class="card">
+            <h3>推理伪代码</h3>
+            <pre><code>a_t = randn([B, K, D])
+t = 1.0
+dt = 1.0 / ode_steps
+
+for step in range(ode_steps):
+    v = model(a_t, t, condition)
+    a_t = a_t - v * dt
+    t = t - dt
+
+actions = clip(a_t)</code></pre>
+          </div>
+        </div>
+        <div class="callout warn">不要把 <code>ε - a_0</code> 说成“到达干净动作的方向”。在本页约定里它是 data → noise 的 forward 速度；推理要 noise → data，所以更新时减去速度。</div>
+      </section>
+
+      <section id="ode-lab">
+        <h2>交互：拖动 t，看训练和推理方向</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>Flow 时间步</h3>
+            <div class="control"><label for="tSlider">t：<span id="tValue">0.50</span></label><input id="tSlider" type="range" min="0" max="100" value="50" /></div>
+            <div class="flow-lab">
+              <div class="flow-line"></div>
+              <div class="flow-dot" id="flowDot">aₜ</div>
+              <div class="flow-labels"><span>t=0 动作 a₀</span><span>t=1 噪声 ε</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>当前解释</h3>
+            <table><tbody>
+              <tr><td>当前位置</td><td id="stateText">动作和噪声的中间状态</td></tr>
+              <tr><td>训练目标</td><td>学习从左到右的 <code>ε - a_0</code></td></tr>
+              <tr><td>推理方向</td><td>从右到左，使用 <code>a_t = a_t - v * dt</code></td></tr>
+            </tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <section id="ar">
+        <h2>AR 对比：串行生成动作步</h2>
+        <p class="lead">自回归动作生成把 action chunk 看成序列：先生成第 1 步，再用已生成的动作生成第 2 步。它的核心成本来自串行依赖。</p>
+        <table>
+          <thead><tr><th>维度</th><th>Flow Matching Toy Head</th><th>Autoregressive Toy Head</th></tr></thead>
+          <tbody>
+            <tr><td>输入</td><td>condition + noisy action + t</td><td>condition + previous actions</td></tr>
+            <tr><td>输出</td><td>整个 action chunk 的速度场</td><td>逐步输出 action step</td></tr>
+            <tr><td>推理次数</td><td>约等于 ODE steps</td><td>约等于 horizon 或 action token 数</td></tr>
+            <tr><td>多样性</td><td>来自初始噪声</td><td>若是确定性回归则无多样性；若采样分布则可有多样性</td></tr>
+            <tr><td>风险</td><td>ODE steps 太多会慢</td><td>长序列误差累积和串行延迟</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="code-tabs">
+        <h2>代码拆解：D115 最关键的 5 段</h2>
+        <div class="tabs" data-tabs="codeTabs">
+          <button class="tab-btn active" data-tab="cfg">Config</button>
+          <button class="tab-btn" data-tab="data">Dataset</button>
+          <button class="tab-btn" data-tab="loss">FM Loss</button>
+          <button class="tab-btn" data-tab="sample">Generate</button>
+          <button class="tab-btn" data-tab="timer">Timer</button>
+        </div>
+        <div id="cfg" class="tab-panel active" data-panel="codeTabs">
+          <pre><code>class Config:
+    action_dim = 7
+    num_chunks = 4
+    condition_dim = 128
+    hidden_dim = 256
+    batch_size = 64
+    learning_rate = 1e-3
+    ode_steps = 10</code></pre>
+        </div>
+        <div id="data" class="tab-panel" data-panel="codeTabs">
+          <pre><code>self.conditions = torch.randn(num_samples, condition_dim)
+self.condition_to_action = torch.randn(condition_dim, action_dim) * 0.15
+
+base_actions = torch.tanh(self.conditions @ self.condition_to_action)
+mode = torch.sign(self.conditions[:, :1])
+base_actions[:, 0:1] += 0.4 * mode</code></pre>
+        </div>
+        <div id="loss" class="tab-panel" data-panel="codeTabs">
+          <pre><code>t = torch.rand(batch_size, 1, device=actions.device)
+noise = torch.randn_like(actions)
+t_expand = t.unsqueeze(1).expand_as(actions)
+
+noisy_actions = (1 - t_expand) * actions + t_expand * noise
+velocity_pred = model(noisy_actions, t, condition)
+velocity_target = noise - actions
+loss = F.mse_loss(velocity_pred, velocity_target)</code></pre>
+        </div>
+        <div id="sample" class="tab-panel" data-panel="codeTabs">
+          <pre><code>a_t = torch.randn(batch_size, K, action_dim)
+dt = 1.0 / ode_steps
+t = 1.0
+
+for _ in range(ode_steps):
+    v = model(a_t, t, condition)
+    a_t = a_t - v * dt
+    t -= dt</code></pre>
+        </div>
+        <div id="timer" class="tab-panel" data-panel="codeTabs">
+          <pre><code>def sync_if_needed():
+    if device.type == "cuda":
+        torch.cuda.synchronize()
+
+sync_if_needed()
+start = time.perf_counter()
+_ = model.generate(condition)
+sync_if_needed()
+elapsed = time.perf_counter() - start</code></pre>
+        </div>
+      </section>
+
+      <section id="solver">
+        <h2>ODE Solver 对比：Euler 和 Midpoint 都要注意反向积分</h2>
+        <p class="lead">本材料统一约定模型预测的是 data → noise 的 forward velocity。因此推理阶段从 noise → data 时，不管用 Euler 还是 midpoint，都要沿相反方向更新。</p>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>Euler 法</h3>
+            <pre><code>x = torch.randn(B, K, D, device=condition.device)
+dt = 1.0 / num_steps
+t = 1.0
+
+for _ in range(num_steps):
+    t_tensor = torch.full((B, 1), t, device=condition.device)
+    v = model(x, t_tensor, condition)
+    x = x - v * dt
+    t -= dt</code></pre>
+          </div>
+          <div class="card">
+            <h3>Midpoint 法</h3>
+            <pre><code>v_current = model(x, t_tensor, condition)
+x_mid = x - 0.5 * dt * v_current
+
+t_mid = t - 0.5 * dt
+v_mid = model(x_mid, t_mid_tensor, condition)
+x = x - dt * v_mid</code></pre>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Solver</th><th>优点</th><th>代价</th><th>D115要点</th></tr></thead>
+          <tbody>
+            <tr><td>Euler</td><td>简单、快、最容易检查方向</td><td>同样步数下误差可能更大</td><td>适合 toy 实验和 sanity check</td></tr>
+            <tr><td>Midpoint</td><td>比 Euler 更精确</td><td>每一步通常多一次模型调用</td><td>文字公式和代码都必须使用反向积分符号</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="speed-lab">
+        <h2>交互：FM vs AR 前向次数估算</h2>
+        <p class="lead">公平比较时，不要只看“FM 并行、AR 串行”。要看 ODE steps、horizon、每步 token 数、模型大小和硬件。这个估算器只比较前向次数。</p>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>参数</h3>
+            <div class="control"><label for="horizon">action horizon K：<span id="horizonVal">4</span></label><input id="horizon" type="range" min="1" max="64" value="4" /></div>
+            <div class="control"><label for="tokens">AR tokens/step：<span id="tokensVal">1</span></label><input id="tokens" type="range" min="1" max="16" value="1" /></div>
+            <div class="control"><label for="ode">FM ODE steps：<span id="odeVal">10</span></label><input id="ode" type="range" min="1" max="64" value="10" /></div>
+            <div class="control"><label for="expertScale">FM单次前向相对成本：<span id="scaleVal">1.0</span>x</label><input id="expertScale" type="range" min="5" max="30" value="10" /></div>
+          </div>
+          <div class="card">
+            <h3>估算结果</h3>
+            <div class="metric">
+              <div><strong id="fmPass">10</strong><span>FM weighted cost</span></div>
+              <div><strong id="arPass">4</strong><span>AR forward</span></div>
+              <div><strong id="ratio">0.4x</strong><span>AR/FM</span></div>
+              <div><strong id="winner">AR</strong><span>当前较少</span></div>
+            </div>
+            <div class="callout warn" id="speedAdvice">当前设置下，AR 前向次数更少；这正好说明 FM 不一定总是更快。</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="quality">
+        <h2>实验结果怎么解读</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>应该看哪些指标</h3>
+            <div class="step-list">
+              <div class="step">训练 loss 是否下降，但不要只看训练集 loss。</div>
+              <div class="step">给定同一个 condition，生成动作是否符合对应 mode。</div>
+              <div class="step">动作序列是否平滑，是否有明显跳变。</div>
+              <div class="step">FM 的多次采样是否产生合理多样性，而不是无意义噪声。</div>
+              <div class="step">速度计时是否做了预热、GPU 同步、多次统计。</div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>常见误读</h3>
+            <table><tbody>
+              <tr><td>loss低</td><td>不等于真实机器人成功率高</td></tr>
+              <tr><td>FM有多样性</td><td>不等于多样性一定有用，必须符合任务约束</td></tr>
+              <tr><td>AR多样性低</td><td>本toy AR是确定性回归；真实AR可通过采样产生多样性</td></tr>
+              <tr><td>FM更快</td><td>只在某些 horizon/steps/模型成本组合下成立</td></tr>
+            </tbody></table>
+          </div>
+        </div>
+        <div class="callout ok">质量评估时，必须从同一个验证 batch 里取 <code>condition</code> 和 <code>true_actions</code>。如果用随机 condition 却拿 dataset 前几条 action 当真值，MSE 没有意义。</div>
+        <pre><code>test_condition, true_actions = next(iter(val_loader))
+test_condition = test_condition[:4].to(device)
+true_actions = true_actions[:4].to(device)</code></pre>
+      </section>
+
+      <section id="real">
+        <h2>从 Toy 到 Real：要替换哪些模块</h2>
+        <table>
+          <thead><tr><th>Toy模块</th><th>真实系统替换</th><th>新增工程问题</th></tr></thead>
+          <tbody>
+            <tr><td>随机 condition</td><td>VLM 中间层 embedding</td><td>层选择、adapter、cross-attention、缓存</td></tr>
+            <tr><td>MLP velocity net</td><td>Transformer Action Expert</td><td>长chunk建模、proprio输入、显存和延迟</td></tr>
+            <tr><td>Toy actions</td><td>真实机器人动作</td><td>坐标系、delta/absolute、gripper、归一化统计</td></tr>
+            <tr><td>离线MSE评估</td><td>仿真/真实闭环评估</td><td>成功率、安全违规、接触失败、重规划</td></tr>
+            <tr><td>简单Euler</td><td>优化solver或少步采样</td><td>质量/速度 trade-off 和控制频率</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="debug">
+        <h2>运行排查：实操课最容易卡在哪里</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>预期输出</h3>
+            <table><tbody>
+              <tr><td><code>training_loss.png</code></td><td>FM 和 AR 的训练损失曲线</td></tr>
+              <tr><td><code>action_comparison.png</code></td><td>生成动作和真实动作趋势对比</td></tr>
+              <tr><td><code>speed_comparison.png</code></td><td>推理时间分布和箱线图</td></tr>
+              <tr><td><code>action_generators.pth</code></td><td>保存的模型权重和配置</td></tr>
+            </tbody></table>
+          </div>
+          <div class="card">
+            <h3>运行前检查</h3>
+            <pre><code>print(torch.__version__)
+print(torch.cuda.is_available())
+torch.manual_seed(0)
+np.random.seed(0)
+
+assert Config.num_chunks > 0
+assert Config.action_dim == 7
+assert Config.ode_steps > 0</code></pre>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>问题</th><th>可能原因</th><th>修正方向</th></tr></thead>
+          <tbody>
+            <tr><td>loss 不下降</td><td>condition/action 无关、学习率过大、模型太小</td><td>检查 toy 映射，降低学习率，增大 hidden_dim</td></tr>
+            <tr><td>FM 输出像噪声</td><td>训练不足、ODE steps 太少、速度方向写反</td><td>检查 <code>noise-actions</code> 和 <code>a_t-v*dt</code></td></tr>
+            <tr><td>MSE 很奇怪</td><td>condition 和 true action 不对应</td><td>从同一个 validation batch 取数据</td></tr>
+            <tr><td>device mismatch</td><td>新建 tensor 没指定 device</td><td>使用 <code>device=condition.device</code></td></tr>
+            <tr><td>速度计时波动大</td><td>没预热、没同步、batch 太小</td><td>warmup + GPU synchronize + 多次平均</td></tr>
+            <tr><td>FM 比 AR 慢</td><td>ODE steps 多或 horizon 短</td><td>这是可能的正常结果，不代表代码错</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="checklist">
+        <h2>实操检查清单</h2>
+        <div class="grid cols-3">
+          <div class="card"><h3>代码正确性</h3><p>condition 与 action 是否相关；FM 方向是否统一；推理是否从 t=1 到 t=0；GPU 计时是否同步。</p></div>
+          <div class="card"><h3>实验公平性</h3><p>FM 和 AR 的模型大小、batch、前向次数、采样方式、硬件是否说明清楚。</p></div>
+          <div class="card"><h3>工程迁移</h3><p>真实系统必须补 VLM condition、动作归一化、限幅、安全控制和闭环执行。</p></div>
+        </div>
+        <pre><code># 最小 sanity check
+assert actions.shape == (B, K, D)
+assert condition.shape == (B, C)
+assert noisy_actions.shape == actions.shape
+assert velocity_pred.shape == actions.shape
+assert torch.isfinite(loss)</code></pre>
+      </section>
+
+      <section id="interview">
+        <h2>面试表达：怎么讲 D115</h2>
+        <div class="tabs" data-tabs="talkTabs">
+          <button class="tab-btn active" data-tab="short">短版</button>
+          <button class="tab-btn" data-tab="deep">追问版</button>
+          <button class="tab-btn" data-tab="fair">公平对比</button>
+        </div>
+        <div id="short" class="tab-panel active" data-panel="talkTabs">
+          <div class="callout ok">我用一个 toy action generator 验证 π0 action head 的核心机制：给定 condition 和带噪 action，模型学习 Flow Matching 速度场；训练目标是 <code>ε-a0</code>，推理时从噪声开始反向积分得到连续 action chunk。</div>
+        </div>
+        <div id="deep" class="tab-panel" data-panel="talkTabs">
+          <table><tbody>
+            <tr><td>为什么要让 toy action 依赖 condition？</td><td>否则模型学不到条件控制，只能拟合动作边缘分布。</td></tr>
+            <tr><td>为什么推理时减去 velocity？</td><td>因为训练的 velocity 是 data → noise，推理要 noise → data。</td></tr>
+            <tr><td>为什么 FM 可以有多样性？</td><td>同一 condition 下从不同初始噪声出发，可能流向不同合理动作。</td></tr>
+            <tr><td>为什么 toy 不能代表真实性能？</td><td>缺少真实 VLM、真实动作统计、闭环控制、安全边界和真实环境评估。</td></tr>
+          </tbody></table>
+        </div>
+        <div id="fair" class="tab-panel" data-panel="talkTabs">
+          <div class="callout warn">我不会直接说 FM 一定比 AR 快。更严谨的说法是：FM 前向次数约等于 ODE steps，AR 前向次数约等于 action token 数。谁更快取决于 horizon、steps、模型大小、batch、缓存和硬件。</div>
+        </div>
+      </section>
+
+      <section id="quiz">
+        <h2>自测：确认你真的能写 D115</h2>
+        <div class="quiz-card"><strong>1. 为什么 toy dataset 里的 action 必须依赖 condition？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">因为任务是学习 condition → action。如果二者独立，模型无法学条件控制，只能拟合动作边缘分布。</div></div>
+        <div class="quiz-card"><strong>2. 本页约定下，FM 的训练 target 是什么？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer"><code>target_velocity = noise - actions</code>，也就是 data → noise 的 forward velocity。</div></div>
+        <div class="quiz-card"><strong>3. 推理时为什么是 <code>a_t = a_t - v * dt</code>？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">因为推理从噪声回到数据，方向与训练的 forward velocity 相反。</div></div>
+        <div class="quiz-card"><strong>4. 为什么速度对比必须做 GPU 同步？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">CUDA kernel 异步执行，如果不在计时前后同步，计时结果可能只测到调度时间，不是真实执行时间。</div></div>
+        <div class="quiz-card"><strong>5. Toy 到真实 π0-style 系统最重要的替换是什么？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">把随机 condition 替换为 VLM 中间层条件，把 MLP 替换为 Transformer Action Expert，并补齐真实动作归一化、安全限幅和闭环评估。</div></div>
+      </section>
+
+      <section id="summary">
+        <h2>D115 最终总结</h2>
+        <div class="grid cols-2">
+          <div class="card"><h3>1. 实操核心</h3><p>D115 把 π0 action head 抽象成 condition + noisy action + time → velocity field。</p></div>
+          <div class="card"><h3>2. 方向统一</h3><p>训练学 <code>ε-a0</code>，推理从噪声反向积分到动作。</p></div>
+          <div class="card"><h3>3. Toy 数据要可学习</h3><p>condition 必须控制 action，否则实验无法验证条件生成。</p></div>
+          <div class="card"><h3>4. AR 对比要公平</h3><p>比较 steps、horizon、模型大小、batch 和硬件，不下绝对结论。</p></div>
+          <div class="card"><h3>5. 迁移到真实系统</h3><p>需要 VLM condition、Transformer expert、动作归一化、安全控制和闭环评估。</p></div>
+          <div class="card"><h3>下一天 D116</h3><p>D116 会进入 π0.5：reasoning、long-horizon、hierarchical action 和 task decomposition。</p></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <a class="top-link" href="#top" aria-label="返回顶部">↑</a>
+
+  <script>
+    const progress=document.getElementById('progress');
+    const navLinks=Array.from(document.querySelectorAll('#toc a'));
+    const sections=navLinks.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+    function updateProgress(){
+      const scrollTop=document.documentElement.scrollTop||document.body.scrollTop;
+      const height=document.documentElement.scrollHeight-document.documentElement.clientHeight;
+      progress.style.width=(height?scrollTop/height*100:0)+'%';
+      let current='';
+      sections.forEach(sec=>{if(sec.offsetTop-130<=scrollTop)current='#'+sec.id});
+      navLinks.forEach(a=>a.classList.toggle('active',a.getAttribute('href')===current));
+    }
+    window.addEventListener('scroll',updateProgress);updateProgress();
+
+    document.querySelectorAll('[data-tabs]').forEach(group=>{
+      const name=group.getAttribute('data-tabs');
+      group.querySelectorAll('.tab-btn').forEach(button=>{
+        button.addEventListener('click',()=>{
+          group.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+          button.classList.add('active');
+          document.querySelectorAll(`[data-panel="${name}"]`).forEach(panel=>panel.classList.toggle('active',panel.id===button.dataset.tab));
+        });
+      });
+    });
+
+    const tSlider=document.getElementById('tSlider');
+    function updateFlow(){
+      const t=Number(tSlider.value)/100;
+      document.getElementById('tValue').textContent=t.toFixed(2);
+      document.getElementById('flowDot').style.left=(7+86*t)+'%';
+      document.getElementById('stateText').textContent=t<0.15?'接近干净动作 a0':t>0.85?'接近纯噪声 ε':'动作和噪声的中间状态 a_t';
+    }
+    tSlider.addEventListener('input',updateFlow);updateFlow();
+
+    const ids=['horizon','tokens','ode','expertScale'];
+    function updateSpeed(){
+      const h=Number(document.getElementById('horizon').value);
+      const tokens=Number(document.getElementById('tokens').value);
+      const ode=Number(document.getElementById('ode').value);
+      const scale=Number(document.getElementById('expertScale').value)/10;
+      document.getElementById('horizonVal').textContent=h;
+      document.getElementById('tokensVal').textContent=tokens;
+      document.getElementById('odeVal').textContent=ode;
+      document.getElementById('scaleVal').textContent=scale.toFixed(1);
+      const fm=ode*scale;
+      const ar=h*tokens;
+      document.getElementById('fmPass').textContent=fm.toFixed(1);
+      document.getElementById('arPass').textContent=ar;
+      document.getElementById('ratio').textContent=(ar/fm).toFixed(1)+'x';
+      const winner=fm<ar?'FM':fm>ar?'AR':'相同';
+      document.getElementById('winner').textContent=winner;
+      document.getElementById('speedAdvice').textContent=winner==='FM'?'当前设置下，FM 估算成本更低；真实延迟仍要实测。':winner==='AR'?'当前设置下，AR 前向次数更少；这说明 FM 不一定总是更快。':'当前设置下两者估算成本相同，真实延迟取决于实现。';
+    }
+    ids.forEach(id=>document.getElementById(id).addEventListener('input',updateSpeed));updateSpeed();
+
+    document.querySelectorAll('.reveal').forEach(button=>{
+      button.addEventListener('click',()=>{
+        const answer=button.parentElement.querySelector('.answer');
+        answer.classList.toggle('show');
+        button.textContent=answer.classList.contains('show')?'隐藏参考答案':'显示参考答案';
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>D110 OpenVLA LoRA 微调与训练曲线诊断</title>
+  <style>
+    :root{--bg:#f4f7fb;--paper:#fff;--ink:#1c2433;--muted:#637085;--line:#dce4ef;--navy:#21385c;--teal:#0d9c91;--blue:#2c83d5;--green:#2f9e64;--orange:#ec8a2e;--red:#d95d5d;--violet:#6f63d4;--shadow:0 18px 44px rgba(33,56,92,.12);--radius:8px;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;--sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--ink);background:linear-gradient(180deg,rgba(13,156,145,.12),rgba(244,247,251,0) 320px),var(--bg);font-family:var(--sans);line-height:1.72}.progress{position:fixed;top:0;left:0;height:4px;width:0;background:linear-gradient(90deg,var(--teal),var(--blue),var(--violet),var(--orange));z-index:80}
+    .layout{display:grid;grid-template-columns:296px minmax(0,1fr);gap:28px;width:min(1500px,calc(100% - 36px));margin:0 auto;padding:28px 0 64px}aside{position:sticky;top:22px;align-self:start;height:calc(100vh - 44px);overflow:auto;padding:18px;background:rgba(255,255,255,.93);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);backdrop-filter:blur(10px)}.brand{display:grid;gap:6px;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:14px}.brand strong{color:var(--navy);font-size:18px}.brand span{color:var(--muted);font-size:13px}nav a{display:block;padding:9px 10px;margin:3px 0;color:#34415a;text-decoration:none;border-radius:6px;font-size:14px}nav a:hover,nav a.active{background:rgba(44,131,213,.12);color:#0b4f88}
+    main{min-width:0}.hero{min-height:540px;display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:center;padding:42px;background:linear-gradient(135deg,#21385c,#0d766e 48%,#5a4dc8);color:white;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}.eyebrow{display:inline-flex;padding:5px 10px;border:1px solid rgba(255,255,255,.34);border-radius:999px;color:rgba(255,255,255,.9);font-size:13px}h1{margin:18px 0 12px;font-size:clamp(34px,5vw,62px);line-height:1.05;letter-spacing:0}.hero p{max-width:790px;color:rgba(255,255,255,.9);font-size:18px}.hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}.btn{border:0;border-radius:6px;padding:10px 14px;font:inherit;cursor:pointer;text-decoration:none;color:#17243a;background:white;font-weight:800}.btn.secondary{color:white;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28)}.hero-visual{min-height:390px;display:grid;place-items:center}
+    section{margin-top:24px;padding:30px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 10px 28px rgba(33,56,92,.08)}section>h2{margin:0 0 14px;color:var(--navy);font-size:28px;line-height:1.25;letter-spacing:0}h3{margin:24px 0 10px;color:#273d63;font-size:20px;letter-spacing:0}p{margin:10px 0}.lead{color:#3e4b61;font-size:17px}.grid{display:grid;gap:16px}.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}.card{padding:18px;border:1px solid var(--line);border-radius:var(--radius);background:#fbfcff}.card h3{margin-top:0}.tag{display:inline-flex;padding:4px 8px;border-radius:999px;background:rgba(13,156,145,.12);color:#075c57;font-size:12px;font-weight:800}.callout{padding:16px 18px;border-left:4px solid var(--blue);background:#eef7ff;border-radius:0 var(--radius) var(--radius) 0;margin:16px 0}.ok{border-left-color:var(--green);background:#eefaf3}.warn{border-left-color:var(--orange);background:#fff7ed}.danger{border-left-color:var(--red);background:#fff3f3}.cool{border-left-color:var(--violet);background:#f3f1ff}
+    .svg-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:#fbfdff;padding:10px}svg{max-width:100%;height:auto;display:block}.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 16px}.tab-btn{border:1px solid var(--line);background:#f8fbff;color:#33415c;padding:8px 11px;border-radius:6px;cursor:pointer;font-weight:800}.tab-btn.active{background:var(--navy);border-color:var(--navy);color:white}.tab-panel{display:none}.tab-panel.active{display:block}
+    code,pre{font-family:var(--mono)}code{padding:2px 5px;border-radius:4px;background:#eef2f7;color:#27374f}pre{overflow:auto;padding:16px;border-radius:var(--radius);background:#f6f8fb;color:#243044;border:1px solid var(--line);line-height:1.58;font-size:13px}table{width:100%;border-collapse:collapse;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}th,td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}th{background:#eef4fa;color:var(--navy)}tr:last-child td{border-bottom:0}.control{display:grid;gap:8px;margin:12px 0}.control label{font-weight:800;color:var(--navy)}input[type="range"]{width:100%}select{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;background:white;color:var(--ink);font:inherit}.metric{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.metric div{padding:12px;border:1px solid var(--line);border-radius:6px;background:#fff}.metric strong{display:block;color:var(--navy);font-size:20px}.quiz-card{border:1px solid var(--line);border-radius:var(--radius);padding:16px;background:#fbfcff;margin:12px 0}.answer{display:none;margin-top:10px;padding:12px;border-radius:6px;background:#effbff;color:#073d54}.answer.show{display:block}.top-link{position:fixed;right:22px;bottom:22px;width:42px;height:42px;display:grid;place-items:center;border-radius:50%;color:white;background:var(--navy);text-decoration:none;box-shadow:var(--shadow)}
+    @media(max-width:1040px){.layout{grid-template-columns:1fr}aside{position:relative;height:auto;top:0}.hero{grid-template-columns:1fr;min-height:auto;padding:26px}.cols-2,.cols-3,.cols-4,.metric{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+  <div class="layout">
+    <aside>
+      <div class="brand"><strong>D110 LoRA 微调</strong><span>Fine-tune · Curves · Pre vs Fine</span></div>
+      <nav id="toc">
+        <a href="#overview">学习目标</a><a href="#why">为什么微调</a><a href="#strategy">策略选择</a><a href="#lora">LoRA 原理</a><a href="#code">实现骨架</a><a href="#data">数据准备</a><a href="#label-mask">Label Mask</a><a href="#train-flow">训练流程</a><a href="#curve">曲线诊断</a><a href="#curve-lab">交互诊断</a><a href="#checkpoint">Checkpoint</a><a href="#compare">Pre vs Fine</a><a href="#checklist">Checklist</a><a href="#interview">面试问答</a><a href="#next">下一天</a>
+      </nav>
+    </aside>
+    <main>
+      <header class="hero" id="top">
+        <div>
+          <span class="eyebrow">Week 16 / Day 110 / Task-specific Fine-tuning</span>
+          <h1>OpenVLA 微调实战：LoRA、训练曲线与效果对比</h1>
+          <p>D110 的核心不是“把 loss 跑低”，而是用更少数据和更低成本，让预训练 OpenVLA 在目标任务上稳定提高闭环成功率，并能解释训练曲线、失败原因和部署代价。</p>
+          <div class="hero-actions"><a class="btn" href="#strategy">选择微调策略</a><a class="btn secondary" href="#curve">诊断训练曲线</a><a class="btn secondary" href="d110_lora_finetune_clean.md">查看 Markdown 原文</a></div>
+        </div>
+        <div class="hero-visual">
+          <svg viewBox="0 0 720 430" role="img" aria-label="D110 LoRA finetune hero">
+            <defs><marker id="heroArrow110" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#fff"/></marker><filter id="heroShadow110" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#10243d" flood-opacity=".28"/></filter></defs>
+            <rect x="28" y="28" width="664" height="374" rx="18" fill="rgba(255,255,255,.10)" stroke="rgba(255,255,255,.26)"/>
+            <g filter="url(#heroShadow110)">
+              <rect x="70" y="78" width="155" height="74" rx="12" fill="#fff"/><text x="147" y="108" text-anchor="middle" fill="#075c57" font-size="18" font-weight="900">Pretrain</text><text x="147" y="132" text-anchor="middle" fill="#647084" font-size="13">OpenVLA-7B</text>
+              <rect x="282" y="78" width="155" height="74" rx="12" fill="#fff"/><text x="360" y="108" text-anchor="middle" fill="#453a9a" font-size="18" font-weight="900">LoRA</text><text x="360" y="132" text-anchor="middle" fill="#647084" font-size="13">adapter ΔW</text>
+              <rect x="495" y="78" width="155" height="74" rx="12" fill="#fff"/><text x="572" y="108" text-anchor="middle" fill="#7a4314" font-size="18" font-weight="900">Fine-tuned</text><text x="572" y="132" text-anchor="middle" fill="#647084" font-size="13">task policy</text>
+              <rect x="100" y="252" width="178" height="72" rx="12" fill="#fff"/><text x="189" y="282" text-anchor="middle" fill="#a33b3b" font-size="18" font-weight="900">Curves</text><text x="189" y="306" text-anchor="middle" fill="#647084" font-size="13">loss / grad / lr</text>
+              <rect x="442" y="252" width="178" height="72" rx="12" fill="#fff"/><text x="531" y="282" text-anchor="middle" fill="#1f7a4d" font-size="18" font-weight="900">Eval</text><text x="531" y="306" text-anchor="middle" fill="#647084" font-size="13">success / failure</text>
+            </g>
+            <g stroke="#fff" stroke-width="3" fill="none" marker-end="url(#heroArrow110)"><path d="M225 115 L282 115"/><path d="M437 115 L495 115"/><path d="M360 152 C310 218 245 242 197 252"/><path d="M572 152 C610 218 585 242 538 252"/></g>
+          </svg>
+        </div>
+      </header>
+
+      <section id="overview">
+        <h2>学习目标：D110 要解决什么</h2>
+        <div class="grid cols-4">
+          <div class="card"><span class="tag">Why</span><h3>知道为什么微调</h3><p>预训练模型通用但不一定适合新物体、新相机、新机器人或新任务。</p></div>
+          <div class="card"><span class="tag">How</span><h3>会选策略</h3><p>根据数据量、算力、任务差异选择 LoRA、冻结微调、全参数微调或分阶段微调。</p></div>
+          <div class="card"><span class="tag">Debug</span><h3>会看曲线</h3><p>把 loss、val loss、grad norm、lr、success rate 放在一起诊断。</p></div>
+          <div class="card"><span class="tag">Eval</span><h3>会做对比</h3><p>用 pretrain vs finetune 的成功率、动作误差、失败类型和延迟判断收益。</p></div>
+        </div>
+        <div class="callout ok"><strong>准确口径：</strong>D110 的教学代码是骨架。真实微调要对齐当前 OpenVLA 仓库脚本、模型属性名、ActionTokenizer、数据 collator、`unnorm_key` 和 checkpoint 保存/合并方式。</div>
+      </section>
+
+      <section id="why">
+        <h2>为什么需要微调：预训练不是终点</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1120 390" role="img" aria-label="finetune motivation">
+            <defs><marker id="whyArrow110" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#21385c"/></marker></defs>
+            <rect x="65" y="70" width="220" height="90" rx="12" fill="#eefaf3" stroke="#a8ddc1"/><text x="175" y="106" text-anchor="middle" fill="#1f7a4d" font-weight="900">预训练 OpenVLA</text><text x="175" y="132" text-anchor="middle" fill="#647084" font-size="13">跨数据集通用先验</text>
+            <rect x="450" y="45" width="220" height="76" rx="12" fill="#fff7ed" stroke="#f0c596"/><text x="560" y="79" text-anchor="middle" fill="#7a4314" font-weight="900">新物体 / 新场景</text>
+            <rect x="450" y="150" width="220" height="76" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/><text x="560" y="184" text-anchor="middle" fill="#453a9a" font-weight="900">新机器人 / 新动作空间</text>
+            <rect x="450" y="255" width="220" height="76" rx="12" fill="#fff3f3" stroke="#efb3b3"/><text x="560" y="289" text-anchor="middle" fill="#a33b3b" font-weight="900">新任务 / 长程操作</text>
+            <rect x="835" y="126" width="220" height="100" rx="12" fill="#effbff" stroke="#a6ddee"/><text x="945" y="164" text-anchor="middle" fill="#07516a" font-weight="900">任务微调</text><text x="945" y="190" text-anchor="middle" fill="#647084" font-size="13">提高目标任务成功率</text>
+            <g stroke="#21385c" stroke-width="3" fill="none" marker-end="url(#whyArrow110)"><path d="M285 115 L450 83"/><path d="M285 115 L450 188"/><path d="M285 115 C365 250 395 290 450 293"/><path d="M670 83 C735 100 785 126 835 154"/><path d="M670 188 L835 176"/><path d="M670 293 C745 270 790 225 835 197"/></g>
+          </svg>
+        </div>
+        <table><thead><tr><th>问题</th><th>预训练模型常见表现</th><th>微调解决什么</th></tr></thead><tbody><tr><td>目标物体没见过</td><td>识别到类别但抓取点不稳定</td><td>补足目标物体和干扰物数据</td></tr><tr><td>机器人平台不同</td><td>动作方向或尺度不匹配</td><td>学习新平台动作统计和控制习惯</td></tr><tr><td>任务复杂</td><td>前几步正确，后面偏离</td><td>用任务演示强化关键状态转移</td></tr><tr><td>相机/光照变化</td><td>视觉定位不稳</td><td>通过目标域数据和增强提升鲁棒性</td></tr></tbody></table>
+      </section>
+
+      <section id="strategy">
+        <h2>交互：微调策略选择器</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>输入条件</h3>
+            <div class="control"><label for="demoCount">演示数据数量：<span id="demoVal">100</span> demos</label><input id="demoCount" type="range" min="10" max="2000" step="10" value="100" /></div>
+            <div class="control"><label for="gpuHours">算力预算：<span id="gpuVal">20</span> GPU-hours</label><input id="gpuHours" type="range" min="1" max="200" step="1" value="20" /></div>
+            <div class="control"><label for="complexity">任务复杂度</label><select id="complexity"><option value="simple">简单：单步抓取/放置</option><option value="medium" selected>中等：多物体/轻微泛化</option><option value="complex">复杂：长程/新平台/强域差</option></select></div>
+          </div>
+          <div class="card">
+            <h3>推荐结果</h3>
+            <div class="metric"><div><strong id="methodName">LoRA</strong><span>推荐策略</span></div><div><strong id="rankVal">r=32</strong><span>LoRA rank</span></div><div><strong id="lrVal">2e-5</strong><span>学习率</span></div><div><strong id="riskVal">中低</strong><span>过拟合风险</span></div></div>
+            <div class="callout ok" id="strategyText">中等数据和有限算力下，优先 LoRA。先做小规模试验，确认 loss、成功率和失败类型都改善后再扩大训练。</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="lora">
+        <h2>LoRA 原理：只训练低秩增量</h2>
+        <p class="lead">LoRA 的关键是冻结原始权重 <code>W</code>，只训练低秩矩阵 <code>A</code> 和 <code>B</code>，让模型学到一个任务相关的增量 <code>ΔW = B A</code>。</p>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1120 360" role="img" aria-label="LoRA low rank decomposition">
+            <rect x="70" y="92" width="170" height="120" rx="12" fill="#eef4fa" stroke="#dce3ee"/><text x="155" y="145" text-anchor="middle" fill="#21385c" font-size="22" font-weight="900">W</text><text x="155" y="176" text-anchor="middle" fill="#647084" font-size="13">冻结原始权重</text>
+            <text x="290" y="160" text-anchor="middle" fill="#21385c" font-size="34" font-weight="900">+</text>
+            <rect x="350" y="112" width="90" height="80" rx="10" fill="#f3f1ff" stroke="#c8c1f2"/><text x="395" y="158" text-anchor="middle" fill="#453a9a" font-size="20" font-weight="900">B</text>
+            <rect x="462" y="82" width="170" height="140" rx="10" fill="#fff7ed" stroke="#f0c596"/><text x="547" y="158" text-anchor="middle" fill="#7a4314" font-size="20" font-weight="900">A</text>
+            <text x="680" y="160" text-anchor="middle" fill="#21385c" font-size="34" font-weight="900">=</text>
+            <rect x="740" y="92" width="250" height="120" rx="12" fill="#eefaf3" stroke="#a8ddc1"/><text x="865" y="142" text-anchor="middle" fill="#1f7a4d" font-size="22" font-weight="900">W + BA</text><text x="865" y="174" text-anchor="middle" fill="#647084" font-size="13">任务适配后的有效权重</text>
+            <text x="492" y="270" text-anchor="middle" fill="#21385c" font-weight="900">r 很小，所以训练参数和优化器状态显著减少</text>
+          </svg>
+        </div>
+        <div class="grid cols-3">
+          <div class="card"><h3>优点</h3><p>显存低、迭代快、保留预训练能力、适合中小数据任务适配。</p></div>
+          <div class="card"><h3>代价</h3><p>容量有限；如果任务与预训练分布差异很大，LoRA 可能不如全参数或分阶段微调。</p></div>
+          <div class="card"><h3>关键超参</h3><p><code>rank</code>、<code>alpha</code>、<code>dropout</code>、target modules、学习率、训练步数。</p></div>
+        </div>
+      </section>
+
+      <section id="code">
+        <h2>实现骨架：不要把教学代码当成唯一官方实现</h2>
+        <div class="tabs" data-tabs="codeTabs"><button class="tab-btn active" data-tab="peft-code">PEFT 配置</button><button class="tab-btn" data-tab="save-code">保存与合并</button><button class="tab-btn" data-tab="risk-code">易错点</button></div>
+        <div id="peft-code" class="tab-panel active" data-panel="codeTabs"><pre><code>lora_config = LoraConfig(
+    task_type=TaskType.CAUSAL_LM,
+    r=32,
+    lora_alpha=32,
+    lora_dropout=0.1,
+    target_modules=[
+        "q_proj", "k_proj", "v_proj", "o_proj",
+        "gate_proj", "up_proj", "down_proj",
+    ],
+    bias="none",
+)
+model = get_peft_model(model, lora_config)
+model.print_trainable_parameters()</code></pre></div>
+        <div id="save-code" class="tab-panel" data-panel="codeTabs"><pre><code># LoRA adapter 保存
+model.save_pretrained("./openvla_lora_adapter")
+processor.save_pretrained("./openvla_lora_adapter")
+
+# 部署前可选择合并，具体取决于PEFT和模型类是否支持
+merged = model.merge_and_unload()
+merged.save_pretrained("./openvla_lora_merged")</code></pre></div>
+        <div id="risk-code" class="tab-panel" data-panel="codeTabs"><pre><code># 训练前必须核对：
+# 1. projector是否真的可训练
+# 2. action tokenizer和labels是否对齐
+# 3. unnorm_key/action stats是否与数据集一致
+# 4. 训练prompt是否与推理prompt一致
+# 5. loss是否只计算action token，而不是整段prompt</code></pre></div>
+        <div class="callout warn">如果训练 loss 很低但成功率不升，先检查 labels mask、动作统计、gripper 编码、prompt 模板和评估环境，而不是马上加大模型。</div>
+      </section>
+
+      <section id="data">
+        <h2>数据准备：微调成败通常先由数据决定</h2>
+        <table><thead><tr><th>检查项</th><th>为什么重要</th><th>常见错误</th></tr></thead><tbody><tr><td>图像与动作时间对齐</td><td>VLA 学的是观测到动作的映射</td><td>动作滞后一帧或多帧，导致学到错误控制</td></tr><tr><td>动作统计</td><td>反归一化依赖数据集统计</td><td>训练和推理使用不同 action stats</td></tr><tr><td>Prompt 一致性</td><td>模型对指令模板敏感</td><td>训练用一种模板，评估换另一种模板</td></tr><tr><td>数据多样性</td><td>决定泛化和抗干扰能力</td><td>只有成功演示，没有边界姿态和干扰物</td></tr><tr><td>验证集隔离</td><td>判断是否过拟合</td><td>同一 episode 的相邻帧同时出现在 train/val</td></tr></tbody></table>
+        <pre><code>{
+  "image": "frames/000123.png",
+  "instruction": "pick up the red cup",
+  "action": [0.02, -0.01, 0.04, 0.0, 0.0, 0.03, 1.0],
+  "episode_id": "demo_017",
+  "robot": "widowx",
+  "action_stats_key": "bridge_orig"
+        }</code></pre>
+      </section>
+
+      <section id="label-mask">
+        <h2>Label Mask：只监督 action token</h2>
+        <p class="lead">OpenVLA 微调最容易讲错的地方是 labels。更严谨的 CausalLM 式训练不是传入一个孤立的 <code>[B, 7]</code> labels，而是把 action tokens 拼到输入序列末尾，并只在 action 位置计算 loss。</p>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1180 360" role="img" aria-label="label mask construction">
+            <defs><marker id="maskArrow110" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#21385c"/></marker></defs>
+            <rect x="60" y="78" width="210" height="72" rx="12" fill="#effbff" stroke="#a6ddee"/><text x="165" y="108" text-anchor="middle" fill="#07516a" font-weight="900">Prompt tokens</text><text x="165" y="132" text-anchor="middle" fill="#647084" font-size="13">In: ... Out:</text>
+            <rect x="330" y="78" width="210" height="72" rx="12" fill="#fff7ed" stroke="#f0c596"/><text x="435" y="108" text-anchor="middle" fill="#7a4314" font-weight="900">Action tokens</text><text x="435" y="132" text-anchor="middle" fill="#647084" font-size="13">a1 ... a7</text>
+            <rect x="655" y="60" width="400" height="50" rx="10" fill="#eef4fa" stroke="#dce3ee"/><text x="855" y="91" text-anchor="middle" fill="#21385c" font-weight="900">input_ids = [prompt tokens, action tokens]</text>
+            <rect x="655" y="142" width="400" height="50" rx="10" fill="#fff3f3" stroke="#efb3b3"/><text x="855" y="173" text-anchor="middle" fill="#a33b3b" font-weight="900">labels = [-100 ... -100, a1 ... a7]</text>
+            <rect x="250" y="255" width="680" height="58" rx="12" fill="#eefaf3" stroke="#a8ddc1"/><text x="590" y="290" text-anchor="middle" fill="#1f7a4d" font-weight="900">loss 只来自 action token；prompt 和 padding 必须 mask 为 -100</text>
+            <g stroke="#21385c" stroke-width="3" fill="none" marker-end="url(#maskArrow110)"><path d="M270 114 L330 114"/><path d="M540 114 C590 100 615 85 655 85"/><path d="M540 130 C590 150 615 167 655 167"/><path d="M855 192 L720 255"/></g>
+          </svg>
+        </div>
+        <pre><code>input_ids = torch.cat([prompt_ids, action_token_ids])
+labels = torch.full_like(input_ids, -100)
+labels[-len(action_token_ids):] = action_token_ids
+
+# padding时也要保持labels的padding位置为-100
+# 不要手写token offset，使用当前OpenVLA版本的ActionTokenizer。</code></pre>
+        <div class="callout danger">如果 <code>input_ids</code> 末尾没有 action tokens，验证时取 <code>outputs.logits[:, -7:, :]</code> 就不代表动作位置；此时 token accuracy 和 loss 都可能没有教学意义。</div>
+      </section>
+
+      <section id="train-flow">
+        <h2>训练流程：从数据到 checkpoint</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1200 390" role="img" aria-label="finetuning training flow">
+            <defs><marker id="trainArrow110" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#21385c"/></marker></defs>
+            <rect x="55" y="80" width="150" height="74" rx="12" fill="#eefaf3" stroke="#a8ddc1"/><text x="130" y="112" text-anchor="middle" fill="#1f7a4d" font-weight="900">Demos</text><text x="130" y="136" text-anchor="middle" fill="#647084" font-size="13">image/action</text>
+            <rect x="255" y="80" width="160" height="74" rx="12" fill="#effbff" stroke="#a6ddee"/><text x="335" y="112" text-anchor="middle" fill="#07516a" font-weight="900">Collator</text><text x="335" y="136" text-anchor="middle" fill="#647084" font-size="13">mask labels</text>
+            <rect x="465" y="80" width="160" height="74" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/><text x="545" y="112" text-anchor="middle" fill="#453a9a" font-weight="900">LoRA Model</text><text x="545" y="136" text-anchor="middle" fill="#647084" font-size="13">train adapters</text>
+            <rect x="675" y="80" width="160" height="74" rx="12" fill="#fff7ed" stroke="#f0c596"/><text x="755" y="112" text-anchor="middle" fill="#7a4314" font-weight="900">Validation</text><text x="755" y="136" text-anchor="middle" fill="#647084" font-size="13">loss + action</text>
+            <rect x="885" y="80" width="220" height="74" rx="12" fill="#fff3f3" stroke="#efb3b3"/><text x="995" y="112" text-anchor="middle" fill="#a33b3b" font-weight="900">Robot / Sim Eval</text><text x="995" y="136" text-anchor="middle" fill="#647084" font-size="13">success rate</text>
+            <rect x="260" y="250" width="680" height="74" rx="12" fill="#fbfdff" stroke="#dce3ee"/><text x="600" y="284" text-anchor="middle" fill="#21385c" font-weight="900">选择 best checkpoint：不能只看 train loss，要看 val loss + success rate + failure type</text>
+            <g stroke="#21385c" stroke-width="3" fill="none" marker-end="url(#trainArrow110)"><path d="M205 117 L255 117"/><path d="M415 117 L465 117"/><path d="M625 117 L675 117"/><path d="M835 117 L885 117"/><path d="M995 154 C960 220 820 250 720 250"/><path d="M545 154 C520 220 475 250 455 250"/></g>
+          </svg>
+        </div>
+      </section>
+
+      <section id="curve">
+        <h2>训练曲线诊断：loss 下降不等于任务成功</h2>
+        <table><thead><tr><th>曲线现象</th><th>诊断</th><th>优先处理</th></tr></thead><tbody><tr><td>train/val loss 都下降</td><td>训练正常，但仍需看闭环成功率</td><td>继续评估 success rate 和失败类型</td></tr><tr><td>train loss 降，val loss 升</td><td>过拟合或验证分布不同</td><td>早停、增强、降低 rank/lr、增加验证集隔离</td></tr><tr><td>loss 不下降</td><td>学习率、labels、mask、action tokenizer 或数据对齐问题</td><td>先查数据和 label mask，再调 lr</td></tr><tr><td>loss 震荡</td><td>学习率偏高、batch 太小、数据噪声大</td><td>降低 lr、增大 accumulation、梯度裁剪</td></tr><tr><td>val loss 好但成功率差</td><td>离线指标和闭环指标不一致</td><td>检查反归一化、控制频率、gripper 和评估 prompt</td></tr></tbody></table>
+      </section>
+
+      <section id="curve-lab">
+        <h2>交互：选择曲线模式看诊断</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>曲线模式</h3>
+            <div class="control"><label for="curveSelect">选择现象</label><select id="curveSelect"><option value="normal">训练和验证损失同步下降</option><option value="overfit">训练损失下降，验证损失上升</option><option value="underfit">训练和验证损失都高</option><option value="unstable">训练曲线大幅震荡</option><option value="offline">验证损失正常，闭环成功率不升</option></select></div>
+            <div class="svg-wrap">
+              <svg id="curveSvg" viewBox="0 0 520 280" role="img" aria-label="training curve">
+                <rect x="46" y="25" width="430" height="210" fill="#fbfdff" stroke="#dce3ee"/>
+                <line x1="46" y1="235" x2="476" y2="235" stroke="#21385c"/><line x1="46" y1="25" x2="46" y2="235" stroke="#21385c"/>
+                <path id="trainPath" d="" fill="none" stroke="#2c83d5" stroke-width="4"/><path id="valPath" d="" fill="none" stroke="#ec8a2e" stroke-width="4"/>
+                <text x="250" y="265" text-anchor="middle" fill="#647084" font-size="13">steps</text><text x="18" y="130" text-anchor="middle" fill="#647084" font-size="13" transform="rotate(-90 18 130)">loss</text>
+                <circle cx="330" cy="38" r="5" fill="#2c83d5"/><text x="342" y="43" fill="#33415c" font-size="13">train</text><circle cx="400" cy="38" r="5" fill="#ec8a2e"/><text x="412" y="43" fill="#33415c" font-size="13">val</text>
+              </svg>
+            </div>
+          </div>
+          <div class="card">
+            <h3>诊断建议</h3>
+            <div class="callout ok" id="curveAnswer">训练基本健康。下一步看闭环成功率、动作误差、失败类型和是否出现长尾任务退化。</div>
+            <table><tbody><tr><td>先查</td><td id="curveFirst">验证集切分、success rate、failure table</td></tr><tr><td>再调</td><td id="curveSecond">训练步数、学习率衰减、checkpoint 选择</td></tr><tr><td>不要只看</td><td>单一 train loss</td></tr></tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <section id="checkpoint">
+        <h2>Checkpoint：不能只按 val loss 选模型</h2>
+        <p class="lead">VLA 微调的最终目标是闭环成功率。一个 checkpoint 可能 val loss 更低，但 gripper 时机、动作尺度或真实控制稳定性更差。</p>
+        <table><thead><tr><th>维度</th><th>应记录指标</th><th>判断方式</th></tr></thead><tbody><tr><td>训练稳定性</td><td>train loss、grad norm、learning rate</td><td>无持续震荡、无梯度爆炸</td></tr><tr><td>离线验证</td><td>val loss、action token accuracy</td><td>held-out episode 上稳定改善</td></tr><tr><td>连续动作</td><td>xyz/rpy MAE、gripper error、action saturation</td><td>关键动作维度误差下降</td></tr><tr><td>闭环任务</td><td>success rate、partial success、failure type</td><td>目标任务提升且泛化任务不明显下降</td></tr><tr><td>部署代价</td><td>latency、memory、merge consistency</td><td>adapter 合并前后结果一致</td></tr></tbody></table>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>连续动作评估</h3>
+            <pre><code>pred_actions = action_tokenizer.decode_token_ids_to_actions(pred_ids)
+gt_actions = action_tokenizer.decode_token_ids_to_actions(label_ids)
+diff = pred_actions - gt_actions
+xyz_mae = np.mean(np.abs(diff[..., :3]))
+rot_mae = np.mean(np.abs(diff[..., 3:6]))
+gripper_error = np.mean(pred_actions[..., 6] != gt_actions[..., 6])</code></pre>
+          </div>
+          <div class="card">
+            <h3>保存注意事项</h3>
+            <pre><code># adapter、processor、训练配置和评估配置要一起保存
+model.save_pretrained(adapter_dir)
+processor.save_pretrained(adapter_dir)
+
+# processor通常不是model.processor
+# merge_and_unload后要重新跑一遍关键评估。</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section id="compare">
+        <h2>Pretrain vs Finetune：怎么证明微调有效</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>输入结果</h3>
+            <div class="control"><label for="preSr">预训练成功率：<span id="preVal">60</span>%</label><input id="preSr" type="range" min="0" max="100" value="60" /></div>
+            <div class="control"><label for="ftSr">微调成功率：<span id="ftVal">85</span>%</label><input id="ftSr" type="range" min="0" max="100" value="85" /></div>
+            <div class="control"><label for="latencyDelta">延迟变化：<span id="latVal">3</span>%</label><input id="latencyDelta" type="range" min="-20" max="50" value="3" /></div>
+          </div>
+          <div class="card">
+            <h3>结论</h3>
+            <div class="metric"><div><strong id="absImp">+25%</strong><span>绝对提升</span></div><div><strong id="relImp">41.7%</strong><span>相对提升</span></div><div><strong id="latJudge">可接受</strong><span>延迟代价</span></div><div><strong id="deployJudge">可进入验证</strong><span>结论</span></div></div>
+            <div class="callout ok" id="compareText">微调带来明显成功率提升，延迟代价较小。下一步要看每个子任务是否都提升，以及失败类型是否从动作错误转向少数视觉难例。</div>
+          </div>
+        </div>
+        <table><thead><tr><th>指标</th><th>为什么要看</th><th>通过条件示例</th></tr></thead><tbody><tr><td>Success Rate</td><td>闭环任务是否完成</td><td>目标任务提升且泛化集不崩</td></tr><tr><td>Action Error</td><td>离线动作质量</td><td>关键维度 MAE 下降，gripper 翻转率下降</td></tr><tr><td>Failure Type</td><td>指导下一轮迭代</td><td>动作尺度错误减少，没有新增系统延迟失败</td></tr><tr><td>Latency / Memory</td><td>部署可行性</td><td>微调后推理成本可接受</td></tr></tbody></table>
+      </section>
+
+      <section id="checklist">
+        <h2>LoRA 微调 Checklist</h2>
+        <div class="grid cols-3">
+          <div class="card"><h3>训练前</h3><p>确认数据时间对齐、action stats、prompt 模板、train/val split、target modules、可训练参数比例。</p></div>
+          <div class="card"><h3>训练中</h3><p>记录 train loss、val loss、lr、grad norm、显存、样本速度，并定期跑离线 action error。</p></div>
+          <div class="card"><h3>训练后</h3><p>跑闭环成功率、失败分类、延迟测量、泛化任务，并保存 adapter、processor 和评估配置。</p></div>
+        </div>
+        <pre><code># 最小可复盘记录
+run_id: d110_lora_pick_red_cup_r32
+base_model: openvla/openvla-7b
+method: lora
+rank: 32
+lr: 2e-5
+train_demos: 500
+val_demos: 100
+action_stats_key: bridge_orig
+prompt_template: "In: What action should the robot take to {instruction}? Out:"
+metrics: [success_rate, action_mae, gripper_error, latency_ms, failure_type]</code></pre>
+      </section>
+
+      <section id="interview">
+        <h2>面试问答：D110 高频问题</h2>
+        <div class="quiz-card"><strong>1. OpenVLA 微调完整流程是什么？</strong><button class="btn secondary reveal" type="button" style="color:#21385c;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">准备任务数据，校验图像/动作/指令对齐；选择 LoRA、冻结、全参数或分阶段微调；配置 target modules 和训练超参；训练时监控 loss、grad norm、val loss；评估 success rate、action error、失败类型和延迟；最后保存或合并 adapter 并做部署验证。</div></div>
+        <div class="quiz-card"><strong>2. 为什么 loss 下降但成功率不升？</strong><button class="btn secondary reveal" type="button" style="color:#21385c;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">可能是 label mask 错、动作反归一化错、训练/推理 prompt 不一致、验证集泄漏或分布不匹配、gripper 标签噪声、离线动作误差不能代表闭环稳定性、控制频率或环境随机性导致失败。</div></div>
+        <div class="quiz-card"><strong>3. LoRA 和全参数微调如何选择？</strong><button class="btn secondary reveal" type="button" style="color:#21385c;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">数据少、算力有限、需要快速迭代时优先 LoRA；数据充足、任务分布差异大、追求最高性能时可考虑全参数或分阶段微调。最终选择必须由 held-out success rate、失败类型和部署成本决定。</div></div>
+      </section>
+
+      <section id="next">
+        <h2>D110 → D111：从微调进入改进实验</h2>
+        <p class="lead">D110 解决“如何适配任务”。D111 会继续看数据增强、Prompt、动作头和量化实验，重点是如何设计实验矩阵并解释改进效果。</p>
+      </section>
+    </main>
+  </div>
+  <a class="top-link" href="#top" aria-label="返回顶部">↑</a>
+  <script>
+    const progress=document.getElementById('progress');const navLinks=Array.from(document.querySelectorAll('#toc a'));const sections=navLinks.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);function updateProgress(){const s=window.scrollY||document.documentElement.scrollTop;const h=document.documentElement.scrollHeight-window.innerHeight;progress.style.width=(h>0?s/h*100:0)+'%';let current=sections[0];for(const section of sections)if(section.getBoundingClientRect().top<=120)current=section;navLinks.forEach(a=>a.classList.toggle('active',current&&a.getAttribute('href')==='#'+current.id))}window.addEventListener('scroll',updateProgress,{passive:true});window.addEventListener('resize',updateProgress);updateProgress();
+    document.querySelectorAll('[data-tabs]').forEach(group=>{const name=group.getAttribute('data-tabs');group.querySelectorAll('.tab-btn').forEach(button=>{button.addEventListener('click',()=>{group.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));button.classList.add('active');document.querySelectorAll(`[data-panel="${name}"]`).forEach(panel=>panel.classList.toggle('active',panel.id===button.dataset.tab))})})});
+    const demoCount=document.getElementById('demoCount'),gpuHours=document.getElementById('gpuHours'),complexity=document.getElementById('complexity'),demoVal=document.getElementById('demoVal'),gpuVal=document.getElementById('gpuVal'),methodName=document.getElementById('methodName'),rankVal=document.getElementById('rankVal'),lrVal=document.getElementById('lrVal'),riskVal=document.getElementById('riskVal'),strategyText=document.getElementById('strategyText');function updateStrategy(){const demos=Number(demoCount.value),gpu=Number(gpuHours.value),c=complexity.value;demoVal.textContent=demos;gpuVal.textContent=gpu;let method='LoRA',rank='r=32',lr='2e-5',risk='中低',text='中等数据和有限算力下，优先 LoRA。先做小规模试验，确认 loss、成功率和失败类型都改善后再扩大训练。';if(demos<50||gpu<8){method='冻结/极小 LoRA';rank='r=8-16';lr='1e-4';risk='低';text='数据或算力太少，先做冻结微调或小 rank LoRA，用来验证任务是否可学，不要期待复杂泛化。'}else if(demos>700&&gpu>80&&c==='complex'){method='分阶段/全参数';rank='r=64 或 full';lr='5e-6';risk='中高';text='复杂任务且数据算力充足，可以先 LoRA 建基线，再尝试分阶段解冻或全参数微调。必须严控验证集和过拟合。'}else if(demos>300&&c==='complex'){method='LoRA + 分阶段';rank='r=64';lr='1e-5';risk='中';text='复杂任务建议提高 LoRA 容量，或先训练 projector/LoRA，再解冻高层模块。重点看长程任务 partial success。'}methodName.textContent=method;rankVal.textContent=rank;lrVal.textContent=lr;riskVal.textContent=risk;strategyText.textContent=text}[demoCount,gpuHours,complexity].forEach(el=>el&&el.addEventListener('input',updateStrategy));updateStrategy();
+    const curveSelect=document.getElementById('curveSelect'),trainPath=document.getElementById('trainPath'),valPath=document.getElementById('valPath'),curveAnswer=document.getElementById('curveAnswer'),curveFirst=document.getElementById('curveFirst'),curveSecond=document.getElementById('curveSecond');const curveData={normal:{train:'M60 205 C130 160 210 118 300 90 C370 72 430 62 465 58',val:'M60 210 C130 170 210 130 300 102 C370 88 430 78 465 74',ans:'训练基本健康。下一步看闭环成功率、动作误差、失败类型和是否出现长尾任务退化。',first:'验证集切分、success rate、failure table',second:'训练步数、学习率衰减、checkpoint 选择'},overfit:{train:'M60 205 C140 150 230 100 330 70 C390 58 440 52 465 48',val:'M60 210 C130 150 210 105 285 95 C360 110 420 145 465 180',ans:'典型过拟合。训练数据被记住，但验证/真实任务泛化变差。',first:'数据量、数据增强、验证集是否泄漏、训练步数',second:'早停、降低lr、提高dropout、降低rank、增加多样性'},underfit:{train:'M60 215 C150 205 240 198 340 190 C410 186 445 183 465 180',val:'M60 220 C150 212 240 205 340 198 C410 194 445 191 465 188',ans:'欠拟合或训练没有真正生效。常见于学习率太低、target modules没选中、labels/mask错误。',first:'可训练参数、label mask、action token、学习率',second:'提高lr、增加rank、延长训练、检查数据对齐'},unstable:{train:'M60 200 C100 110 150 225 200 120 C250 70 300 210 350 105 C400 80 430 190 465 130',val:'M60 215 C120 130 170 230 225 150 C280 95 330 225 385 135 C430 115 450 190 465 160',ans:'训练震荡。通常是学习率偏高、batch太小、梯度爆炸或数据噪声大。',first:'grad norm、lr schedule、batch/accumulation、异常样本',second:'降低lr、梯度裁剪、增大batch、清洗异常数据'},offline:{train:'M60 205 C130 160 210 118 300 90 C370 72 430 62 465 58',val:'M60 210 C130 170 210 130 300 102 C370 88 430 78 465 74',ans:'离线验证正常但闭环不升，说明 loss/action error 没覆盖真实控制问题。',first:'unnorm_key、gripper、控制频率、评估prompt、失败视频',second:'闭环评估、动作平滑、重做action stats、按失败类型补数据'}};function updateCurve(){const d=curveData[curveSelect.value];trainPath.setAttribute('d',d.train);valPath.setAttribute('d',d.val);curveAnswer.textContent=d.ans;curveFirst.textContent=d.first;curveSecond.textContent=d.second}curveSelect&&curveSelect.addEventListener('change',updateCurve);updateCurve();
+    const preSr=document.getElementById('preSr'),ftSr=document.getElementById('ftSr'),latencyDelta=document.getElementById('latencyDelta'),preVal=document.getElementById('preVal'),ftVal=document.getElementById('ftVal'),latVal=document.getElementById('latVal'),absImp=document.getElementById('absImp'),relImp=document.getElementById('relImp'),latJudge=document.getElementById('latJudge'),deployJudge=document.getElementById('deployJudge'),compareText=document.getElementById('compareText');function updateCompare(){const pre=Number(preSr.value),ft=Number(ftSr.value),lat=Number(latencyDelta.value);preVal.textContent=pre;ftVal.textContent=ft;latVal.textContent=lat;const abs=ft-pre;const rel=pre>0?abs/pre*100:0;absImp.textContent=(abs>=0?'+':'')+abs.toFixed(0)+'%';relImp.textContent=rel.toFixed(1)+'%';latJudge.textContent=lat<=10?'可接受':lat<=25?'需优化':'代价过高';let verdict='继续验证',text='微调带来一定提升，需要继续看子任务分布、失败类型和泛化集。';if(abs>=20&&lat<=10){verdict='可进入验证';text='微调带来明显成功率提升，延迟代价较小。下一步要看每个子任务是否都提升，以及失败类型是否从动作错误转向少数视觉难例。'}else if(abs<5){verdict='收益不足';text='微调收益很小，优先检查数据质量、target modules、label mask、action stats 和训练/推理prompt是否一致。'}else if(lat>25){verdict='部署受限';text='成功率有提升但延迟代价较高，需要确认是否合并adapter、是否引入额外计算或评估配置不同。'}deployJudge.textContent=verdict;compareText.textContent=text}[preSr,ftSr,latencyDelta].forEach(el=>el&&el.addEventListener('input',updateCompare));updateCompare();
+    document.querySelectorAll('.reveal').forEach(button=>{button.addEventListener('click',()=>{const answer=button.parentElement.querySelector('.answer');if(!answer)return;answer.classList.toggle('show');button.textContent=answer.classList.contains('show')?'隐藏参考答案':'显示参考答案'})});
+  </script>
+</body>
+</html>

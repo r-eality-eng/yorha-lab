@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>D108 BridgeData + SimplerEnv + RLDS</title>
+  <style>
+    :root{--bg:#f5f7fb;--paper:#fff;--ink:#1d2433;--muted:#647084;--line:#dce3ee;--navy:#203657;--teal:#0f9d92;--cyan:#2bb8d8;--orange:#f28c38;--purple:#7367d8;--red:#d95f5f;--green:#2f9e64;--shadow:0 18px 45px rgba(32,54,87,.12);--radius:8px;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;--sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--ink);background:linear-gradient(180deg,rgba(242,140,56,.12),rgba(245,247,251,0) 300px),var(--bg);font-family:var(--sans);line-height:1.72}.progress{position:fixed;top:0;left:0;height:4px;width:0;background:linear-gradient(90deg,var(--orange),var(--teal),var(--cyan),var(--purple));z-index:60}
+    .layout{display:grid;grid-template-columns:292px minmax(0,1fr);gap:28px;width:min(1480px,calc(100% - 36px));margin:0 auto;padding:28px 0 64px}aside{position:sticky;top:22px;align-self:start;height:calc(100vh - 44px);overflow:auto;padding:18px;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);backdrop-filter:blur(10px)}.brand{display:grid;gap:6px;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:14px}.brand strong{color:var(--navy);font-size:18px}.brand span{color:var(--muted);font-size:13px}nav a{display:block;padding:9px 10px;margin:3px 0;color:#34415a;text-decoration:none;border-radius:6px;font-size:14px}nav a:hover,nav a.active{color:#073d54;background:rgba(43,184,216,.13)}
+    main{min-width:0}.hero{min-height:540px;display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:center;padding:42px;background:linear-gradient(135deg,#203657,#0f766e 52%,#8a4a1f);color:white;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}.eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 9px;border:1px solid rgba(255,255,255,.34);border-radius:999px;color:rgba(255,255,255,.88);font-size:13px}h1{margin:18px 0 12px;font-size:clamp(36px,5vw,64px);line-height:1.05;letter-spacing:0}.hero p{max-width:780px;color:rgba(255,255,255,.9);font-size:18px}.hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}.btn{border:0;border-radius:6px;padding:10px 14px;font:inherit;cursor:pointer;text-decoration:none;color:#17243a;background:white;font-weight:800}.btn.secondary{color:white;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28)}.hero-visual{min-height:390px;display:grid;place-items:center}
+    section{margin-top:24px;padding:30px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 10px 28px rgba(32,54,87,.08)}section>h2{margin:0 0 14px;color:var(--navy);font-size:28px;line-height:1.25;letter-spacing:0}h3{margin:24px 0 10px;color:#263a5d;font-size:20px;letter-spacing:0}p{margin:10px 0}.lead{color:#3d4a61;font-size:17px}.grid{display:grid;gap:16px}.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}.card{padding:18px;border:1px solid var(--line);border-radius:var(--radius);background:#fbfcff}.card h3{margin-top:0}.tag{display:inline-flex;padding:4px 8px;border-radius:999px;background:rgba(43,184,216,.12);color:#07516a;font-size:12px;font-weight:800}.callout{padding:16px 18px;border-left:4px solid var(--cyan);background:#effbff;border-radius:0 var(--radius) var(--radius) 0;margin:16px 0}.warn{border-left-color:var(--orange);background:#fff7ed}.cool{border-left-color:var(--purple);background:#f3f1ff}.ok{border-left-color:var(--green);background:#eefaf3}.danger{border-left-color:var(--red);background:#fff3f3}
+    .svg-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:#fbfdff;padding:10px}svg{max-width:100%;height:auto;display:block}.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 16px}.tab-btn{border:1px solid var(--line);background:#f8fbff;color:#33415c;padding:8px 11px;border-radius:6px;cursor:pointer;font-weight:800}.tab-btn.active{background:var(--navy);border-color:var(--navy);color:white}.tab-panel{display:none}.tab-panel.active{display:block}
+    details{border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;background:#fbfcff;margin:10px 0}summary{cursor:pointer;font-weight:800;color:var(--navy)}code,pre{font-family:var(--mono)}code{padding:2px 5px;border-radius:4px;background:#eef2f7;color:#27374f}pre{overflow:auto;padding:16px;border-radius:var(--radius);background:#f6f8fb;color:#243044;border:1px solid var(--line);line-height:1.58;font-size:13px}table{width:100%;border-collapse:collapse;border-radius:var(--radius);border:1px solid var(--line);overflow:hidden}th,td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}th{background:#eef4fa;color:var(--navy)}tr:last-child td{border-bottom:0}.control{display:grid;gap:8px;margin:12px 0}.control label{font-weight:800;color:var(--navy)}input[type="range"]{width:100%}select{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;background:white;color:var(--ink);font:inherit}.metric{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.metric div{padding:12px;border:1px solid var(--line);border-radius:6px;background:#fff}.metric strong{display:block;color:var(--navy);font-size:20px}.quiz-card{border:1px solid var(--line);border-radius:var(--radius);padding:16px;background:#fbfcff;margin:12px 0}.answer{display:none;margin-top:10px;padding:12px;border-radius:6px;background:#effbff;color:#073d54}.answer.show{display:block}.top-link{position:fixed;right:22px;bottom:22px;width:42px;height:42px;display:grid;place-items:center;border-radius:50%;color:white;background:var(--navy);text-decoration:none;box-shadow:var(--shadow)}
+    @media(max-width:1040px){.layout{grid-template-columns:1fr}aside{position:relative;height:auto;top:0}.hero{grid-template-columns:1fr;min-height:auto;padding:26px}.cols-2,.cols-3,.cols-4,.metric{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+  <div class="layout">
+    <aside>
+      <div class="brand"><strong>D108 数据与评估环境</strong><span>BridgeData · RLDS · SimplerEnv</span></div>
+      <nav id="toc">
+        <a href="#overview">学习目标</a><a href="#big-picture">总流程</a><a href="#bridge">BridgeData</a><a href="#trajectory">轨迹结构</a><a href="#rlds">RLDS</a><a href="#dataloader">Dataloader</a><a href="#official-map">官方对照</a><a href="#official-files">官方入口</a><a href="#image-preprocess">图像预处理</a><a href="#action-preprocess">动作预处理</a><a href="#loader-perf">Loader 性能</a><a href="#simplerenv">SimplerEnv</a><a href="#eval-loop">评估闭环</a><a href="#metrics">指标</a><a href="#consistency">一致性检查</a><a href="#domain-gap">Domain Gap</a><a href="#bugs">Bug 排查</a><a href="#interview">面试问答</a><a href="#next">下一天</a>
+      </nav>
+    </aside>
+    <main>
+      <header class="hero" id="top">
+        <div>
+          <span class="eyebrow">Week 16 / Day 108 / Data & Evaluation</span>
+          <h1>BridgeData + SimplerEnv + RLDS：数据到评估闭环精讲</h1>
+          <p>D108 的核心是把“数据从哪里来、怎么读、怎么预处理、怎么喂给 OpenVLA、怎么在 SimplerEnv 里闭环评估”讲成一条可调试的工程链路。</p>
+          <div class="hero-actions"><a class="btn" href="#big-picture">看总流程</a><a class="btn secondary" href="#bugs">看排错清单</a><a class="btn secondary" href="d108_data_env_clean.md">查看 Markdown 原文</a></div>
+        </div>
+        <div class="hero-visual">
+          <svg viewBox="0 0 720 430" role="img" aria-label="D108 data environment hero">
+            <defs><marker id="heroArrow108" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#fff"/></marker><filter id="heroShadow108" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#10243d" flood-opacity=".28"/></filter></defs>
+            <rect x="28" y="28" width="664" height="374" rx="18" fill="rgba(255,255,255,.10)" stroke="rgba(255,255,255,.26)"/>
+            <g filter="url(#heroShadow108)">
+              <rect x="70" y="76" width="150" height="74" rx="12" fill="#fff"/><text x="145" y="106" text-anchor="middle" fill="#7a4314" font-size="18" font-weight="900">BridgeData</text><text x="145" y="132" text-anchor="middle" fill="#647084" font-size="13">trajectory / step</text>
+              <rect x="285" y="76" width="150" height="74" rx="12" fill="#fff"/><text x="360" y="106" text-anchor="middle" fill="#07516a" font-size="18" font-weight="900">RLDS</text><text x="360" y="132" text-anchor="middle" fill="#647084" font-size="13">TFRecord / tfds</text>
+              <rect x="500" y="76" width="150" height="74" rx="12" fill="#fff"/><text x="575" y="106" text-anchor="middle" fill="#453a9a" font-size="18" font-weight="900">OpenVLA</text><text x="575" y="132" text-anchor="middle" fill="#647084" font-size="13">image + prompt</text>
+              <rect x="175" y="248" width="370" height="74" rx="12" fill="#fff"/><text x="360" y="279" text-anchor="middle" fill="#a33b3b" font-size="18" font-weight="900">SimplerEnv closed-loop evaluation</text><text x="360" y="304" text-anchor="middle" fill="#647084" font-size="13">obs → action → env.step → success</text>
+            </g>
+            <g stroke="#fff" stroke-width="3" fill="none" marker-end="url(#heroArrow108)"><path d="M220 113 L285 113"/><path d="M435 113 L500 113"/><path d="M575 150 C575 220 510 246 444 248"/><path d="M276 248 C210 224 145 180 145 150"/></g>
+          </svg>
+        </div>
+      </header>
+
+      <section id="overview">
+        <h2>学习目标：能把数据链路讲清楚</h2>
+        <div class="grid cols-4">
+          <div class="card"><span class="tag">BridgeData</span><h3>理解轨迹</h3><p>知道 episode、step、observation、action、language instruction 分别是什么。</p></div>
+          <div class="card"><span class="tag">RLDS</span><h3>理解格式</h3><p>知道为什么机器人数据常用 RLDS/TFRecord，以及它和 HDF5/NPZ 的差异。</p></div>
+          <div class="card"><span class="tag">Preprocess</span><h3>理解变换</h3><p>能解释图像 resize/normalize，动作 min-max 归一化和 action token 化。</p></div>
+          <div class="card"><span class="tag">Eval</span><h3>理解闭环</h3><p>能描述 SimplerEnv 中 obs、policy、action、env.step、success 的闭环。</p></div>
+        </div>
+        <div class="callout ok"><strong>D108 的高分产出：</strong>画出 `BridgeData/RLDS → Dataset → BatchTransform/Collator → OpenVLA → SimplerEnv`，并能指出每一步最容易出 bug 的字段。</div>
+      </section>
+
+      <section id="big-picture">
+        <h2>总流程：从离线轨迹到仿真闭环</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1200 620" role="img" aria-label="D108 full pipeline">
+            <defs><marker id="pipeArrow108" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#203657"/></marker></defs>
+            <rect x="50" y="70" width="190" height="70" rx="12" fill="#fff7ed" stroke="#f0c596"/><text x="145" y="100" text-anchor="middle" fill="#7a4314" font-weight="900">BridgeData v2</text><text x="145" y="124" text-anchor="middle" fill="#647084" font-size="13">60k trajectories</text>
+            <rect x="310" y="70" width="190" height="70" rx="12" fill="#eefaf3" stroke="#a7dec1"/><text x="405" y="100" text-anchor="middle" fill="#1f7a4d" font-weight="900">RLDS / TFRecord</text><text x="405" y="124" text-anchor="middle" fill="#647084" font-size="13">episode → steps</text>
+            <rect x="570" y="70" width="190" height="70" rx="12" fill="#effbff" stroke="#a6ddee"/><text x="665" y="100" text-anchor="middle" fill="#07516a" font-weight="900">Dataset</text><text x="665" y="124" text-anchor="middle" fill="#647084" font-size="13">flat step index</text>
+            <rect x="830" y="70" width="230" height="70" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/><text x="945" y="100" text-anchor="middle" fill="#453a9a" font-weight="900">BatchTransform</text><text x="945" y="124" text-anchor="middle" fill="#647084" font-size="13">image / prompt / labels</text>
+            <rect x="155" y="274" width="230" height="76" rx="12" fill="#effbff" stroke="#a6ddee"/><text x="270" y="306" text-anchor="middle" fill="#07516a" font-weight="900">OpenVLA Train</text><text x="270" y="330" text-anchor="middle" fill="#647084" font-size="13">action-token loss</text>
+            <rect x="485" y="274" width="230" height="76" rx="12" fill="#fff7ed" stroke="#f0c596"/><text x="600" y="306" text-anchor="middle" fill="#7a4314" font-weight="900">OpenVLA Policy</text><text x="600" y="330" text-anchor="middle" fill="#647084" font-size="13">predict_action</text>
+            <rect x="815" y="274" width="230" height="76" rx="12" fill="#fff3f3" stroke="#efb3b3"/><text x="930" y="306" text-anchor="middle" fill="#a33b3b" font-weight="900">SimplerEnv</text><text x="930" y="330" text-anchor="middle" fill="#647084" font-size="13">obs → action → success</text>
+            <rect x="250" y="470" width="700" height="60" rx="12" fill="#fbfdff" stroke="#dce3ee"/><text x="600" y="506" text-anchor="middle" fill="#203657" font-weight="900">同一套预处理假设必须贯穿训练和评估：图像尺寸、颜色空间、动作归一化、prompt 模板、unnorm_key</text>
+            <g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#pipeArrow108)"><path d="M240 105 L310 105"/><path d="M500 105 L570 105"/><path d="M760 105 L830 105"/><path d="M945 140 C930 210 420 230 300 274"/><path d="M385 312 L485 312"/><path d="M715 312 L815 312"/><path d="M930 350 C900 430 740 470 660 470"/><path d="M270 350 C310 430 460 470 540 470"/></g>
+          </svg>
+        </div>
+      </section>
+
+      <section id="bridge">
+        <h2>BridgeData v2：训练数据从哪里来</h2>
+        <p class="lead">BridgeData v2 是桌面机器人操作数据集，核心是 WidowX 机器人在桌面任务中的视觉观察、自然语言任务描述和低层动作。</p>
+        <div class="grid cols-3">
+          <div class="card"><h3>数据粒度</h3><p>一条 trajectory 是一次任务执行；trajectory 内部由多个 step 组成，每个 step 包含 observation、action、终止标志等。</p></div>
+          <div class="card"><h3>任务类型</h3><p>常见任务包括 pick、place、push、stack、open drawer 等，重点是桌面物体操作。</p></div>
+          <div class="card"><h3>动作空间</h3><p>通常讲成 7 维动作：`Δx, Δy, Δz, Δrx, Δry, Δrz, gripper`，训练前需要按数据统计量归一化。</p></div>
+        </div>
+        <table><thead><tr><th>字段</th><th>典型形状</th><th>含义</th><th>常见错误</th></tr></thead><tbody><tr><td>`observation.image`</td><td>`[H,W,3] uint8`</td><td>第三人称相机图像</td><td>RGB/BGR 搞反，resize 策略不一致</td></tr><tr><td>`observation.wrist_image`</td><td>`[H,W,3] uint8`</td><td>腕部相机图像</td><td>训练使用哪个视角不清楚</td></tr><tr><td>`action`</td><td>`[7] float32`</td><td>末端增量和夹爪命令</td><td>归一化统计量不匹配</td></tr><tr><td>`language_instruction`</td><td>字符串</td><td>自然语言任务指令</td><td>prompt 模板与训练不一致</td></tr></tbody></table>
+      </section>
+
+      <section id="trajectory">
+        <h2>Trajectory / Step：RL 数据不是普通图片分类数据</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1120 430" role="img" aria-label="trajectory step structure">
+            <defs><marker id="trajArrow108" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#203657"/></marker></defs>
+            <rect x="60" y="60" width="1000" height="310" rx="16" fill="#fbfdff" stroke="#dce3ee"/>
+            <text x="560" y="40" text-anchor="middle" fill="#203657" font-size="22" font-weight="900">一个 episode 由多个 step 组成</text>
+            <rect x="100" y="115" width="180" height="150" rx="12" fill="#eefaf3" stroke="#a7dec1"/><text x="190" y="148" text-anchor="middle" fill="#1f7a4d" font-weight="900">Step 0</text><text x="190" y="180" text-anchor="middle" fill="#647084" font-size="13">image</text><text x="190" y="205" text-anchor="middle" fill="#647084" font-size="13">action</text><text x="190" y="230" text-anchor="middle" fill="#647084" font-size="13">is_first=True</text>
+            <rect x="350" y="115" width="180" height="150" rx="12" fill="#effbff" stroke="#a6ddee"/><text x="440" y="148" text-anchor="middle" fill="#07516a" font-weight="900">Step 1</text><text x="440" y="180" text-anchor="middle" fill="#647084" font-size="13">image</text><text x="440" y="205" text-anchor="middle" fill="#647084" font-size="13">action</text><text x="440" y="230" text-anchor="middle" fill="#647084" font-size="13">state</text>
+            <rect x="600" y="115" width="180" height="150" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/><text x="690" y="148" text-anchor="middle" fill="#453a9a" font-weight="900">...</text><text x="690" y="205" text-anchor="middle" fill="#647084" font-size="13">更多 step</text>
+            <rect x="850" y="115" width="180" height="150" rx="12" fill="#fff3f3" stroke="#efb3b3"/><text x="940" y="148" text-anchor="middle" fill="#a33b3b" font-weight="900">Step T</text><text x="940" y="180" text-anchor="middle" fill="#647084" font-size="13">image</text><text x="940" y="205" text-anchor="middle" fill="#647084" font-size="13">action</text><text x="940" y="230" text-anchor="middle" fill="#647084" font-size="13">is_terminal=True</text>
+            <rect x="330" y="305" width="460" height="42" rx="10" fill="#fff7ed" stroke="#f0c596"/><text x="560" y="332" text-anchor="middle" fill="#7a4314" font-weight="900">language_instruction: pick up the red cup</text>
+            <g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#trajArrow108)"><path d="M280 190 L350 190"/><path d="M530 190 L600 190"/><path d="M780 190 L850 190"/></g>
+          </svg>
+        </div>
+        <div class="callout warn"><strong>关键区别：</strong>训练时经常随机采样单个 step，但任务语义来自整条 trajectory 的语言指令；不要把 episode、step、batch 这三层概念混在一起。</div>
+      </section>
+
+      <section id="rlds">
+        <h2>RLDS：为什么机器人数据喜欢 episode/step 格式</h2>
+        <p class="lead">RLDS 可以理解为强化学习/机器人数据的标准化容器：外层是 dataset split，中间是 episodes，内层是 steps。它适合表达序列、终止标记、奖励、折扣、状态和动作。</p>
+        <div class="tabs" data-tabs="formatTabs"><button class="tab-btn active" data-tab="rlds-tree">层级结构</button><button class="tab-btn" data-tab="rlds-compare">格式对比</button><button class="tab-btn" data-tab="rlds-code">读取代码</button></div>
+        <div id="rlds-tree" class="tab-panel active" data-panel="formatTabs">
+          <pre><code>tfds.Dataset
+└── episode
+    ├── episode_metadata
+    └── steps
+        ├── observation.image
+        ├── observation.state
+        ├── action
+        ├── reward / discount
+        ├── is_first
+        ├── is_last / is_terminal
+        └── language_instruction</code></pre>
+        </div>
+        <div id="rlds-compare" class="tab-panel" data-panel="formatTabs">
+          <table><thead><tr><th>格式</th><th>优点</th><th>缺点</th><th>适用场景</th></tr></thead><tbody><tr><td>RLDS / TFRecord</td><td>统一 episode/step，适合 OXE 多机器人数据</td><td>依赖 TensorFlow，PyTorch 接入有摩擦</td><td>大规模机器人/RL 数据</td></tr><tr><td>HDF5</td><td>随机访问方便，单文件层级清晰</td><td>多进程读写和云存储场景要小心</td><td>中等规模离线数据</td></tr><tr><td>NPZ / Pickle</td><td>简单直观，上手快</td><td>标准化差，不适合大规模混合数据</td><td>小实验、临时调试</td></tr></tbody></table>
+        </div>
+        <div id="rlds-code" class="tab-panel" data-panel="formatTabs">
+          <pre><code>import tensorflow_datasets as tfds
+
+ds = tfds.load("bridge", data_dir=data_dir, split="train")
+for episode in ds.take(1):
+    steps = episode["steps"]
+    for step in steps.take(1):
+        image = step["observation"]["image"].numpy()
+        action = step["action"].numpy()
+        instruction = step["language_instruction"].numpy().decode("utf-8")</code></pre>
+        </div>
+      </section>
+
+      <section id="dataloader">
+        <h2>Dataloader：把 episode 展平成可训练 step</h2>
+        <p class="lead">训练需要随机 batch，而 RLDS 天然是 episode 序列。因此常见做法是构造 flat index：`dataset_idx / episode_idx / step_idx`，让 `__getitem__` 能随机返回一个 step 样本。</p>
+        <div class="grid cols-2">
+          <div class="card"><h3>Flat Index 的价值</h3><p>把不同长度的 episode 展开成统一的一维 step 列表，方便 shuffle、分布式采样和 batch 训练。</p><pre><code>flat_index = [
+  (episode_0, step_0),
+  (episode_0, step_1),
+  ...
+  (episode_9, step_32),
+]</code></pre></div>
+          <div class="card"><h3>PyTorch 接入点</h3><p>`Dataset.__getitem__` 返回单样本；`BatchTransform/Collator` 负责把图像、指令、动作组装成模型输入。</p><pre><code>sample = {
+  "image": image_tensor,        # [3,H,W]
+  "instruction": instruction,
+  "action": normalized_action,  # [7]
+}</code></pre></div>
+        </div>
+        <div class="callout danger"><strong>工程风险：</strong>直接把所有 episode 预加载到内存会很重。真实训练通常更重视 streaming、interleave、prefetch、cache 和 worker 行为。</div>
+      </section>
+
+      <section id="official-map">
+        <h2>官方实现对照：教学名和代码名不要混淆</h2>
+        <table><thead><tr><th>教学材料常用叫法</th><th>OpenVLA 官方中更接近的组件</th><th>说明</th></tr></thead><tbody><tr><td>`BridgeDataRLDSDataset`</td><td>`RLDSDataset` / `RLDSBatchTransform`</td><td>读取 RLDS 数据并转换成训练样本</td></tr><tr><td>`OpenVLACollator`</td><td>`PaddedCollatorForActionPrediction`</td><td>padding、labels、attention mask、动作 token 序列整理</td></tr><tr><td>`ActionTokenizer.encode`</td><td>`ActionTokenizer.__call__`</td><td>连续动作转成词表末尾共享 action bin token</td></tr><tr><td>`train.py` 教学循环</td><td>`vla-scripts/finetune.py`</td><td>官方微调入口，包含 LoRA/DDP/RLDS 等工程细节</td></tr><tr><td>手写 token offset 解码</td><td>`model.predict_action(...)`</td><td>官方推理接口通常负责生成、解码和反归一化</td></tr></tbody></table>
+        <div class="callout ok"><strong>准确口径：</strong>默认动作 token 不是 `7 * 256` 个独立 token，而是 7 个动作维度共享词表最后 256 个 bin token；维度由生成位置区分。</div>
+      </section>
+
+      <section id="official-files">
+        <h2>官方文件入口与复现注意事项</h2>
+        <table><thead><tr><th>目标</th><th>官方入口</th><th>作用</th></tr></thead><tbody><tr><td>微调</td><td>`vla-scripts/finetune.py`</td><td>模型加载、LoRA/DDP、数据管线主入口</td></tr><tr><td>动作 token 化</td><td>`prismatic/vla/action_tokenizer.py`</td><td>连续动作和共享 action bin token 互转</td></tr><tr><td>RLDS 数据读取</td><td>`prismatic/vla/datasets/rlds/`</td><td>Dataset、BatchTransform、数据混合</td></tr><tr><td>OXE/Bridge 转换</td><td>`prismatic/vla/datasets/rlds/oxe/transforms.py`</td><td>不同数据集字段到统一格式的转换</td></tr><tr><td>Bridge 评估</td><td>`experiments/robot/bridge/run_bridgev2_eval.py`</td><td>BridgeData/Bridge 环境相关评估入口</td></tr></tbody></table>
+        <div class="grid cols-2"><div class="card"><h3>复现注意</h3><ul><li>数据集 key/name 要和动作统计量一致，例如 `bridge_orig`。</li><li>BridgeData v2 数据很大，下载、解压和缓存都要提前规划磁盘。</li><li>`unnorm_key` 必须和训练/评估数据统计量匹配。</li></ul></div><div class="card"><h3>最小验证顺序</h3><ol><li>少量 episode 跑通 RLDS 读取。</li><li>打印 batch 的图像、prompt、labels。</li><li>跑一次 model forward。</li><li>再接 SimplerEnv 或 Bridge 评估。</li></ol></div></div>
+      </section>
+
+      <section id="image-preprocess">
+        <h2>图像预处理：RGB、尺寸、归一化必须和训练一致</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1120 300" role="img" aria-label="image preprocessing">
+            <defs><marker id="imgArrow108" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#203657"/></marker></defs>
+            <rect x="60" y="90" width="170" height="70" rx="12" fill="#fff7ed" stroke="#f0c596"/><text x="145" y="121" text-anchor="middle" fill="#7a4314" font-weight="900">uint8 image</text><text x="145" y="145" text-anchor="middle" fill="#647084" font-size="13">[H,W,3]</text>
+            <rect x="300" y="90" width="170" height="70" rx="12" fill="#eefaf3" stroke="#a7dec1"/><text x="385" y="121" text-anchor="middle" fill="#1f7a4d" font-weight="900">PIL / RGB</text><text x="385" y="145" text-anchor="middle" fill="#647084" font-size="13">颜色空间确认</text>
+            <rect x="540" y="90" width="170" height="70" rx="12" fill="#effbff" stroke="#a6ddee"/><text x="625" y="121" text-anchor="middle" fill="#07516a" font-weight="900">Resize</text><text x="625" y="145" text-anchor="middle" fill="#647084" font-size="13">224 或 384</text>
+            <rect x="780" y="90" width="170" height="70" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/><text x="865" y="121" text-anchor="middle" fill="#453a9a" font-weight="900">Normalize</text><text x="865" y="145" text-anchor="middle" fill="#647084" font-size="13">processor mean/std</text>
+            <g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#imgArrow108)"><path d="M230 125 L300 125"/><path d="M470 125 L540 125"/><path d="M710 125 L780 125"/></g>
+          </svg>
+        </div>
+        <table><thead><tr><th>检查项</th><th>正确做法</th><th>错误表现</th></tr></thead><tbody><tr><td>RGB/BGR</td><td>统一 PIL RGB 或官方 processor</td><td>颜色异常，模型抓错物体</td></tr><tr><td>resize</td><td>跟 backbone 配置一致，224/384 不要混用</td><td>patch 数和视觉 token 对不上</td></tr><tr><td>归一化</td><td>使用模型 processor 的 mean/std</td><td>视觉特征分布偏移</td></tr><tr><td>视角</td><td>明确 third-person 或 wrist camera</td><td>训练和评估视角不一致</td></tr></tbody></table>
+      </section>
+
+      <section id="action-preprocess">
+        <h2>动作预处理：归一化、token 化、反归一化</h2>
+        <p class="lead">动作预处理是 VLA 最容易出错的地方。训练时要把真实动作归一化并 token 化；推理时要把动作 token 解码并反归一化到环境需要的控制空间。</p>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>交互：动作量化误差</h3>
+            <div class="control"><label for="binRange">共享 bins：<span id="binValue">256</span></label><input id="binRange" type="range" min="64" max="512" step="64" value="256" /></div>
+            <div class="control"><label for="actionRange">归一化动作总宽度</label><select id="actionRange"><option value="2">[-1,1]，总宽度2</option><option value="1">[-0.5,0.5]，总宽度1</option><option value="6.283">[-π,π]，总宽度6.283</option></select></div>
+            <div class="metric"><div><strong id="binWidth">0.0078</strong><span>bin width</span></div><div><strong id="maxErr">0.0039</strong><span>最大误差</span></div><div><strong id="tokenCount">256</strong><span>共享 token</span></div><div><strong>7</strong><span>生成位置</span></div></div>
+          </div>
+          <div class="card">
+            <h3>官方口径示意</h3>
+            <pre><code># normalized action in [-1, 1]
+bins = np.linspace(-1, 1, 256)
+discretized = np.digitize(action, bins)
+token_id = tokenizer.vocab_size - discretized
+
+# inference
+action = model.predict_action(
+    **inputs,
+    unnorm_key="bridge_orig",
+    do_sample=False,
+)</code></pre>
+          </div>
+        </div>
+        <div class="callout warn"><strong>unnorm_key 很重要：</strong>同一个模型可能支持多个数据集/机器人动作统计量。推理评估时选错 `unnorm_key`，动作方向和尺度都会错，成功率会大幅下降。</div>
+      </section>
+
+      <section id="loader-perf">
+        <h2>DataLoader 性能：数据慢会让 GPU 空转</h2>
+        <p class="lead">大规模 VLA 训练里，GPU 算力贵，但数据解码、图像 resize、TensorFlow 到 PyTorch 的转换都可能成为瓶颈。D108 需要建立一个判断：训练慢不一定是模型慢，也可能是 loader 慢。</p>
+        <table><thead><tr><th>优化点</th><th>作用</th><th>风险</th><th>怎么验证</th></tr></thead><tbody><tr><td>`num_workers`</td><td>并行读取和预处理</td><td>过大导致 CPU 抢占和内存暴涨</td><td>看 GPU utilization 和 dataloader wait time</td></tr><tr><td>`pin_memory=True`</td><td>加速 CPU→GPU 拷贝</td><td>占用更多 pinned memory</td><td>比较 batch transfer 时间</td></tr><tr><td>`persistent_workers=True`</td><td>避免每个 epoch 重启 worker</td><td>worker 内状态要小心</td><td>看 epoch 边界是否卡顿</td></tr><tr><td>`prefetch`</td><td>提前准备后续 batch</td><td>内存压力增加</td><td>比较 step time p50/p95</td></tr><tr><td>缓存 action stats</td><td>避免重复扫描数据</td><td>stats 和数据版本可能不一致</td><td>记录 stats 文件 hash / 数据版本</td></tr></tbody></table>
+        <pre><code># 简单定位 loader 是否慢
+start = time.perf_counter()
+batch = next(iter(train_loader))
+load_ms = (time.perf_counter() - start) * 1000
+
+torch.cuda.synchronize()
+start = time.perf_counter()
+outputs = model(**move_to_cuda(batch))
+torch.cuda.synchronize()
+forward_ms = (time.perf_counter() - start) * 1000
+
+print(f"load={load_ms:.1f}ms, forward={forward_ms:.1f}ms")</code></pre>
+      </section>
+
+      <section id="simplerenv">
+        <h2>SimplerEnv：为什么需要仿真评估</h2>
+        <p class="lead">真机评估成本高、复现实验难。SimplerEnv 提供可重复的仿真任务，让 VLA 模型在视觉观察下闭环输出动作，并统计成功率。</p>
+        <div class="grid cols-3">
+          <div class="card"><h3>输入</h3><p>环境返回 observation，通常包含 RGB 图像、状态信息和任务相关 metadata。</p></div>
+          <div class="card"><h3>策略</h3><p>OpenVLA 根据图像和语言指令输出动作，执行在环境中。</p></div>
+          <div class="card"><h3>输出</h3><p>环境返回新 observation、reward、done、info，`info.success` 常用于成功率统计。</p></div>
+        </div>
+        <details open><summary>Visual Matching 和 Variant 有什么区别？</summary><p>Visual Matching 更接近训练/真实基准视觉分布；Variant 改变颜色、位置、纹理或光照，用来测试泛化和鲁棒性。通常 Variant 更难。</p></details>
+        <div class="callout warn"><strong>结果表使用原则：</strong>SimplerEnv 成功率会随 checkpoint、模型版本、环境版本、任务协议和评估脚本变化。课件中的数字只能作为读表方式示意，不能脱离来源当成固定官方结论。</div>
+      </section>
+
+      <section id="eval-loop">
+        <h2>评估闭环：obs → predict_action → env.step</h2>
+        <pre><code>obs = env.reset()
+for t in range(max_steps):
+    image = Image.fromarray(obs["image"])
+    inputs = processor(prompt, image).to(device, dtype=torch.bfloat16)
+
+    with torch.no_grad():
+        action = model.predict_action(
+            **inputs,
+            unnorm_key="bridge_orig",
+            do_sample=False,
+        )
+
+    obs, reward, done, info = env.step(action)
+    if done:
+        break
+
+success = info.get("success", False)</code></pre>
+        <div class="callout cool"><strong>读评估代码时只抓三件事：</strong>输入图像是否和训练一致，动作是否正确反归一化，成功率是否按任务协议统计。</div>
+      </section>
+
+      <section id="metrics">
+        <h2>指标：成功率之外还要看什么</h2>
+        <table><thead><tr><th>指标</th><th>含义</th><th>为什么重要</th></tr></thead><tbody><tr><td>Success Rate</td><td>任务最终是否完成</td><td>最核心，便于横向比较</td></tr><tr><td>Partial Success</td><td>是否完成中间阶段</td><td>定位失败发生在哪一步</td></tr><tr><td>Episode Length</td><td>完成任务用了多少步</td><td>衡量效率和动作犹豫</td></tr><tr><td>Action Smoothness</td><td>动作是否抖动</td><td>判断策略是否稳定</td></tr><tr><td>Failure Category</td><td>感知、语言、控制、环境失败</td><td>帮助反推改进方向</td></tr></tbody></table>
+        <div class="control"><label for="taskSelect">选择任务，查看常见失败点</label><select id="taskSelect"><option value="pick">Pick Coke Can</option><option value="move">Move Near</option><option value="drawer">Open Drawer</option><option value="variant">Variant Generalization</option></select></div>
+        <div class="callout ok" id="taskAnswer">常见失败：抓取点偏移、夹爪闭合时机错误、目标遮挡导致定位不稳定。</div>
+      </section>
+
+      <section id="consistency">
+        <h2>训练/评估一致性：成功率异常时先查这里</h2>
+        <p class="lead">很多评估失败不是模型不会，而是训练和评估的输入输出协议不一致。下面这张表比单纯调学习率更重要。</p>
+        <table><thead><tr><th>一致性项</th><th>训练侧</th><th>评估侧</th><th>不一致后果</th></tr></thead><tbody><tr><td>图像尺寸</td><td>processor/backbone 需要的尺寸</td><td>环境 obs resize 到同一尺寸</td><td>视觉 token 分布偏移</td></tr><tr><td>颜色空间</td><td>RGB</td><td>RGB，不要 BGR</td><td>目标颜色语义错乱</td></tr><tr><td>prompt 模板</td><td>`In: ...\nOut:`</td><td>同一模板或官方模板</td><td>语言上下文分布偏移</td></tr><tr><td>动作归一化</td><td>按 dataset stats</td><td>`unnorm_key` 对应同一 stats</td><td>动作尺度和方向错误</td></tr><tr><td>gripper 约定</td><td>开/合编码</td><td>环境动作空间同一约定</td><td>抓取时机和方向反了</td></tr><tr><td>最大步数</td><td>训练轨迹长度分布</td><td>评估 episode horizon</td><td>成功率不可比</td></tr></tbody></table>
+        <div class="callout danger"><strong>实用排查顺序：</strong>先录一段评估视频和动作日志，再检查图像、prompt、action、unnorm_key。只有这些都对了，再讨论模型结构或训练数据是否不足。</div>
+      </section>
+
+      <section id="domain-gap">
+        <h2>Domain Gap：BridgeData 和 SimplerEnv 为什么会不一致</h2>
+        <div class="grid cols-3">
+          <div class="card"><h3>视觉差异</h3><p>光照、材质、相机位置、桌面纹理不同，会影响目标检测和空间定位。</p></div>
+          <div class="card"><h3>动力学差异</h3><p>仿真接触、摩擦、夹爪闭合和真实机器人不完全一致，动作可执行性会变。</p></div>
+          <div class="card"><h3>任务定义差异</h3><p>训练语言、评估任务名、成功判定可能不是一一对应。</p></div>
+        </div>
+        <table><thead><tr><th>差异类型</th><th>观察现象</th><th>改进方向</th></tr></thead><tbody><tr><td>视觉 domain gap</td><td>看得到但抓错对象</td><td>图像增强、仿真随机化、多视角训练</td></tr><tr><td>动作 domain gap</td><td>方向对但幅度不对</td><td>重新校准 action stats / unnorm_key</td></tr><tr><td>接触动力学 gap</td><td>碰到物体但无法稳定抓取</td><td>更真实的仿真、真机微调、闭环纠偏</td></tr><tr><td>语言 gap</td><td>任务理解偏差</td><td>统一 prompt 模板和任务描述</td></tr></tbody></table>
+      </section>
+
+      <section id="bugs">
+        <h2>常见 Bug 排查：从字段开始，不要先怪模型</h2>
+        <div class="grid cols-2">
+          <div class="card"><h3>数据侧</h3><ul><li>图像通道顺序错误。</li><li>使用了错误相机视角。</li><li>语言指令字段为空或模板不一致。</li><li>episode 终止 step 被错误采样。</li></ul></div>
+          <div class="card"><h3>动作侧</h3><ul><li>动作 min/max 统计量不匹配。</li><li>gripper 编码方向反了。</li><li>`unnorm_key` 选错。</li><li>token 解码和环境动作空间不一致。</li></ul></div>
+        </div>
+        <table><thead><tr><th>现象</th><th>优先检查</th><th>定位方法</th></tr></thead><tbody><tr><td>模型一直输出边界动作</td><td>动作归一化/反归一化</td><td>打印 raw、normalized、decoded action</td></tr><tr><td>抓取点总偏</td><td>图像预处理和相机视角</td><td>保存 processor 前后的图像</td></tr><tr><td>会动但不完成任务</td><td>prompt 和任务定义</td><td>打印每个 episode 的 instruction</td></tr><tr><td>SimplerEnv 成功率异常低</td><td>动作尺度、环境任务名、成功判定</td><td>录制视频并按失败类别标注</td></tr></tbody></table>
+      </section>
+
+      <section id="interview">
+        <h2>面试问答：D108 高频问题</h2>
+        <div class="quiz-card"><strong>1. 请描述 BridgeData 从磁盘到模型输入的完整数据流。</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">BridgeData 以 RLDS/TFRecord 存储 episode；tfds 读取后得到 episode/steps；Dataset 或 BatchTransform 从 step 中取 image、language instruction、action；图像 resize/normalize，动作按统计量归一化并转成词表末尾共享 bin token；Collator 形成 pixel_values、input_ids、attention_mask、labels，送入 OpenVLA 训练。</div></div>
+        <div class="quiz-card"><strong>2. 为什么用 RLDS 而不是 HDF5？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">RLDS 天然表达 episode/step/reward/action/terminal 等结构，适合多机器人 OXE 数据统一；它支持 tf.data 的并行读取和 prefetch。代价是依赖 TensorFlow，和 PyTorch 训练管线之间需要转换。</div></div>
+        <div class="quiz-card"><strong>3. SimplerEnv 评估最容易错在哪里？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">最容易错在动作反归一化和环境动作空间不匹配，其次是图像预处理、prompt 模板、任务名、成功判定和最大步数。评估失败时先看视频和动作日志，再判断是不是模型能力问题。</div></div>
+      </section>
+
+      <section id="next">
+        <h2>D108 → D109：从数据环境进入推理、评估和失败分析</h2>
+        <p class="lead">D108 已经打通了数据和环境。D109 会继续深入模型加载、推理速度测量、成功率统计、延迟分解和失败 case 分类。</p>
+      </section>
+    </main>
+  </div>
+  <a class="top-link" href="#top" aria-label="返回顶部">↑</a>
+  <script>
+    const progress=document.getElementById('progress');const navLinks=Array.from(document.querySelectorAll('#toc a'));const sections=navLinks.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);function updateProgress(){const s=window.scrollY||document.documentElement.scrollTop;const h=document.documentElement.scrollHeight-window.innerHeight;progress.style.width=(h>0?s/h*100:0)+'%';let current=sections[0];for(const section of sections)if(section.getBoundingClientRect().top<=120)current=section;navLinks.forEach(a=>a.classList.toggle('active',current&&a.getAttribute('href')==='#'+current.id))}window.addEventListener('scroll',updateProgress,{passive:true});window.addEventListener('resize',updateProgress);updateProgress();
+    document.querySelectorAll('[data-tabs]').forEach(group=>{const name=group.getAttribute('data-tabs');group.querySelectorAll('.tab-btn').forEach(button=>{button.addEventListener('click',()=>{group.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));button.classList.add('active');document.querySelectorAll(`[data-panel="${name}"]`).forEach(panel=>panel.classList.toggle('active',panel.id===button.dataset.tab))})})});
+    const binRange=document.getElementById('binRange'),actionRange=document.getElementById('actionRange'),binValue=document.getElementById('binValue'),binWidth=document.getElementById('binWidth'),maxErr=document.getElementById('maxErr'),tokenCount=document.getElementById('tokenCount');function updateBins(){if(!binRange)return;const bins=Number(binRange.value);const width=Number(actionRange.value)/bins;binValue.textContent=bins;binWidth.textContent=width.toFixed(4);maxErr.textContent=(width/2).toFixed(4);tokenCount.textContent=String(bins)}if(binRange)binRange.addEventListener('input',updateBins);if(actionRange)actionRange.addEventListener('change',updateBins);updateBins();
+    const taskSelect=document.getElementById('taskSelect'),taskAnswer=document.getElementById('taskAnswer');const taskMap={pick:'常见失败：抓取点偏移、夹爪闭合时机错误、目标遮挡导致定位不稳定。',move:'常见失败：目标附近定义不清、动作幅度太大、接近目标后仍继续推动。',drawer:'常见失败：把手识别错误、接触点不准、拉动方向和环境约束不匹配。',variant:'常见失败：颜色/纹理/光照变化导致视觉定位下降，语言泛化和空间泛化同时受考验。'};if(taskSelect)taskSelect.addEventListener('change',()=>{taskAnswer.textContent=taskMap[taskSelect.value]});
+    document.querySelectorAll('.reveal').forEach(button=>{button.addEventListener('click',()=>{const answer=button.parentElement.querySelector('.answer');if(!answer)return;answer.classList.toggle('show');button.textContent=answer.classList.contains('show')?'隐藏参考答案':'显示参考答案'})});
+  </script>
+</body>
+</html>

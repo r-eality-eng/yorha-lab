@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>D106 OpenVLA 架构精读</title>
+  <style>
+    :root{--bg:#f5f7fb;--paper:#fff;--ink:#1d2433;--muted:#647084;--line:#dce3ee;--navy:#203657;--teal:#0f9d92;--cyan:#2bb8d8;--orange:#f28c38;--purple:#7367d8;--red:#d95f5f;--shadow:0 18px 45px rgba(32,54,87,.12);--radius:8px;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;--sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--ink);background:linear-gradient(180deg,rgba(15,157,146,.10),rgba(245,247,251,0) 280px),var(--bg);font-family:var(--sans);line-height:1.72}.progress{position:fixed;top:0;left:0;height:4px;width:0;background:linear-gradient(90deg,var(--teal),var(--cyan),var(--purple),var(--orange));z-index:60}
+    .layout{display:grid;grid-template-columns:286px minmax(0,1fr);gap:28px;width:min(1460px,calc(100% - 36px));margin:0 auto;padding:28px 0 64px}aside{position:sticky;top:22px;align-self:start;height:calc(100vh - 44px);overflow:auto;padding:18px;background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);backdrop-filter:blur(10px)}.brand{display:grid;gap:6px;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:14px}.brand strong{color:var(--navy);font-size:18px}.brand span{color:var(--muted);font-size:13px}nav a{display:block;padding:9px 10px;margin:3px 0;color:#34415a;text-decoration:none;border-radius:6px;font-size:14px}nav a:hover,nav a.active{color:#073d54;background:rgba(43,184,216,.13)}
+    main{min-width:0}.hero{min-height:530px;display:grid;grid-template-columns:1.02fr .98fr;gap:24px;align-items:center;padding:42px;background:linear-gradient(135deg,#203657,#176b75 58%,#453a9a);color:white;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}.eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 9px;border:1px solid rgba(255,255,255,.34);border-radius:999px;color:rgba(255,255,255,.88);font-size:13px}h1{margin:18px 0 12px;font-size:clamp(36px,5vw,66px);line-height:1.05;letter-spacing:0}.hero p{max-width:780px;color:rgba(255,255,255,.88);font-size:18px}.hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}.btn{border:0;border-radius:6px;padding:10px 14px;font:inherit;cursor:pointer;text-decoration:none;color:#17243a;background:white;font-weight:800}.btn.secondary{color:white;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28)}.hero-visual{min-height:390px;display:grid;place-items:center}
+    section{margin-top:24px;padding:30px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 10px 28px rgba(32,54,87,.08)}section>h2{margin:0 0 14px;color:var(--navy);font-size:28px;line-height:1.25;letter-spacing:0}h3{margin:24px 0 10px;color:#263a5d;font-size:20px;letter-spacing:0}p{margin:10px 0}.lead{color:#3d4a61;font-size:17px}.grid{display:grid;gap:16px}.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.card{padding:18px;border:1px solid var(--line);border-radius:var(--radius);background:#fbfcff}.card h3{margin-top:0}.tag{display:inline-flex;padding:4px 8px;border-radius:999px;background:rgba(43,184,216,.12);color:#07516a;font-size:12px;font-weight:800}.callout{padding:16px 18px;border-left:4px solid var(--cyan);background:#effbff;border-radius:0 var(--radius) var(--radius) 0;margin:16px 0}.warn{border-left-color:var(--orange);background:#fff7ed}.cool{border-left-color:var(--purple);background:#f3f1ff}.ok{border-left-color:var(--teal);background:#eefaf8}
+    .svg-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:#fbfdff;padding:10px}svg{max-width:100%;height:auto;display:block}.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 16px}.tab-btn{border:1px solid var(--line);background:#f8fbff;color:#33415c;padding:8px 11px;border-radius:6px;cursor:pointer;font-weight:800}.tab-btn.active{background:var(--navy);border-color:var(--navy);color:white}.tab-panel{display:none}.tab-panel.active{display:block}
+    details{border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;background:#fbfcff;margin:10px 0}summary{cursor:pointer;font-weight:800;color:var(--navy)}code,pre{font-family:var(--mono)}code{padding:2px 5px;border-radius:4px;background:#eef2f7;color:#27374f}pre{overflow:auto;padding:16px;border-radius:var(--radius);background:#f6f8fb;color:#243044;border:1px solid var(--line);line-height:1.58;font-size:13px}table{width:100%;border-collapse:collapse;border-radius:var(--radius);border:1px solid var(--line);overflow:hidden}th,td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}th{background:#eef4fa;color:var(--navy)}tr:last-child td{border-bottom:0}.control{display:grid;gap:8px;margin:12px 0}.control label{font-weight:800;color:var(--navy)}input[type="range"]{width:100%}select{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;background:white;color:var(--ink);font:inherit}.quiz-card{border:1px solid var(--line);border-radius:var(--radius);padding:16px;background:#fbfcff;margin:12px 0}.answer{display:none;margin-top:10px;padding:12px;border-radius:6px;background:#effbff;color:#073d54}.answer.show{display:block}.top-link{position:fixed;right:22px;bottom:22px;width:42px;height:42px;display:grid;place-items:center;border-radius:50%;color:white;background:var(--navy);text-decoration:none;box-shadow:var(--shadow)}
+    @media(max-width:1040px){.layout{grid-template-columns:1fr}aside{position:relative;height:auto;top:0}.hero{grid-template-columns:1fr;min-height:auto;padding:26px}.cols-2,.cols-3{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+  <div class="layout">
+    <aside>
+      <div class="brand"><strong>D106 OpenVLA 架构精读</strong><span>第16周 · Prismatic · Llama2 · RT-2 对比</span></div>
+      <nav id="toc">
+        <a href="#overview">学习目标</a><a href="#architecture">总架构</a><a href="#prismatic">双编码器</a><a href="#siglip-dino">SigLIP vs DINOv2</a><a href="#clip-siglip">CLIP vs SigLIP</a><a href="#dino-distill">DINOv2 自蒸馏</a><a href="#fusion">特征融合</a><a href="#dimension-flow">维度流</a><a href="#llama">Llama2 序列</a><a href="#training">训练配置</a><a href="#action-token">Action Token</a><a href="#rt2-compare">对比 RT-2</a><a href="#data-strategy">数据策略</a><a href="#deployment">推理部署</a><a href="#latency">延迟分解</a><a href="#roadmap">改进路线</a><a href="#decision">场景选择</a><a href="#interview">面试问答</a><a href="#quiz">自测</a><a href="#next">下一天</a>
+      </nav>
+    </aside>
+    <main>
+      <header class="hero" id="top">
+        <div>
+          <span class="eyebrow">Week 16 / Day 106 / OpenVLA</span>
+          <h1>OpenVLA 架构精读：Prismatic + Llama2 + Action Tokens</h1>
+          <p>D106 是第16周入口。目标不是只记住 “SigLIP + DINOv2 + Llama2”，而是理解 OpenVLA 为什么这样组合开源组件，它和 RT-2 的核心取舍是什么。</p>
+          <div class="hero-actions"><a class="btn" href="#architecture">看总架构</a><a class="btn secondary" href="#rt2-compare">对比 RT-2</a><a class="btn secondary" href="d106_openvla_arch_clean.md">查看 Markdown 原文</a></div>
+        </div>
+        <div class="hero-visual">
+          <svg viewBox="0 0 700 430" role="img" aria-label="OpenVLA hero architecture">
+            <defs><marker id="arrowHero106" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#fff"/></marker><filter id="shadow106" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#10243d" flood-opacity=".28"/></filter></defs>
+            <rect x="28" y="28" width="644" height="374" rx="18" fill="rgba(255,255,255,.10)" stroke="rgba(255,255,255,.26)"/>
+            <g filter="url(#shadow106)">
+              <rect x="74" y="82" width="140" height="74" rx="12" fill="#fff"/><text x="144" y="113" text-anchor="middle" fill="#0f5d65" font-size="18" font-weight="900">SigLIP</text><text x="144" y="138" text-anchor="middle" fill="#647084" font-size="13">语义 what</text>
+              <rect x="254" y="82" width="140" height="74" rx="12" fill="#fff"/><text x="324" y="113" text-anchor="middle" fill="#453a9a" font-size="18" font-weight="900">DINOv2</text><text x="324" y="138" text-anchor="middle" fill="#647084" font-size="13">空间 where</text>
+              <rect x="164" y="206" width="150" height="74" rx="12" fill="#fff"/><text x="239" y="237" text-anchor="middle" fill="#203657" font-size="18" font-weight="900">Projection</text><text x="239" y="262" text-anchor="middle" fill="#647084" font-size="13">对齐 LLM 维度</text>
+              <rect x="424" y="170" width="170" height="96" rx="12" fill="#fff"/><text x="509" y="206" text-anchor="middle" fill="#7a4314" font-size="20" font-weight="900">Llama2-7B</text><text x="509" y="236" text-anchor="middle" fill="#647084" font-size="13">visual + language</text>
+              <rect x="344" y="322" width="170" height="56" rx="12" fill="#fff"/><text x="429" y="356" text-anchor="middle" fill="#d95f5f" font-size="18" font-weight="900">7 Action Tokens</text>
+            </g>
+            <g stroke="#fff" stroke-width="3" fill="none" marker-end="url(#arrowHero106)"><path d="M144 156 C145 184 178 198 206 206"/><path d="M324 156 C312 184 278 198 252 206"/><path d="M314 243 L424 218"/><path d="M509 266 C500 304 462 316 429 322"/></g>
+          </svg>
+        </div>
+      </header>
+
+      <section id="overview">
+        <h2>学习目标：建立 OpenVLA 的架构坐标</h2>
+        <div class="grid cols-3">
+          <div class="card"><span class="tag">架构</span><h3>看懂数据流</h3><p>图像经过 SigLIP 和 DINOv2，融合成 visual tokens，再和语言 token 一起进入 Llama2，最后生成动作 token。</p></div>
+          <div class="card"><span class="tag">取舍</span><h3>解释设计原因</h3><p>SigLIP 偏语义，DINOv2 偏空间；OpenVLA 追求开源可复现，RT-2 追求借用更大 VLM 的知识。</p></div>
+          <div class="card"><span class="tag">面试</span><h3>能讲 trade-off</h3><p>能回答双编码器、纯机器人数据、6Hz 推理、OpenVLA vs RT-2 适用场景。</p></div>
+        </div>
+      </section>
+
+      <section id="architecture">
+        <h2>OpenVLA 总架构：从图像和指令到 7 维动作</h2>
+        <p class="lead">OpenVLA 可以理解为一个开源 VLA 组合系统：用开源视觉编码器替代闭源大视觉模型，用 Llama2-7B 承担语言和动作生成。</p>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1180 570" role="img" aria-label="OpenVLA full architecture">
+            <defs><marker id="arrowArch106" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#203657"/></marker></defs>
+            <rect x="48" y="70" width="220" height="90" rx="14" fill="#eefaf8" stroke="#9ed9d1"/><text x="158" y="107" text-anchor="middle" fill="#0f5d65" font-size="20" font-weight="900">Robot Image</text><text x="158" y="134" text-anchor="middle" fill="#647084" font-size="13">384 x 384</text>
+            <rect x="48" y="244" width="220" height="70" rx="14" fill="#fff7ed" stroke="#f0c596"/><text x="158" y="286" text-anchor="middle" fill="#7a4314" font-size="18" font-weight="900">Instruction</text>
+            <rect x="350" y="54" width="210" height="74" rx="14" fill="#eefaf8" stroke="#9ed9d1"/><text x="455" y="86" text-anchor="middle" fill="#0f5d65" font-weight="900">SigLIP</text><text x="455" y="110" text-anchor="middle" fill="#647084" font-size="13">语义图文对齐</text>
+            <rect x="350" y="154" width="210" height="74" rx="14" fill="#f3f1ff" stroke="#c8c1f2"/><text x="455" y="186" text-anchor="middle" fill="#453a9a" font-weight="900">DINOv2</text><text x="455" y="210" text-anchor="middle" fill="#647084" font-size="13">空间结构特征</text>
+            <rect x="632" y="104" width="210" height="86" rx="14" fill="#fff" stroke="#dce3ee"/><text x="737" y="138" text-anchor="middle" fill="#203657" font-weight="900">Feature Fusion</text><text x="737" y="164" text-anchor="middle" fill="#647084" font-size="13">concat + MLP projection</text>
+            <rect x="632" y="254" width="210" height="70" rx="14" fill="#fff" stroke="#dce3ee"/><text x="737" y="296" text-anchor="middle" fill="#203657" font-weight="900">Text Tokens</text>
+            <rect x="904" y="134" width="220" height="120" rx="16" fill="#fff7ed" stroke="#f0c596"/><text x="1014" y="176" text-anchor="middle" fill="#7a4314" font-size="22" font-weight="900">Llama2-7B</text><text x="1014" y="206" text-anchor="middle" fill="#647084" font-size="13">visual tokens + language tokens</text><text x="1014" y="230" text-anchor="middle" fill="#647084" font-size="13">自回归生成 action tokens</text>
+            <rect x="904" y="360" width="220" height="88" rx="16" fill="#fff3f3" stroke="#efb3b3"/><text x="1014" y="394" text-anchor="middle" fill="#a33b3b" font-size="20" font-weight="900">Action Decoder</text><text x="1014" y="422" text-anchor="middle" fill="#647084" font-size="13">7 tokens → 连续 7D 动作</text>
+            <g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#arrowArch106)"><path d="M268 115 L350 91"/><path d="M268 115 L350 191"/><path d="M560 91 C595 96 610 118 632 136"/><path d="M560 191 C595 186 610 166 632 154"/><path d="M842 147 L904 180"/><path d="M268 279 L632 289"/><path d="M842 289 C875 280 890 245 904 220"/><path d="M1014 254 L1014 360"/></g>
+          </svg>
+        </div>
+        <div class="callout"><strong>一句话主线：</strong>OpenVLA 用双视觉编码器补足语义和空间，用 projection 把视觉 token 对齐到 Llama2 维度，再让 Llama2 像生成文本一样生成 7 个动作 token。</div>
+      </section>
+
+      <section id="prismatic">
+        <h2>Prismatic 双视觉编码器：what + where</h2>
+        <div class="grid cols-2">
+          <div class="card"><h3>为什么单编码器不够</h3><p>只用语义编码器，模型知道“这是杯子”，但可能不知道把手的精确位置；只用空间编码器，边缘和局部结构清楚，但未必知道哪些区域在语义上重要。</p><ul><li>SigLIP：知道是什么。</li><li>DINOv2：知道在哪里。</li><li>融合后：知道要抓什么，也知道大概从哪里抓。</li></ul></div>
+          <div class="card"><h3>机器人操作的直觉</h3><p>抓取不是图像分类。机器人要理解“红杯子”这种语义对象，也要定位把手、边缘、遮挡、桌面接触点等空间细节。Prismatic 的设计就是把这两类能力显式组合。</p></div>
+        </div>
+      </section>
+
+      <section id="siglip-dino">
+        <h2>SigLIP 与 DINOv2：两个编码器各自解决什么</h2>
+        <div class="tabs" data-tabs="vision"><button class="tab-btn active" data-tab="vision-siglip">SigLIP</button><button class="tab-btn" data-tab="vision-dino">DINOv2</button><button class="tab-btn" data-tab="vision-robot">机器人视角</button></div>
+        <div id="vision-siglip" class="tab-panel active" data-panel="vision"><div class="grid cols-2"><div class="card"><h3>SigLIP：语义对齐</h3><p>SigLIP 来自图文对比学习，核心能力是把图像区域和语言概念对齐。对机器人而言，它帮助模型理解“红杯子”“把手”“盘子旁边”等语义对象。</p><pre><code>logits = image_features @ text_features.T
+loss = sigmoid_pairwise_loss(logits, labels)</code></pre></div><div class="callout ok"><strong>记忆法：</strong>SigLIP 回答 what：这是什么物体，它和语言指令中的哪个概念相关。</div></div></div>
+        <div id="vision-dino" class="tab-panel" data-panel="vision"><div class="grid cols-2"><div class="card"><h3>DINOv2：空间结构</h3><p>DINOv2 通过自监督蒸馏学到鲁棒视觉特征，通常对边界、局部结构、物体区域有更好的空间对应。对机器人而言，这对抓取点和操作位置很重要。</p><pre><code>student = encoder(local_view)
+teacher = ema_encoder(global_view)
+loss = distillation_loss(student, teacher)</code></pre></div><div class="callout cool"><strong>记忆法：</strong>DINOv2 回答 where：目标在哪里、边界在哪里、局部结构怎么分布。</div></div></div>
+        <div id="vision-robot" class="tab-panel" data-panel="vision"><table><thead><tr><th>任务</th><th>只看语义的问题</th><th>只看空间的问题</th><th>双编码器收益</th></tr></thead><tbody><tr><td>抓杯子把手</td><td>知道是杯子，但把手定位不准</td><td>看到边缘，但不知道把手语义重要</td><td>知道抓哪个语义部位，也保留局部位置</td></tr><tr><td>把红块放到盘子上</td><td>红块语义可识别，但相对位置不稳</td><td>空间关系清楚，但颜色/对象语义弱</td><td>同时利用颜色语义和几何位置</td></tr></tbody></table></div>
+      </section>
+
+      <section id="clip-siglip">
+        <h2>CLIP vs SigLIP：为什么 Sigmoid Loss 有价值</h2>
+        <p class="lead">OpenVLA 使用 SigLIP，不只是因为它强，更因为它提供稳定的图文语义对齐。机器人需要知道图像中的哪个物体对应语言指令。</p>
+        <table><thead><tr><th>维度</th><th>CLIP / InfoNCE</th><th>SigLIP / Sigmoid</th></tr></thead><tbody><tr><td>训练目标</td><td>batch 内 softmax 分类</td><td>每个 image-text pair 独立二分类</td></tr><tr><td>负样本关系</td><td>所有负样本互相竞争</td><td>每个负样本独立判断</td></tr><tr><td>工程直觉</td><td>从一堆文本中选正确文本</td><td>判断这对图文是否匹配</td></tr><tr><td>对 OpenVLA 的价值</td><td>提供语义对齐基线</td><td>稳定提供物体、属性、关系语义</td></tr></tbody></table>
+        <pre><code># CLIP: batch 内 softmax
+logits = image_features @ text_features.T
+loss = cross_entropy(logits, labels)
+
+# SigLIP: pairwise sigmoid
+logits = image_features @ text_features.T
+loss = sigmoid_binary_loss(logits, pair_labels)</code></pre>
+      </section>
+
+      <section id="dino-distill">
+        <h2>DINOv2 自蒸馏：为什么它更像空间结构专家</h2>
+        <p class="lead">DINOv2 不依赖文本语义，而是从图像自身学习稳定视觉结构。它通过 student/teacher 自蒸馏，让局部视图和全局视图形成一致表征。</p>
+        <div class="svg-wrap"><svg viewBox="0 0 1080 360" role="img" aria-label="DINOv2 distillation"><defs><marker id="arrowDino106" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#203657"/></marker></defs><rect x="70" y="70" width="190" height="72" rx="12" fill="#eefaf8" stroke="#9ed9d1"/><text x="165" y="112" text-anchor="middle" fill="#0f5d65" font-weight="900">全局视图</text><rect x="70" y="220" width="190" height="72" rx="12" fill="#fff7ed" stroke="#f0c596"/><text x="165" y="262" text-anchor="middle" fill="#7a4314" font-weight="900">局部视图</text><rect x="380" y="70" width="190" height="72" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/><text x="475" y="112" text-anchor="middle" fill="#453a9a" font-weight="900">Teacher EMA</text><rect x="380" y="220" width="190" height="72" rx="12" fill="#fff" stroke="#dce3ee"/><text x="475" y="262" text-anchor="middle" fill="#203657" font-weight="900">Student</text><rect x="710" y="142" width="230" height="78" rx="12" fill="#fff3f3" stroke="#efb3b3"/><text x="825" y="174" text-anchor="middle" fill="#a33b3b" font-weight="900">对齐损失</text><text x="825" y="199" text-anchor="middle" fill="#647084" font-size="13">学习稳定空间表征</text><g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#arrowDino106)"><path d="M260 106 L380 106"/><path d="M260 256 L380 256"/><path d="M570 106 C640 110 675 150 710 170"/><path d="M570 256 C640 250 675 210 710 192"/></g></svg></div>
+        <div class="callout cool"><strong>机器人意义：</strong>DINOv2 帮助模型保留边界、局部结构、物体区域和视角鲁棒性，对抓取点、放置位置、避障都很关键。</div>
+      </section>
+
+      <section id="fusion">
+        <h2>特征融合：patch-level 特征对齐到 Llama2 维度</h2>
+        <p class="lead">OpenVLA 不是把整张图压成一个向量，而是保留 patch-level visual tokens。这样 Llama2 能看到一组视觉 token，而不是单个全局摘要。</p>
+        <div class="grid cols-3"><div class="card"><h3>SigLIP patches</h3><p>示意维度：729 x 1152，偏语义。</p></div><div class="card"><h3>DINOv2 patches</h3><p>示意维度：729 x 1024，偏空间。</p></div><div class="card"><h3>Projection</h3><p>投影、拼接、MLP，得到 Llama2 可接收的 visual tokens。</p></div></div>
+        <div class="callout warn"><strong>注意：</strong>这里的维度讲解是教学化简。真实实现中的维度、取层方式、patch 数和 projector 细节要以具体 OpenVLA/Prismatic 配置为准。</div>
+      </section>
+
+      <section id="dimension-flow">
+        <h2>Prismatic 维度流：projection 不是简单降维</h2>
+        <p class="lead">视觉编码器输出和 Llama2 hidden size 不天然一致，projection 的作用是把视觉表征翻译到 Llama2 的 token embedding 空间。</p>
+        <div class="svg-wrap"><svg viewBox="0 0 1120 370" role="img" aria-label="Prismatic dimension flow"><defs><marker id="arrowDim106" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#203657"/></marker></defs><rect x="50" y="70" width="210" height="68" rx="12" fill="#eefaf8" stroke="#9ed9d1"/><text x="155" y="98" text-anchor="middle" fill="#0f5d65" font-weight="900">SigLIP</text><text x="155" y="121" text-anchor="middle" fill="#647084" font-size="13">729 x 1152</text><rect x="50" y="220" width="210" height="68" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/><text x="155" y="248" text-anchor="middle" fill="#453a9a" font-weight="900">DINOv2</text><text x="155" y="271" text-anchor="middle" fill="#647084" font-size="13">729 x 1024</text><rect x="370" y="70" width="180" height="68" rx="12" fill="#fff" stroke="#dce3ee"/><text x="460" y="112" text-anchor="middle" fill="#203657" font-weight="900">Linear → 4096</text><rect x="370" y="220" width="180" height="68" rx="12" fill="#fff" stroke="#dce3ee"/><text x="460" y="262" text-anchor="middle" fill="#203657" font-weight="900">Linear → 4096</text><rect x="660" y="145" width="180" height="78" rx="12" fill="#fff7ed" stroke="#f0c596"/><text x="750" y="176" text-anchor="middle" fill="#7a4314" font-weight="900">Concat</text><text x="750" y="201" text-anchor="middle" fill="#647084" font-size="13">729 x 8192</text><rect x="930" y="145" width="150" height="78" rx="12" fill="#fff3f3" stroke="#efb3b3"/><text x="1005" y="176" text-anchor="middle" fill="#a33b3b" font-weight="900">MLP</text><text x="1005" y="201" text-anchor="middle" fill="#647084" font-size="13">729 x 4096</text><g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#arrowDim106)"><path d="M260 104 L370 104"/><path d="M260 254 L370 254"/><path d="M550 104 C605 110 630 150 660 172"/><path d="M550 254 C605 250 630 215 660 196"/><path d="M840 184 L930 184"/></g></svg></div>
+      </section>
+
+      <section id="llama">
+        <h2>Llama2 作为语言模型骨干：把动作当成可生成 token</h2>
+        <p class="lead">OpenVLA 的关键范式是让 Llama2 接收 visual tokens 和 language tokens，然后自回归生成 action tokens。动作不再是传统控制器输出，而是语言模型输出空间的一部分。</p>
+        <div class="svg-wrap"><svg viewBox="0 0 1120 330" role="img" aria-label="OpenVLA sequence format"><defs><marker id="arrowSeq106" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#203657"/></marker></defs><rect x="50" y="88" width="650" height="86" rx="12" fill="#fbfdff" stroke="#dce3ee"/><text x="375" y="72" text-anchor="middle" fill="#203657" font-size="18" font-weight="900">输入序列</text><rect x="78" y="112" width="320" height="38" rx="8" fill="#eefaf8"/><text x="238" y="137" text-anchor="middle" fill="#0f5d65" font-weight="900">V1 ... V729 visual tokens</text><rect x="426" y="112" width="240" height="38" rx="8" fill="#fff7ed"/><text x="546" y="137" text-anchor="middle" fill="#7a4314" font-weight="900">L1 ... Ln language tokens</text><rect x="760" y="88" width="310" height="86" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/><text x="915" y="122" text-anchor="middle" fill="#453a9a" font-size="20" font-weight="900">Llama2-7B</text><text x="915" y="150" text-anchor="middle" fill="#647084" font-size="13">next-token prediction</text><rect x="340" y="242" width="440" height="60" rx="12" fill="#fff3f3" stroke="#efb3b3"/><text x="560" y="278" text-anchor="middle" fill="#a33b3b" font-size="18" font-weight="900">A1 ... A7 action tokens → 7D action</text><path d="M700 131 L760 131" stroke="#203657" stroke-width="3" fill="none" marker-end="url(#arrowSeq106)"/><path d="M915 174 C900 220 780 250 780 272" stroke="#203657" stroke-width="3" fill="none" marker-end="url(#arrowSeq106)"/></svg></div>
+      </section>
+
+      <section id="training">
+        <h2>OpenVLA 训练配置：每个选择都有工程含义</h2>
+        <table><thead><tr><th>配置</th><th>含义</th><th>工程影响</th></tr></thead><tbody><tr><td>冻结 SigLIP/DINOv2</td><td>保留预训练视觉能力</td><td>节省显存和训练成本</td></tr><tr><td>训练 projection</td><td>对齐视觉和语言空间</td><td>决定 visual tokens 能否被 LLM 理解</td></tr><tr><td>训练 LLM</td><td>让 Llama2 学会输出动作 token</td><td>成本高，但动作能力主要来自这里</td></tr><tr><td>bf16</td><td>混合精度训练</td><td>降低显存，提高吞吐</td></tr><tr><td>OXE 数据</td><td>多机器人、多任务</td><td>提升泛化，但带来动作空间异构问题</td></tr></tbody></table>
+        <div class="callout ok"><strong>训练主线：</strong>冻结视觉编码器，训练 projection + LLM，用 OXE 机器人数据监督 action tokens。</div>
+      </section>
+
+      <section id="action-token">
+        <h2>Action Tokenizer：256 bins 如何影响动作精度</h2>
+        <div class="grid cols-2"><div class="card"><h3>交互理解：bins 和量化误差</h3><div class="control"><label for="binRange">bins 数量：<span id="binValue">256</span></label><input id="binRange" type="range" min="32" max="512" step="32" value="256" /></div><div class="callout ok" id="binExplain">假设动作范围 [-1,1]，bin width 约 0.0078，最大量化误差约 0.0039。</div></div><div class="card"><h3>离散化流程</h3><ol><li>把连续动作裁剪到固定范围。</li><li>映射到 0 到 bins-1 的整数。</li><li>转成 action token id。</li><li>推理时反解码回连续动作。</li></ol></div></div>
+      </section>
+
+      <section id="rt2-compare">
+        <h2>OpenVLA vs RT-2：不是谁替代谁，而是取舍不同</h2>
+        <table><thead><tr><th>维度</th><th>RT-2</th><th>OpenVLA</th><th>影响</th></tr></thead><tbody><tr><td>视觉编码器</td><td>PaLI-X / PaLM-E 内部大视觉模型</td><td>SigLIP + DINOv2 双编码器</td><td>OpenVLA 更开源可复现，RT-2 借用更大闭源基座能力</td></tr><tr><td>语言模型</td><td>大规模 VLM 内部语言模块</td><td>Llama2-7B</td><td>OpenVLA 工具链成熟，参数规模更轻</td></tr><tr><td>训练数据</td><td>Web 图文数据 + 机器人数据 co-fine-tuning</td><td>主要使用 OXE 机器人数据</td><td>RT-2 语义泛化更强，OpenVLA 数据分布更贴近机器人</td></tr><tr><td>开源程度</td><td>论文为主</td><td>代码、权重、数据路线更开放</td><td>OpenVLA 更适合学习、复现和改造</td></tr></tbody></table>
+        <div class="callout cool"><strong>面试表达：</strong>RT-2 定义了 VLM→VLA 的范式和涌现能力价值，OpenVLA 则把这个范式变成更开放、更可复现、更容易工程实验的路线。</div>
+      </section>
+
+      <section id="data-strategy">
+        <h2>数据策略：RT-2 的知识迁移 vs OpenVLA 的开源复现</h2>
+        <table><thead><tr><th>维度</th><th>RT-2</th><th>OpenVLA</th></tr></thead><tbody><tr><td>数据来源</td><td>Web 图文数据 + 机器人数据</td><td>OXE 机器人数据</td></tr><tr><td>训练方式</td><td>Co-fine-tuning</td><td>机器人数据监督训练</td></tr><tr><td>优势</td><td>开放语义和常识更强</td><td>可复现，数据分布贴近机器人</td></tr><tr><td>劣势</td><td>闭源、训练成本高</td><td>互联网语义知识相对弱</td></tr><tr><td>适合回答</td><td>如何把 VLM 知识迁移到机器人</td><td>如何开源复现 VLA 系统</td></tr></tbody></table>
+        <div class="callout warn"><strong>高分回答：</strong>RT-2 更强调知识迁移上限，OpenVLA 更强调开源工程复现。两者不是简单替代，而是两条互补路线。</div>
+      </section>
+
+      <section id="deployment">
+        <h2>推理与部署：6Hz 够不够，瓶颈在哪里</h2>
+        <p class="lead">OpenVLA 的推理速度示例约为 170ms/step，也就是大约 6Hz。对低速精细操作可能够用，对高速动态任务通常不够。</p>
+        <div class="grid cols-3"><div class="card"><h3>可接受场景</h3><p>低速抓取、桌面整理、实验室演示、离线评估。</p></div><div class="card"><h3>风险场景</h3><p>高速避障、动态抓取、强实时闭环、接触变化很快的任务。</p></div><div class="card"><h3>优化方向</h3><p>INT8/INT4 量化、KV cache、speculative decoding、更少动作 token、连续动作生成。</p></div></div>
+      </section>
+
+      <section id="latency">
+        <h2>推理延迟分解：为什么 7 个 action tokens 会慢</h2>
+        <div class="svg-wrap"><svg viewBox="0 0 1080 300" role="img" aria-label="OpenVLA latency breakdown"><rect x="70" y="80" width="940" height="74" rx="12" fill="#eef4fa" stroke="#dce3ee"/><rect x="70" y="80" width="166" height="74" rx="12" fill="#0f9d92"/><text x="153" y="123" text-anchor="middle" fill="#fff" font-weight="900">Vision 30ms</text><rect x="236" y="80" width="40" height="74" fill="#2bb8d8"/><text x="256" y="123" text-anchor="middle" fill="#fff" font-weight="900">5</text><rect x="276" y="80" width="110" height="74" fill="#7367d8"/><text x="331" y="123" text-anchor="middle" fill="#fff" font-weight="900">Prefill 20ms</text><rect x="386" y="80" width="624" height="74" rx="12" fill="#f28c38"/><text x="698" y="123" text-anchor="middle" fill="#fff" font-weight="900">LLM decode 7 action tokens 115ms</text><text x="540" y="215" text-anchor="middle" fill="#203657" font-size="18" font-weight="900">主要瓶颈通常是自回归解码 7 个 action tokens</text></svg></div>
+        <p>动作是 7 个 token 自回归生成，每个 token 都依赖前面结果，因此延迟会累积。控制系统需要低延迟，而语言模型天然更偏上下文建模和吞吐。</p>
+      </section>
+
+      <section id="roadmap">
+        <h2>OpenVLA 改进路线图</h2>
+        <table><thead><tr><th>目标</th><th>改进方向</th><th>可能代价</th></tr></thead><tbody><tr><td>提升语义泛化</td><td>加入 web/video 预训练或更强 VLM</td><td>训练成本变高，数据噪声增加</td></tr><tr><td>提升空间精度</td><td>更新视觉编码器、加入深度/多视角</td><td>传感器和输入 pipeline 更复杂</td></tr><tr><td>提升控制频率</td><td>量化、蒸馏、减少 action tokens、连续生成</td><td>可能损失语义能力或动作精度</td></tr><tr><td>提升任务适配</td><td>LoRA 微调、任务数据增强</td><td>可能过拟合特定任务</td></tr></tbody></table>
+        <div class="callout ok"><strong>最终判断：</strong>OpenVLA 的意义不是它已经是最终答案，而是它提供了一个开源、可复现、可改造的 VLA 基线。</div>
+      </section>
+
+      <section id="decision">
+        <h2>场景选择器：什么时候更像 OpenVLA，什么时候更像 RT-2</h2>
+        <select id="scenarioSelect"><option value="research">我要做学术复现和代码改造</option><option value="semantic">我要追求最强开放语义泛化</option><option value="edge">我要在有限显存或边缘设备上实验</option><option value="industrial">我要做有资源的大规模工业系统</option><option value="learn">我要学习 VLA 的完整实现细节</option></select>
+        <div class="callout ok" id="scenarioAnswer">推荐 OpenVLA：代码、权重和数据路线更开放，更适合复现、消融和工程改造。</div>
+      </section>
+
+      <section id="interview">
+        <h2>面试问答：D106 的高频追问</h2>
+        <details open><summary>Q1：请画出 OpenVLA 架构并解释数据流。</summary><p>图像先进入 SigLIP 和 DINOv2，分别提取语义和空间特征；两路 patch features 经过 projection 和融合后变成 visual tokens；visual tokens 与语言 tokens 一起输入 Llama2-7B；模型自回归生成 7 个 action tokens，再解码为连续 7D 动作。</p></details>
+        <details><summary>Q2：为什么 OpenVLA 要用 SigLIP + DINOv2？</summary><p>机器人操作同时需要语义理解和空间定位。SigLIP 更擅长对象语义，DINOv2 更擅长局部结构和空间对应。双编码器是用开源模型组合出语义和空间的互补能力。</p></details>
+        <details><summary>Q3：OpenVLA 只用机器人数据训练，不用 Web 数据，是优势还是劣势？</summary><p>优势是数据分布更贴近机器人控制，OXE 公开可复现；劣势是互联网语义知识较弱，对完全新奇概念的泛化可能不如 RT-2。</p></details>
+        <details><summary>Q4：OpenVLA 6Hz 够用吗？主要瓶颈是什么？</summary><p>低速桌面操作可能够用，高速动态控制不够。主要瓶颈通常在 LLM 自回归解码多个 action tokens。</p></details>
+      </section>
+
+      <section id="quiz">
+        <h2>自测：能不能讲清 D106</h2>
+        <div class="quiz-card"><strong>1. 用一句话概括 Prismatic 双编码器的价值。</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">SigLIP 提供语义理解，DINOv2 提供空间结构，二者融合让机器人同时知道“是什么”和“在哪里”。</div></div>
+        <div class="quiz-card"><strong>2. OpenVLA 和 RT-2 最大的工程差异是什么？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">OpenVLA 更开源、轻量、可复现，基于开源视觉编码器和 Llama2；RT-2 基于更大 VLM 和 web+robot co-fine-tuning，语义迁移更强但复现和部署门槛高。</div></div>
+      </section>
+
+      <section id="next">
+        <h2>D106 → D107：从架构图进入代码库</h2>
+        <p class="lead">D106 建立了 OpenVLA 的架构坐标。D107 会进入代码库精读：环境搭建、目录结构、model/data/train 三条主线和完整数据流。</p>
+      </section>
+    </main>
+  </div>
+  <a class="top-link" href="#top" aria-label="返回顶部">↑</a>
+  <script>
+    const progress=document.getElementById('progress');const navLinks=Array.from(document.querySelectorAll('#toc a'));const sections=navLinks.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);function updateProgress(){const s=window.scrollY||document.documentElement.scrollTop;const h=document.documentElement.scrollHeight-window.innerHeight;progress.style.width=(h>0?s/h*100:0)+'%';let current=sections[0];for(const section of sections)if(section.getBoundingClientRect().top<=120)current=section;navLinks.forEach(a=>a.classList.toggle('active',current&&a.getAttribute('href')==='#'+current.id))}window.addEventListener('scroll',updateProgress,{passive:true});window.addEventListener('resize',updateProgress);updateProgress();
+    document.querySelectorAll('[data-tabs]').forEach(group=>{const name=group.getAttribute('data-tabs');group.querySelectorAll('.tab-btn').forEach(button=>{button.addEventListener('click',()=>{group.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));button.classList.add('active');document.querySelectorAll(`[data-panel="${name}"]`).forEach(panel=>panel.classList.toggle('active',panel.id===button.dataset.tab))})})});
+    const binRange=document.getElementById('binRange'),binValue=document.getElementById('binValue'),binExplain=document.getElementById('binExplain');function updateBins(){if(!binRange)return;const bins=Number(binRange.value),width=2/bins,error=width/2;binValue.textContent=bins;binExplain.textContent=`假设动作范围 [-1,1]，bin width 约 ${width.toFixed(4)}，最大量化误差约 ${error.toFixed(4)}。`}if(binRange)binRange.addEventListener('input',updateBins);updateBins();
+    const scenarioSelect=document.getElementById('scenarioSelect'),scenarioAnswer=document.getElementById('scenarioAnswer');const scenarioMap={research:'推荐 OpenVLA：代码、权重和数据路线更开放，更适合复现、消融和工程改造。',semantic:'更偏 RT-2 思路：大规模 VLM 和 web+robot co-fine-tuning 更有利于开放语义迁移。',edge:'推荐 OpenVLA 优化版：7B 规模可量化，较适合单卡或有限显存实验。',industrial:'可借鉴 RT-2 思路：如果有私有数据和算力，可追求更强 VLM 基座和泛化能力。',learn:'两者都读：RT-2 帮你理解范式，OpenVLA 帮你理解工程实现。'};if(scenarioSelect)scenarioSelect.addEventListener('change',()=>{scenarioAnswer.textContent=scenarioMap[scenarioSelect.value]});
+    document.querySelectorAll('.reveal').forEach(button=>{button.addEventListener('click',()=>{const answer=button.parentElement.querySelector('.answer');if(!answer)return;answer.classList.toggle('show');button.textContent=answer.classList.contains('show')?'隐藏参考答案':'显示参考答案'})});
+  </script>
+</body>
+</html>

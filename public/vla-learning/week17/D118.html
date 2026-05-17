@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>D118 HPT vs RDT：机器人基础模型架构设计</title>
+  <style>
+    :root{
+      --bg:#f5f7fb;--paper:#fff;--ink:#1f2937;--muted:#667085;--line:#d9e2ee;
+      --navy:#17324d;--blue:#2563eb;--cyan:#0891b2;--green:#238636;--amber:#d97706;--red:#d64545;--violet:#6d5bd0;
+      --soft-blue:#eef6ff;--soft-green:#effaf2;--soft-amber:#fff7e8;--soft-violet:#f5f2ff;--soft-cyan:#ecfeff;
+      --shadow:0 16px 40px rgba(23,50,77,.12);--radius:8px;
+      --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+      --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    }
+    *{box-sizing:border-box}html{scroll-behavior:smooth}
+    body{margin:0;color:var(--ink);font-family:var(--sans);line-height:1.72;background:linear-gradient(180deg,#e8f7ff 0,#f5f7fb 420px)}
+    .progress{position:fixed;top:0;left:0;height:4px;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--green),var(--amber));z-index:20}
+    .layout{width:min(1520px,calc(100% - 36px));margin:0 auto;display:grid;grid-template-columns:310px minmax(0,1fr);gap:26px;padding:28px 0 72px}
+    aside{position:sticky;top:22px;align-self:start;height:calc(100vh - 44px);overflow:auto;padding:18px;background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .brand{padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:12px}.brand strong{display:block;color:var(--navy);font-size:18px}.brand span{display:block;color:var(--muted);font-size:13px}
+    nav a{display:block;text-decoration:none;color:#33415c;border-radius:6px;padding:8px 10px;margin:3px 0;font-size:14px}nav a:hover,nav a.active{background:#e8f2ff;color:#0a5ca8}
+    main{min-width:0}.hero{min-height:560px;display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center;padding:42px;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;color:#fff;background:linear-gradient(135deg,#17324d,#155e75 54%,#4c3f91)}
+    .eyebrow{display:inline-flex;padding:5px 10px;border:1px solid rgba(255,255,255,.34);border-radius:999px;color:rgba(255,255,255,.92);font-size:13px}
+    h1{margin:18px 0 12px;font-size:clamp(34px,5vw,60px);line-height:1.05;letter-spacing:0}.hero p{font-size:18px;color:rgba(255,255,255,.9)}
+    .hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}.btn{border:0;border-radius:6px;padding:10px 14px;font:inherit;font-weight:800;text-decoration:none;cursor:pointer;background:#fff;color:#17243a}.btn.secondary{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);color:#fff}
+    section{margin-top:24px;padding:30px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 10px 28px rgba(23,50,77,.08)}
+    section>h2{margin:0 0 14px;color:var(--navy);font-size:28px;line-height:1.25;letter-spacing:0}h3{margin:22px 0 10px;color:#263a5d;font-size:20px;letter-spacing:0}p{margin:10px 0}.lead{font-size:17px;color:#3d4a61}
+    .grid{display:grid;gap:16px}.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .card{padding:18px;border:1px solid var(--line);border-radius:var(--radius);background:#fbfcff}.card h3{margin-top:0}.tag{display:inline-flex;padding:4px 8px;border-radius:999px;background:#e9f4ff;color:#0b5fa5;font-size:12px;font-weight:800}
+    .callout{padding:16px 18px;border-left:4px solid var(--blue);background:#eef7ff;border-radius:0 var(--radius) var(--radius) 0;margin:16px 0}.ok{border-left-color:var(--green);background:var(--soft-green)}.warn{border-left-color:var(--amber);background:var(--soft-amber)}.cool{border-left-color:var(--violet);background:var(--soft-violet)}.danger{border-left-color:var(--red);background:#fff1f1}
+    .svg-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:#fbfdff;padding:10px}svg{max-width:100%;height:auto;display:block}
+    code,pre{font-family:var(--mono)}code{padding:2px 5px;border-radius:4px;background:#eef2f7;color:#243044}
+    pre{overflow:auto;padding:16px;border:1px solid var(--line);border-radius:var(--radius);background:#f6f8fb;color:#243044;line-height:1.58;font-size:13px}
+    table{width:100%;border-collapse:collapse;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#edf5fc;color:var(--navy)}tr:last-child td{border-bottom:0}
+    .control{display:grid;gap:8px;margin:12px 0}.control label{font-weight:800;color:var(--navy)}input[type=range]{width:100%}
+    .score{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.score div{padding:14px;border:1px solid var(--line);border-radius:6px;background:#fff}.score strong{display:block;font-size:26px;color:var(--navy)}
+    .bars{display:grid;gap:10px}.bar{height:34px;border-radius:6px;background:#edf2f7;overflow:hidden;border:1px solid var(--line)}.bar span{display:block;height:100%;min-width:42px;background:linear-gradient(90deg,#2563eb,#0891b2);color:#fff;font-weight:900;padding-left:10px;line-height:34px;white-space:nowrap}
+    .chart{width:100%;height:320px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:block}
+    .tabs{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 16px}.tab-btn{border:1px solid var(--line);background:#f8fbff;color:#33415c;padding:8px 11px;border-radius:6px;cursor:pointer;font-weight:800}.tab-btn.active{background:var(--navy);border-color:var(--navy);color:white}.tab-panel{display:none}.tab-panel.active{display:block}
+    .quiz-card{border:1px solid var(--line);border-radius:var(--radius);padding:16px;background:#fbfcff;margin:12px 0}.answer{display:none;margin-top:10px;padding:12px;border-radius:6px;background:#effbff;color:#073d54}.answer.show{display:block}
+    .top-link{position:fixed;right:22px;bottom:22px;width:42px;height:42px;display:grid;place-items:center;border-radius:50%;color:white;background:var(--navy);text-decoration:none;box-shadow:var(--shadow)}
+    @media(max-width:1040px){.layout{grid-template-columns:1fr}aside{position:relative;height:auto;top:0}.hero{grid-template-columns:1fr;min-height:auto;padding:26px}.cols-2,.cols-3,.cols-4,.score{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+  <div class="layout">
+    <aside>
+      <div class="brand"><strong>D118 HPT vs RDT</strong><span>架构设计 · DiT Scaling · Trade-off</span></div>
+      <nav id="toc">
+        <a href="#overview">学习目标</a>
+        <a href="#space">设计空间</a>
+        <a href="#hpt">HPT 架构</a>
+        <a href="#rdt">RDT 架构</a>
+        <a href="#dit">DiT Scaling</a>
+        <a href="#compare">对比矩阵</a>
+        <a href="#selector">架构选择器</a>
+        <a href="#sampling">采样Trade-off</a>
+        <a href="#hybrid">混合架构</a>
+        <a href="#connection">知识连接</a>
+        <a href="#interview">面试表达</a>
+        <a href="#homework">作业闭环</a>
+        <a href="#risk">部署风险</a>
+        <a href="#quiz">自测</a>
+        <a href="#summary">最终总结</a>
+      </nav>
+    </aside>
+
+    <main>
+      <header class="hero" id="top">
+        <div>
+          <span class="eyebrow">Week 17 / Day 118 / 架构设计空间</span>
+          <h1>HPT vs RDT：机器人基础模型该怎么选架构</h1>
+          <p>D118 不是背单篇论文，而是建立架构判断力：HPT 偏统一表征和迁移，RDT 偏高质量扩散生成，DiT Scaling 关注大模型条件生成和缩放。</p>
+          <div class="hero-actions">
+            <a class="btn" href="#selector">打开选择器</a>
+            <a class="btn secondary" href="#compare">看对比矩阵</a>
+            <a class="btn secondary" href="d118_hpt_rdt_architecture_clean.md">查看 Markdown</a>
+          </div>
+        </div>
+        <div class="svg-wrap" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25)">
+          <svg viewBox="0 0 760 470" role="img" aria-label="architecture design space">
+            <defs><marker id="heroArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#fff"/></marker></defs>
+            <rect x="40" y="38" width="680" height="394" rx="20" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.28)"/>
+            <rect x="92" y="90" width="170" height="96" rx="14" fill="#fff"/><text x="177" y="128" text-anchor="middle" fill="#0b4f88" font-weight="900" font-size="20">HPT</text><text x="177" y="158" text-anchor="middle" fill="#667085">Stem · Trunk · Head</text>
+            <rect x="296" y="90" width="170" height="96" rx="14" fill="#fff"/><text x="381" y="128" text-anchor="middle" fill="#1f7a4d" font-weight="900" font-size="20">RDT</text><text x="381" y="158" text-anchor="middle" fill="#667085">Diffusion · Denoise</text>
+            <rect x="500" y="90" width="170" height="96" rx="14" fill="#fff"/><text x="585" y="128" text-anchor="middle" fill="#5842b0" font-weight="900" font-size="20">DiT</text><text x="585" y="158" text-anchor="middle" fill="#667085">Scaling · Transformer</text>
+            <g stroke="#fff" stroke-width="3" marker-end="url(#heroArrow)"><path d="M177 188 L177 265"/><path d="M381 188 L381 265"/><path d="M585 188 L585 265"/></g>
+            <rect x="100" y="280" width="560" height="76" rx="14" fill="rgba(255,255,255,.18)" stroke="rgba(255,255,255,.35)"/>
+            <text x="380" y="314" text-anchor="middle" fill="#fff" font-weight="900" font-size="20">按约束选择：实时性 · 多样性 · 异构数据 · 算力 · 上线风险</text>
+            <text x="380" y="348" text-anchor="middle" fill="rgba(255,255,255,.9)" font-size="15">不是谁一定最好，而是谁最匹配当前任务边界</text>
+          </svg>
+        </div>
+      </header>
+
+      <section id="overview">
+        <h2>学习目标：从模型名字升级到架构判断</h2>
+        <div class="grid cols-4">
+          <div class="card"><span class="tag">HPT</span><h3>统一表征</h3><p>理解 stem-trunk-head 如何处理异构模态、不同机器人和任务头。</p></div>
+          <div class="card"><span class="tag">RDT</span><h3>扩散生成</h3><p>理解 noisy action、timestep、condition 和 denoising transformer 的关系。</p></div>
+          <div class="card"><span class="tag">DiT</span><h3>缩放范式</h3><p>理解 transformer diffusion 如何通过模型、数据、采样步数扩展能力。</p></div>
+          <div class="card"><span class="tag">Trade-off</span><h3>工程选择</h3><p>能按延迟、质量、多样性、泛化、算力选择架构。</p></div>
+        </div>
+        <div class="callout warn">准确性口径：本页代码和图是教学抽象，重点是模块边界和设计维度，不等同于 HPT/RDT/DiT 官方实现。</div>
+      </section>
+
+      <section id="space">
+        <h2>设计空间：三类架构解决的问题不同</h2>
+        <table>
+          <thead><tr><th>范式</th><th>核心问题</th><th>典型数据流</th><th>最大取舍</th></tr></thead>
+          <tbody>
+            <tr><td>HPT</td><td>异构数据如何统一成可迁移表征</td><td>多模态输入 → Stem → Trunk → Head</td><td>推理快、迁移强，但动作生成多样性弱</td></tr>
+            <tr><td>RDT</td><td>复杂连续动作分布如何高质量生成</td><td>noisy action + condition + timestep → denoise</td><td>质量高、多样性强，但采样延迟高</td></tr>
+            <tr><td>DiT Scaling</td><td>扩散模型如何用 Transformer 规模化</td><td>latent/action token + condition → DiT blocks</td><td>容量和质量强，但训练与部署成本高</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="hpt">
+        <h2>HPT：Stem-Trunk-Head 的统一表征路线</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1220 540" role="img" aria-label="HPT architecture">
+            <defs><marker id="hptArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#17324d"/></marker></defs>
+            <rect x="40" y="40" width="1140" height="420" rx="18" fill="#fbfdff" stroke="#d9e2ee"/>
+            <g>
+              <rect x="85" y="85" width="150" height="70" rx="12" fill="#eef6ff" stroke="#aacdec"/><text x="160" y="127" text-anchor="middle" fill="#0b4f88" font-weight="900">Image Stem</text>
+              <rect x="85" y="180" width="150" height="70" rx="12" fill="#ecfeff" stroke="#9bdce5"/><text x="160" y="222" text-anchor="middle" fill="#0f6875" font-weight="900">State Stem</text>
+              <rect x="85" y="275" width="150" height="70" rx="12" fill="#fff7e8" stroke="#f2c782"/><text x="160" y="317" text-anchor="middle" fill="#8a4b00" font-weight="900">Language Stem</text>
+            </g>
+            <rect x="350" y="155" width="210" height="120" rx="14" fill="#f5f2ff" stroke="#cabdf8"/><text x="455" y="205" text-anchor="middle" fill="#5842b0" font-weight="900" font-size="20">Shared Trunk</text><text x="455" y="235" text-anchor="middle" fill="#667085">Transformer 表征空间</text>
+            <rect x="690" y="85" width="190" height="70" rx="12" fill="#effaf2" stroke="#b7dfc0"/><text x="785" y="127" text-anchor="middle" fill="#1f7a4d" font-weight="900">Manipulation Head</text>
+            <rect x="690" y="180" width="190" height="70" rx="12" fill="#effaf2" stroke="#b7dfc0"/><text x="785" y="222" text-anchor="middle" fill="#1f7a4d" font-weight="900">Navigation Head</text>
+            <rect x="690" y="275" width="190" height="70" rx="12" fill="#effaf2" stroke="#b7dfc0"/><text x="785" y="317" text-anchor="middle" fill="#1f7a4d" font-weight="900">Locomotion Head</text>
+            <rect x="960" y="155" width="150" height="120" rx="14" fill="#fff" stroke="#d9e2ee"/><text x="1035" y="203" text-anchor="middle" fill="#17324d" font-weight="900">Robot Adapter</text><text x="1035" y="234" text-anchor="middle" fill="#667085">跨机器人适配</text>
+            <g stroke="#17324d" stroke-width="3" marker-end="url(#hptArrow)"><path d="M235 120 L350 190"/><path d="M235 215 L350 215"/><path d="M235 310 L350 240"/><path d="M560 215 L690 120"/><path d="M560 215 L690 215"/><path d="M560 215 L690 310"/><path d="M880 215 L960 215"/></g>
+          </svg>
+        </div>
+        <div class="callout ok">HPT 的强项是“统一输入和迁移”。如果数据来自不同机器人、不同传感器、不同任务，HPT-style 模块化表征通常更容易 debug 和上线。</div>
+      </section>
+
+      <section id="rdt">
+        <h2>RDT：把动作生成看成条件去噪</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1220 520" role="img" aria-label="RDT denoising pipeline">
+            <defs><marker id="rdtArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#17324d"/></marker></defs>
+            <rect x="42" y="48" width="1136" height="390" rx="18" fill="#fbfdff" stroke="#d9e2ee"/>
+            <rect x="90" y="130" width="160" height="90" rx="12" fill="#fff7e8" stroke="#f2c782"/><text x="170" y="166" text-anchor="middle" fill="#8a4b00" font-weight="900">Noisy Action</text><text x="170" y="195" text-anchor="middle" fill="#667085">x_t</text>
+            <rect x="90" y="260" width="160" height="90" rx="12" fill="#eef6ff" stroke="#aacdec"/><text x="170" y="296" text-anchor="middle" fill="#0b4f88" font-weight="900">Condition</text><text x="170" y="325" text-anchor="middle" fill="#667085">image/lang/state</text>
+            <rect x="350" y="170" width="240" height="120" rx="14" fill="#f5f2ff" stroke="#cabdf8"/><text x="470" y="218" text-anchor="middle" fill="#5842b0" font-weight="900" font-size="20">Diffusion Transformer</text><text x="470" y="250" text-anchor="middle" fill="#667085">self-attn + cross condition + timestep</text>
+            <rect x="705" y="170" width="180" height="120" rx="14" fill="#effaf2" stroke="#b7dfc0"/><text x="795" y="218" text-anchor="middle" fill="#1f7a4d" font-weight="900">Noise / Action</text><text x="795" y="250" text-anchor="middle" fill="#667085">预测去噪方向</text>
+            <rect x="980" y="170" width="130" height="120" rx="14" fill="#ecfeff" stroke="#9bdce5"/><text x="1045" y="218" text-anchor="middle" fill="#0f6875" font-weight="900">Action</text><text x="1045" y="250" text-anchor="middle" fill="#667085">x_0</text>
+            <g stroke="#17324d" stroke-width="3" marker-end="url(#rdtArrow)"><path d="M250 175 L350 210"/><path d="M250 305 L350 250"/><path d="M590 230 L705 230"/><path d="M885 230 L980 230"/></g>
+            <text x="610" y="370" text-anchor="middle" fill="#33415c" font-weight="900">RDT 的本质：从噪声动作逐步去噪成高质量动作序列，适合多峰和复杂接触动作。</text>
+          </svg>
+        </div>
+        <div class="callout warn">RDT 的代价主要在采样链路：多步去噪会带来延迟、显存和调参成本。真实部署时要关心采样步数、控制频率和失败恢复。</div>
+      </section>
+
+      <section id="dit">
+        <h2>DiT Scaling：把扩散模型做成可扩展 Transformer</h2>
+        <div class="grid cols-2">
+          <div class="card"><h3>DiT 的核心</h3><p>把扩散模型中的 U-Net 风格 backbone 换成 Transformer blocks，让模型容量、token 数、条件注入方式可以更规律地扩展。</p></div>
+          <div class="card"><h3>机器人里的意义</h3><p>动作序列、视觉 token、语言 token、本体状态都可以被组织成条件生成问题。DiT 提供的是“大规模条件去噪”的架构路线。</p></div>
+        </div>
+        <pre><code># 教学版 DiT 数据流
+latent_action = action_encoder(noisy_action)      # [B, T, C]
+condition = condition_encoder(image, text, state) # [B, L, C]
+for block in dit_blocks:
+    latent_action = block(latent_action, condition, timestep)
+pred = output_head(latent_action)</code></pre>
+      </section>
+
+      <section id="compare">
+        <h2>详细对比矩阵</h2>
+        <table>
+          <thead><tr><th>维度</th><th>HPT</th><th>RDT</th><th>DiT Scaling</th></tr></thead>
+          <tbody>
+            <tr><td>核心目标</td><td>统一表征和迁移</td><td>高质量动作生成</td><td>大规模条件生成</td></tr>
+            <tr><td>推理延迟</td><td>低，单次前向</td><td>高，多步采样</td><td>中到高，取决于采样步数和潜在空间</td></tr>
+            <tr><td>动作多样性</td><td>弱到中</td><td>强</td><td>强</td></tr>
+            <tr><td>异构数据</td><td>强，stem/adapter 天然适合</td><td>中，需要条件编码对齐</td><td>中到强，依赖规模和条件设计</td></tr>
+            <tr><td>工程调试</td><td>相对容易，模块边界清楚</td><td>较难，采样链路长</td><td>较难，缩放和调参成本高</td></tr>
+            <tr><td>适用场景</td><td>低延迟、多机器人、多任务迁移</td><td>复杂操作、多解轨迹、高质量动作</td><td>大数据大模型、追求 scaling 的统一生成</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="selector">
+        <h2>交互式架构选择器</h2>
+        <p class="lead">调节项目约束，观察 HPT、RDT、DiT 的推荐分数。这个选择器不是绝对结论，而是帮你形成 trade-off 思维。</p>
+        <div class="grid cols-2">
+          <div>
+            <div class="control"><label>实时性要求：<span id="latencyVal">8</span></label><input id="latency" type="range" min="0" max="10" value="8"></div>
+            <div class="control"><label>动作多样性要求：<span id="diversityVal">5</span></label><input id="diversity" type="range" min="0" max="10" value="5"></div>
+            <div class="control"><label>异构机器人/模态程度：<span id="heteroVal">8</span></label><input id="hetero" type="range" min="0" max="10" value="8"></div>
+            <div class="control"><label>可用算力/训练规模：<span id="computeVal">6</span></label><input id="compute" type="range" min="0" max="10" value="6"></div>
+          </div>
+          <div>
+            <div class="score">
+              <div><strong id="hptScore">0</strong><span>HPT</span></div>
+              <div><strong id="rdtScore">0</strong><span>RDT</span></div>
+              <div><strong id="ditScore">0</strong><span>DiT</span></div>
+            </div>
+            <h3>推荐结果</h3>
+            <div class="bars">
+              <div class="bar"><span id="hptBar">HPT</span></div>
+              <div class="bar"><span id="rdtBar">RDT</span></div>
+              <div class="bar"><span id="ditBar">DiT</span></div>
+            </div>
+            <div class="callout cool" id="selectNote">调节滑块查看建议。</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="sampling">
+        <h2>RDT / DiT 采样步数 Trade-off</h2>
+        <p class="lead">扩散类架构的核心工程问题是采样步数。步数越多，动作质量和稳定性通常更好；但延迟几乎线性增加，控制频率会受到影响。</p>
+        <div class="grid cols-2">
+          <div>
+            <div class="control"><label>扩散采样步数：<span id="stepsVal">8</span></label><input id="steps" type="range" min="1" max="50" value="8"></div>
+            <div class="score">
+              <div><strong id="latencyMs">0</strong><span>估计延迟 ms</span></div>
+              <div><strong id="qualityVal">0</strong><span>质量分</span></div>
+              <div><strong id="qpmVal">0</strong><span>quality/ms</span></div>
+            </div>
+            <div class="callout warn" id="samplingNote">调节采样步数查看质量和延迟的变化。</div>
+          </div>
+          <div>
+            <canvas id="samplingCanvas" class="chart" width="920" height="320" aria-label="diffusion sampling tradeoff chart"></canvas>
+          </div>
+        </div>
+        <pre><code>python3 week17_html/d118_architecture_tradeoff_experiment.py</code></pre>
+      </section>
+
+      <section id="hybrid">
+        <h2>混合架构：真实项目经常不是三选一</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1220 520" role="img" aria-label="hybrid architecture">
+            <defs><marker id="hyArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#17324d"/></marker></defs>
+            <rect x="42" y="48" width="1136" height="390" rx="18" fill="#fbfdff" stroke="#d9e2ee"/>
+            <rect x="95" y="150" width="180" height="100" rx="14" fill="#eef6ff" stroke="#aacdec"/><text x="185" y="192" text-anchor="middle" fill="#0b4f88" font-weight="900">HPT Encoder</text><text x="185" y="222" text-anchor="middle" fill="#667085">统一多模态表征</text>
+            <rect x="390" y="120" width="190" height="90" rx="14" fill="#effaf2" stroke="#b7dfc0"/><text x="485" y="158" text-anchor="middle" fill="#1f7a4d" font-weight="900">Fast Head</text><text x="485" y="184" text-anchor="middle" fill="#667085">低延迟动作</text>
+            <rect x="390" y="250" width="190" height="90" rx="14" fill="#fff7e8" stroke="#f2c782"/><text x="485" y="288" text-anchor="middle" fill="#8a4b00" font-weight="900">RDT / DiT Head</text><text x="485" y="314" text-anchor="middle" fill="#667085">高质量生成</text>
+            <rect x="700" y="180" width="190" height="100" rx="14" fill="#f5f2ff" stroke="#cabdf8"/><text x="795" y="220" text-anchor="middle" fill="#5842b0" font-weight="900">Policy Router</text><text x="795" y="250" text-anchor="middle" fill="#667085">按任务/延迟切换</text>
+            <rect x="990" y="180" width="120" height="100" rx="14" fill="#ecfeff" stroke="#9bdce5"/><text x="1050" y="220" text-anchor="middle" fill="#0f6875" font-weight="900">Action</text><text x="1050" y="250" text-anchor="middle" fill="#667085">闭环执行</text>
+            <g stroke="#17324d" stroke-width="3" marker-end="url(#hyArrow)"><path d="M275 200 L390 165"/><path d="M275 200 L390 295"/><path d="M580 165 L700 215"/><path d="M580 295 L700 245"/><path d="M890 230 L990 230"/></g>
+          </svg>
+        </div>
+        <div class="callout ok">推荐工程路线：先用 HPT-style encoder 统一多模态表征，再根据动作复杂度和延迟约束选择 deterministic head、RDT head 或 DiT head。</div>
+      </section>
+
+      <section id="connection">
+        <h2>D113-D118 知识连接</h2>
+        <table>
+          <thead><tr><th>天数</th><th>核心主题</th><th>和 D118 的关系</th></tr></thead>
+          <tbody>
+            <tr><td>D113</td><td>π0 / Flow Matching</td><td>和 RDT/DiT 一样属于生成式动作建模，只是采样范式不同</td></tr>
+            <tr><td>D114</td><td>条件注入</td><td>HPT/RDT/DiT 的关键差异之一就是条件注入方式</td></tr>
+            <tr><td>D115</td><td>Action Head</td><td>HPT head、RDT noise head、DiT output head 都是输出头设计问题</td></tr>
+            <tr><td>D116</td><td>长 Horizon 推理</td><td>高层推理可接 HPT 表征，底层控制可接 RDT/DiT 生成</td></tr>
+            <tr><td>D117</td><td>FAST Tokenizer</td><td>FAST 是动作表示路线，RDT/DiT 是动作生成路线，二者可组合</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="interview">
+        <h2>面试表达：不要说“谁更好”，要说“约束下怎么选”</h2>
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="q1">HPT vs RDT</button>
+          <button class="tab-btn" data-tab="q2">DiT Scaling</button>
+          <button class="tab-btn" data-tab="q3">混合方案</button>
+          <button class="tab-btn" data-tab="q4">部署风险</button>
+        </div>
+        <div class="tab-panel active" id="q1"><p>如果强调低延迟、多机器人迁移和工程可控性，我会优先 HPT；如果任务存在多条合理动作轨迹、复杂接触和高质量生成需求，我会优先 RDT。但 RDT 的多步采样要用少步采样、蒸馏或 receding horizon 控制延迟。</p></div>
+        <div class="tab-panel" id="q2"><p>DiT Scaling 的意义是把扩散式动作生成放进 Transformer 扩展规律里。它适合大规模数据和算力，但不是免费午餐：训练成本、采样成本、条件注入稳定性都要评估。</p></div>
+        <div class="tab-panel" id="q3"><p>实际项目可以用 HPT 做多模态和跨机器人表征，再挂一个 RDT/DiT action generator。这样 HPT 解决“看懂世界和迁移”，RDT/DiT 解决“复杂动作怎么生成”。</p></div>
+        <div class="tab-panel" id="q4"><p>部署风险包括采样延迟超标、动作空间未对齐、条件被模型忽略、扩散随机性带来不稳定、离线指标和闭环成功率脱节，以及新机器人 adapter 迁移不足。</p></div>
+      </section>
+
+      <section id="homework">
+        <h2>本日作业与验收</h2>
+        <div class="grid cols-3">
+          <div class="card"><h3>作业1：画三张图</h3><p>分别画 HPT、RDT、DiT 的数据流。验收：每张图必须标出输入、核心模块、输出和主要代价。</p></div>
+          <div class="card"><h3>作业2：做案例选择</h3><p>厨房移动机械臂需要跨场景泛化、动作质量高、低延迟。验收：给出 HPT+少步RDT/DiT 的混合方案。</p></div>
+          <div class="card"><h3>作业3：写风险清单</h3><p>至少覆盖延迟、动作空间对齐、条件注入、随机性、闭环失败和新机器人迁移。</p></div>
+        </div>
+      </section>
+
+      <section id="risk">
+        <h2>部署前排错清单</h2>
+        <table>
+          <thead><tr><th>风险</th><th>常见表现</th><th>排查方法</th></tr></thead>
+          <tbody>
+            <tr><td>动作空间未对齐</td><td>新机器人动作幅度异常、夹爪行为错乱</td><td>检查 normalization、坐标系、关节/末端动作定义</td></tr>
+            <tr><td>条件注入失效</td><td>模型忽略语言或图像，只输出平均动作</td><td>做 condition ablation，看去掉语言/图像后输出是否变化</td></tr>
+            <tr><td>采样延迟超标</td><td>控制频率达不到，动作滞后</td><td>减少采样步数、蒸馏、缓存条件特征或切换快速 head</td></tr>
+            <tr><td>扩散随机性不稳定</td><td>同一输入多次输出差异过大</td><td>固定种子、多样本筛选、安全过滤、降低噪声</td></tr>
+            <tr><td>Adapter 迁移失败</td><td>新机器人表现远差于训练机器人</td><td>增加 adapter 容量、加 embodiment embedding、补目标机器人数据</td></tr>
+            <tr><td>离线指标不等于闭环成功</td><td>MSE 好但真实任务失败</td><td>做闭环 rollout，统计成功率、碰撞率和恢复率</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="quiz">
+        <h2>自测</h2>
+        <div class="quiz-card"><strong>1. HPT 最适合解决什么问题？</strong><br><button class="btn" data-answer="a1">显示答案</button><div class="answer" id="a1">异构输入、多机器人、多任务的统一表征和迁移问题。它的优势是模块化、低延迟、debug 较容易。</div></div>
+        <div class="quiz-card"><strong>2. RDT 为什么生成质量通常更强？</strong><br><button class="btn" data-answer="a2">显示答案</button><div class="answer" id="a2">因为扩散模型通过条件去噪建模动作分布，天然适合多峰轨迹和复杂连续动作，但代价是多步采样。</div></div>
+        <div class="quiz-card"><strong>3. 什么情况下应该考虑混合架构？</strong><br><button class="btn" data-answer="a3">显示答案</button><div class="answer" id="a3">当项目同时需要跨机器人泛化、复杂动作质量和上线延迟控制时，可以用 HPT 统一表征，再接少步 RDT/DiT 或快速 head。</div></div>
+      </section>
+
+      <section id="summary">
+        <h2>最终总结</h2>
+        <div class="callout ok">D118 的一句话总结：HPT、RDT、DiT 不是简单排名关系，而是三种不同架构路线。HPT 解决统一表征和迁移，RDT 解决复杂动作分布生成，DiT 解决扩散 Transformer 的规模化。</div>
+        <div class="grid cols-3">
+          <div class="card"><h3>默认工程路线</h3><p>先用 HPT-style encoder 统一输入，再根据动作复杂度选择 deterministic/RDT/DiT head。</p></div>
+          <div class="card"><h3>面试关键词</h3><p>实时性、多样性、异构数据、采样步数、条件注入、动作空间对齐、闭环成功率。</p></div>
+          <div class="card"><h3>下一天预告</h3><p>D119 会做 VLA 全景对比、技术演进图和最终 trade-off 总复盘。</p></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <a class="top-link" href="#top">↑</a>
+
+  <script>
+    const progress = document.getElementById('progress');
+    const links = [...document.querySelectorAll('nav a')];
+    const sections = links.map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+    window.addEventListener('scroll', () => {
+      const h = document.documentElement;
+      progress.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
+      let current = sections[0];
+      for (const sec of sections) if (sec.offsetTop - 120 <= scrollY) current = sec;
+      links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + current.id));
+    });
+    function updateSelector(){
+      const latency = +document.getElementById('latency').value;
+      const diversity = +document.getElementById('diversity').value;
+      const hetero = +document.getElementById('hetero').value;
+      const compute = +document.getElementById('compute').value;
+      document.getElementById('latencyVal').textContent = latency;
+      document.getElementById('diversityVal').textContent = diversity;
+      document.getElementById('heteroVal').textContent = hetero;
+      document.getElementById('computeVal').textContent = compute;
+      const hpt = latency*0.36 + hetero*0.42 + (10-diversity)*0.12 + (10-compute)*0.10;
+      const rdt = diversity*0.48 + compute*0.25 + (10-latency)*0.20 + hetero*0.07;
+      const dit = compute*0.42 + diversity*0.30 + hetero*0.18 + (10-latency)*0.10;
+      const scores = {HPT:hpt, RDT:rdt, DiT:dit};
+      const max = Math.max(hpt,rdt,dit);
+      document.getElementById('hptScore').textContent = hpt.toFixed(1);
+      document.getElementById('rdtScore').textContent = rdt.toFixed(1);
+      document.getElementById('ditScore').textContent = dit.toFixed(1);
+      [['hptBar',hpt,'HPT'],['rdtBar',rdt,'RDT'],['ditBar',dit,'DiT']].forEach(([id,v,name])=>{
+        const el=document.getElementById(id); el.style.width=Math.max(8,v/max*100)+'%'; el.textContent=name+' '+v.toFixed(1);
+      });
+      const winner = Object.entries(scores).sort((a,b)=>b[1]-a[1])[0][0];
+      const notes = {
+        HPT:'当前约束更偏向 HPT：实时性和异构数据权重较高，建议先做 stem-trunk-head 表征，再按需加生成 head。',
+        RDT:'当前约束更偏向 RDT：动作多样性和生成质量权重较高，需要同时规划采样步数和延迟优化。',
+        DiT:'当前约束更偏向 DiT：算力和规模化权重较高，适合探索更大的条件生成模型。'
+      };
+      document.getElementById('selectNote').textContent = notes[winner];
+    }
+    ['latency','diversity','hetero','compute'].forEach(id => document.getElementById(id).addEventListener('input', updateSelector));
+    updateSelector();
+    function samplingMetrics(steps){
+      const latency = 12 + steps * 3.8;
+      const quality = 1 - Math.pow(0.82, Math.max(1, steps));
+      const stability = 1 - Math.pow(0.88, Math.max(1, steps));
+      return {latency, quality, stability, qpm: quality / latency};
+    }
+    function drawSampling(){
+      const steps = +document.getElementById('steps').value;
+      const current = samplingMetrics(steps);
+      document.getElementById('stepsVal').textContent = steps;
+      document.getElementById('latencyMs').textContent = current.latency.toFixed(0);
+      document.getElementById('qualityVal').textContent = current.quality.toFixed(3);
+      document.getElementById('qpmVal').textContent = current.qpm.toFixed(4);
+      const note = steps <= 4
+        ? '少步采样延迟低，但复杂动作质量和稳定性可能不足。'
+        : steps <= 16
+          ? '中等步数通常是质量和延迟的折中区间，适合做上线 operating point 搜索。'
+          : '高步数质量更接近饱和，但延迟迅速增加，需要蒸馏或减少控制频率压力。';
+      document.getElementById('samplingNote').textContent = note;
+
+      const canvas = document.getElementById('samplingCanvas');
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle = '#fff'; ctx.fillRect(0,0,W,H);
+      ctx.strokeStyle = '#d9e2ee'; ctx.lineWidth = 1;
+      for(let i=0;i<=5;i++){ const y=36+i*(H-76)/5; ctx.beginPath(); ctx.moveTo(48,y); ctx.lineTo(W-28,y); ctx.stroke(); }
+      ctx.fillStyle = '#667085'; ctx.font = '14px sans-serif';
+      ctx.fillText('蓝=质量分，橙=归一化延迟，绿=quality/ms', 48, 24);
+      const xs = Array.from({length:50}, (_,i)=>i+1);
+      const metrics = xs.map(samplingMetrics);
+      const sx = s => 48 + (s-1)/49*(W-86);
+      const sy01 = v => H-36 - v*(H-88);
+      const maxLatency = Math.max(...metrics.map(m=>m.latency));
+      const maxQpm = Math.max(...metrics.map(m=>m.qpm));
+      function line(values, color, width){
+        ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath();
+        values.forEach((v,i)=> i ? ctx.lineTo(sx(xs[i]), v) : ctx.moveTo(sx(xs[i]), v));
+        ctx.stroke();
+      }
+      line(metrics.map(m=>sy01(m.quality)), '#2563eb', 3);
+      line(metrics.map(m=>sy01(m.latency/maxLatency)), '#d97706', 3);
+      line(metrics.map(m=>sy01(m.qpm/maxQpm)), '#238636', 3);
+      const x = sx(steps);
+      ctx.strokeStyle = '#17324d'; ctx.lineWidth = 2; ctx.setLineDash([5,5]);
+      ctx.beginPath(); ctx.moveTo(x,34); ctx.lineTo(x,H-34); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = '#17324d';
+      ctx.fillText(`steps=${steps}, latency=${current.latency.toFixed(0)}ms, quality=${current.quality.toFixed(3)}`, 48, H-10);
+    }
+    document.getElementById('steps').addEventListener('input', drawSampling);
+    drawSampling();
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+    }));
+    document.querySelectorAll('[data-answer]').forEach(btn => btn.addEventListener('click', () => {
+      document.getElementById(btn.dataset.answer).classList.toggle('show');
+    }));
+  </script>
+</body>
+</html>

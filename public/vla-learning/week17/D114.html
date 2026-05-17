@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>D114 π0 深入：条件注入、训练策略与动作空间</title>
+  <style>
+    :root{
+      --bg:#f5f7fb;--paper:#ffffff;--ink:#1f2937;--muted:#647084;--line:#dbe3ee;
+      --navy:#17324d;--blue:#2563eb;--cyan:#0891b2;--green:#238636;--amber:#d97706;--red:#d64545;--violet:#6d5bd0;
+      --soft-blue:#eef6ff;--soft-green:#effaf2;--soft-amber:#fff7e8;--soft-violet:#f5f2ff;
+      --shadow:0 16px 40px rgba(23,50,77,.12);--radius:8px;
+      --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+      --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;color:var(--ink);font-family:var(--sans);line-height:1.72;background:linear-gradient(180deg,#dff1ff 0,#f5f7fb 390px)}
+    .progress{position:fixed;left:0;top:0;height:4px;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--green),var(--amber));z-index:50}
+    .layout{width:min(1520px,calc(100% - 36px));margin:0 auto;display:grid;grid-template-columns:310px minmax(0,1fr);gap:26px;padding:28px 0 72px}
+    aside{position:sticky;top:22px;align-self:start;height:calc(100vh - 44px);overflow:auto;background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+    .brand{padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:12px}
+    .brand strong{display:block;color:var(--navy);font-size:18px}.brand span{display:block;color:var(--muted);font-size:13px}
+    nav a{display:block;text-decoration:none;color:#33415c;border-radius:6px;padding:8px 10px;margin:3px 0;font-size:14px}
+    nav a:hover,nav a.active{background:#e8f2ff;color:#0a5ca8}
+    main{min-width:0}
+    .hero{min-height:560px;display:grid;grid-template-columns:1.02fr .98fr;gap:28px;align-items:center;padding:42px;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;color:#fff;background:linear-gradient(135deg,#17324d,#145369 48%,#0f766e)}
+    .eyebrow{display:inline-flex;padding:5px 10px;border:1px solid rgba(255,255,255,.34);border-radius:999px;color:rgba(255,255,255,.92);font-size:13px}
+    h1{margin:18px 0 12px;font-size:clamp(34px,5vw,60px);line-height:1.05;letter-spacing:0}.hero p{font-size:18px;color:rgba(255,255,255,.9)}
+    .hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}.btn{border:0;border-radius:6px;padding:10px 14px;font:inherit;font-weight:800;text-decoration:none;cursor:pointer;background:#fff;color:#17243a}.btn.secondary{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);color:#fff}
+    section{margin-top:24px;padding:30px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 10px 28px rgba(23,50,77,.08)}
+    section>h2{margin:0 0 14px;color:var(--navy);font-size:28px;line-height:1.25;letter-spacing:0}h3{margin:22px 0 10px;color:#263a5d;font-size:20px;letter-spacing:0}p{margin:10px 0}.lead{font-size:17px;color:#3d4a61}
+    .grid{display:grid;gap:16px}.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .card{padding:18px;border:1px solid var(--line);border-radius:var(--radius);background:#fbfcff}.card h3{margin-top:0}
+    .tag{display:inline-flex;padding:4px 8px;border-radius:999px;background:#e9f4ff;color:#0b5fa5;font-size:12px;font-weight:800}
+    .callout{padding:16px 18px;border-left:4px solid var(--blue);background:#eef7ff;border-radius:0 var(--radius) var(--radius) 0;margin:16px 0}.ok{border-left-color:var(--green);background:var(--soft-green)}.warn{border-left-color:var(--amber);background:var(--soft-amber)}.cool{border-left-color:var(--violet);background:var(--soft-violet)}.danger{border-left-color:var(--red);background:#fff1f1}
+    .svg-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:#fbfdff;padding:10px}svg{max-width:100%;height:auto;display:block}
+    code,pre{font-family:var(--mono)}code{padding:2px 5px;border-radius:4px;background:#eef2f7;color:#243044}
+    pre{overflow:auto;padding:16px;border:1px solid var(--line);border-radius:var(--radius);background:#f6f8fb;color:#243044;line-height:1.58;font-size:13px}
+    table{width:100%;border-collapse:collapse;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#edf5fc;color:var(--navy)}tr:last-child td{border-bottom:0}
+    .tabs{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 16px}.tab-btn{border:1px solid var(--line);background:#f8fbff;color:#33415c;padding:8px 11px;border-radius:6px;cursor:pointer;font-weight:800}.tab-btn.active{background:var(--navy);border-color:var(--navy);color:white}.tab-panel{display:none}.tab-panel.active{display:block}
+    .control{display:grid;gap:8px;margin:12px 0}.control label{font-weight:800;color:var(--navy)}input[type=range],select{width:100%}select{padding:9px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink);font:inherit}
+    .metric{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.metric div{padding:12px;border:1px solid var(--line);border-radius:6px;background:#fff}.metric strong{display:block;color:var(--navy);font-size:20px}
+    .timeline{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}.phase{padding:16px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;position:relative}.phase.active{outline:3px solid rgba(37,99,235,.22);border-color:#7ab0ff}.phase strong{display:block;color:var(--navy);font-size:18px}
+    .chunk-strip{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-top:14px}.chunk-step{min-height:48px;display:grid;place-items:center;border:1px solid var(--line);border-radius:6px;background:#eef6ff;font-weight:900;color:#0b4f88}.chunk-step.exec{background:#effaf2;color:#1f7a4d;border-color:#a8d8b1}.chunk-step.replan{background:#fff7e8;color:#8a4b00;border-color:#f2c782}
+    .quiz-card{border:1px solid var(--line);border-radius:var(--radius);padding:16px;background:#fbfcff;margin:12px 0}.answer{display:none;margin-top:10px;padding:12px;border-radius:6px;background:#effbff;color:#073d54}.answer.show{display:block}
+    .top-link{position:fixed;right:22px;bottom:22px;width:42px;height:42px;display:grid;place-items:center;border-radius:50%;color:white;background:var(--navy);text-decoration:none;box-shadow:var(--shadow)}
+    @media(max-width:1040px){.layout{grid-template-columns:1fr}aside{position:relative;height:auto;top:0}.hero{grid-template-columns:1fr;min-height:auto;padding:26px}.cols-2,.cols-3,.cols-4,.metric,.timeline{grid-template-columns:1fr}.chunk-strip{grid-template-columns:repeat(4,1fr)}}
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+  <div class="layout">
+    <aside>
+      <div class="brand"><strong>D114 π0 深入</strong><span>Condition · Training · Action Space</span></div>
+      <nav id="toc">
+        <a href="#overview">学习目标</a>
+        <a href="#bridge">承接D113</a>
+        <a href="#architecture">总览图</a>
+        <a href="#condition">条件注入</a>
+        <a href="#condition-tabs">注入方式对比</a>
+        <a href="#expert">Action Expert</a>
+        <a href="#training">训练策略</a>
+        <a href="#training-lab">训练交互</a>
+        <a href="#action-space">动作空间</a>
+        <a href="#chunking">Action Chunking</a>
+        <a href="#normalization">归一化</a>
+        <a href="#dexterous">灵巧手扩展</a>
+        <a href="#ablation">消融口径</a>
+        <a href="#template">代码模板</a>
+        <a href="#checklist">部署检查</a>
+        <a href="#interview">面试表达</a>
+        <a href="#quiz">自测</a>
+        <a href="#summary">最终总结</a>
+      </nav>
+    </aside>
+
+    <main>
+      <header class="hero" id="top">
+        <div>
+          <span class="eyebrow">Week 17 / Day 114 / π0 深入精讲</span>
+          <h1>π0 深入：VLM 条件怎么进 Action Expert，动作到底怎么定义</h1>
+          <p>D114 的重点不是再证明 π0 为什么需要双塔，而是把双塔之间的连接、训练策略和动作空间全部讲清楚。</p>
+          <div class="hero-actions">
+            <a class="btn" href="#architecture">看总览图</a>
+            <a class="btn secondary" href="#condition-tabs">看注入方式</a>
+            <a class="btn secondary" href="d114_pi0_condition_training_actionspace_clean.md">查看 Markdown</a>
+          </div>
+        </div>
+        <div class="svg-wrap" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25)">
+          <svg viewBox="0 0 760 470" role="img" aria-label="D114 pi0 condition training action space hero">
+            <defs>
+              <marker id="heroArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#ffffff"/></marker>
+              <filter id="heroShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#10243d" flood-opacity=".28"/></filter>
+            </defs>
+            <rect x="28" y="28" width="704" height="414" rx="20" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.28)"/>
+            <g filter="url(#heroShadow)">
+              <rect x="78" y="82" width="220" height="92" rx="14" fill="#fff"/>
+              <text x="188" y="120" text-anchor="middle" fill="#0b4f88" font-size="19" font-weight="900">VLM Mid Features</text>
+              <text x="188" y="146" text-anchor="middle" fill="#647084" font-size="13">目标 · 空间 · 任务语义</text>
+              <rect x="462" y="82" width="220" height="92" rx="14" fill="#fff"/>
+              <text x="572" y="120" text-anchor="middle" fill="#1f7a4d" font-size="19" font-weight="900">Cross-Attention</text>
+              <text x="572" y="146" text-anchor="middle" fill="#647084" font-size="13">把语义注入动作序列</text>
+              <rect x="270" y="244" width="220" height="86" rx="14" fill="#fff"/>
+              <text x="380" y="278" text-anchor="middle" fill="#8a4b00" font-size="18" font-weight="900">Training Strategy</text>
+              <text x="380" y="304" text-anchor="middle" fill="#647084" font-size="13">冻结 · 解冻 · 差异学习率</text>
+              <rect x="270" y="358" width="220" height="56" rx="14" fill="#fff"/>
+              <text x="380" y="393" text-anchor="middle" fill="#6d5bd0" font-size="17" font-weight="900">Action Space</text>
+            </g>
+            <g stroke="#fff" stroke-width="3" fill="none" marker-end="url(#heroArrow)">
+              <path d="M298 128 L462 128"/>
+              <path d="M572 174 C555 230 496 260 490 282"/>
+              <path d="M188 174 C210 242 278 266 286 282"/>
+              <path d="M380 330 L380 358"/>
+            </g>
+            <text x="380" y="212" text-anchor="middle" fill="rgba(255,255,255,.9)" font-size="15" font-weight="800">condition injection + stable training + executable actions</text>
+          </svg>
+        </div>
+      </header>
+
+      <section id="overview">
+        <h2>学习目标：D114 要回答的 4 个问题</h2>
+        <div class="grid cols-4">
+          <div class="card"><span class="tag">Q1</span><h3>条件从哪里来</h3><p>VLM 的中间层表征为什么适合作为动作条件，里面应该包含哪些信息。</p></div>
+          <div class="card"><span class="tag">Q2</span><h3>条件怎么注入</h3><p>FiLM、Concat、Cross-Attention 的信息保留能力、计算代价和适用场景。</p></div>
+          <div class="card"><span class="tag">Q3</span><h3>两个模块怎么训练</h3><p>冻结、轻微解冻、联合微调、差异学习率和灾难性遗忘控制。</p></div>
+          <div class="card"><span class="tag">Q4</span><h3>动作到底是什么</h3><p>delta/absolute、坐标系、gripper、归一化、chunk size、receding horizon。</p></div>
+        </div>
+        <div class="callout warn"><strong>准确性提醒：</strong>“第16层”“6层 cross-attention”“冻结前20层”等应理解为教学示意或某类实现选择。面试和报告中更稳妥的说法是：π0-style 系统通常提取 VLM 中间表征，通过适配层或注意力机制注入 Action Expert，并用差异化训练策略稳定联合优化。</div>
+      </section>
+
+      <section id="bridge">
+        <h2>从 D113 到 D114：双塔之外还差什么</h2>
+        <p class="lead">D113 讲清了 π0 的大方向：VLM 负责理解，Flow Matching Action Expert 负责连续动作生成。D114 要把这个大方向落到三个工程问题上。</p>
+        <table>
+          <thead><tr><th>D113 已解决</th><th>D114 继续深入</th><th>为什么重要</th></tr></thead>
+          <tbody>
+            <tr><td>为什么从 action token 转向连续动作</td><td>连续动作空间怎么定义</td><td>动作定义错误会直接导致训练不稳定或机器人执行异常</td></tr>
+            <tr><td>为什么需要 VLM + Action Expert 双塔</td><td>VLM embedding 如何注入 Action Expert</td><td>条件注入决定模型能不能把“看懂”转成“做对”</td></tr>
+            <tr><td>Flow Matching 如何生成 action chunk</td><td>VLM 与 Action Expert 如何分阶段训练</td><td>训练策略决定是否会遗忘 VLM 能力，或 action expert 学不起来</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="architecture">
+        <h2>总览图：D114 的三条主线</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1220 620" role="img" aria-label="D114 pi0 detailed architecture">
+            <defs><marker id="archArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#17324d"/></marker></defs>
+            <rect x="40" y="40" width="1140" height="530" rx="18" fill="#fbfdff" stroke="#d9e2ee"/>
+            <rect x="80" y="100" width="300" height="330" rx="14" fill="#eef6ff" stroke="#aacdec"/>
+            <text x="230" y="138" text-anchor="middle" fill="#0b4f88" font-size="24" font-weight="900">VLM Tower</text>
+            <rect x="112" y="178" width="110" height="58" rx="9" fill="#fff" stroke="#cbd9e8"/><text x="167" y="212" text-anchor="middle" fill="#17324d" font-weight="900">Image</text>
+            <rect x="238" y="178" width="110" height="58" rx="9" fill="#fff" stroke="#cbd9e8"/><text x="293" y="212" text-anchor="middle" fill="#17324d" font-weight="900">Language</text>
+            <rect x="120" y="286" width="220" height="80" rx="10" fill="#fff" stroke="#cbd9e8"/>
+            <text x="230" y="318" text-anchor="middle" fill="#0b4f88" font-weight="900">Middle-layer Embedding</text>
+            <text x="230" y="342" text-anchor="middle" fill="#667085" font-size="12">目标物体 / 空间关系 / 任务意图</text>
+
+            <rect x="460" y="125" width="300" height="280" rx="14" fill="#fff7e8" stroke="#f2c782"/>
+            <text x="610" y="162" text-anchor="middle" fill="#8a4b00" font-size="24" font-weight="900">Condition Injection</text>
+            <rect x="500" y="204" width="220" height="58" rx="9" fill="#fff" stroke="#e4c17e"/>
+            <text x="610" y="238" text-anchor="middle" fill="#17324d" font-weight="900">Adapter / Projection</text>
+            <rect x="500" y="300" width="220" height="58" rx="9" fill="#fff" stroke="#e4c17e"/>
+            <text x="610" y="334" text-anchor="middle" fill="#17324d" font-weight="900">Cross-Attention</text>
+
+            <rect x="840" y="100" width="300" height="330" rx="14" fill="#effaf2" stroke="#b7dfc0"/>
+            <text x="990" y="138" text-anchor="middle" fill="#1f7a4d" font-size="24" font-weight="900">Action Expert</text>
+            <rect x="884" y="178" width="212" height="58" rx="9" fill="#fff" stroke="#cbd9e8"/>
+            <text x="990" y="212" text-anchor="middle" fill="#17324d" font-weight="900">noisy action + t + proprio</text>
+            <rect x="884" y="286" width="212" height="80" rx="9" fill="#fff" stroke="#cbd9e8"/>
+            <text x="990" y="318" text-anchor="middle" fill="#1f7a4d" font-weight="900">velocity field</text>
+            <text x="990" y="342" text-anchor="middle" fill="#667085" font-size="12">输出连续 action chunk</text>
+
+            <rect x="250" y="486" width="720" height="48" rx="12" fill="#f5f2ff" stroke="#c7bdf4"/>
+            <text x="610" y="516" text-anchor="middle" fill="#5a46b5" font-weight="900">训练策略：冻结 VLM → 轻微解冻 → 差异学习率联合微调</text>
+
+            <g stroke="#17324d" stroke-width="3" fill="none" marker-end="url(#archArrow)">
+              <path d="M230 236 L230 286"/><path d="M340 326 L500 233"/><path d="M720 233 L884 207"/><path d="M610 358 L884 326"/><path d="M990 236 L990 286"/>
+            </g>
+            <text x="610" y="460" text-anchor="middle" fill="#33415c" font-weight="800">条件注入解决“看懂的信息如何影响动作生成”；训练策略解决“如何不破坏预训练能力”；动作空间解决“输出如何被机器人执行”。</text>
+          </svg>
+        </div>
+      </section>
+
+      <section id="condition">
+        <h2>条件注入：Action Expert 到底需要 VLM 提供什么</h2>
+        <p class="lead">Action Expert 不是只需要一个“语言指令向量”。它需要从 VLM 条件中读到可执行控制相关的信息：目标、空间关系、任务意图、约束和当前状态线索。</p>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>VLM 条件应该包含</h3>
+            <table><tbody>
+              <tr><td>目标物体</td><td>红杯子、抽屉把手、布料边缘、按钮</td></tr>
+              <tr><td>空间关系</td><td>在左侧、靠近夹爪、位于容器内、被遮挡</td></tr>
+              <tr><td>任务意图</td><td>抓取、打开、推入、折叠、对齐、插入</td></tr>
+              <tr><td>场景约束</td><td>障碍物、桌面边缘、可接触区域、危险区域</td></tr>
+            </tbody></table>
+          </div>
+          <div class="card">
+            <h3>为什么不是最终层</h3>
+            <p>VLM 的最终层通常更贴近语言生成分布；中间层更可能保留视觉-语言融合表征。动作生成需要的是“任务条件”，不是一句流畅回答。</p>
+            <pre><code># 教学示意：提取中间层作为条件
+mid_layer = 16  # 真实层数应通过配置和消融确定
+layer_outputs = vlm(images, text, output_hidden_states=True)
+condition = layer_outputs.hidden_states[mid_layer]
+condition = condition_adapter(condition)</code></pre>
+          </div>
+        </div>
+        <div class="callout cool">核心判断标准不是“第几层固定最好”，而是这层表征能否让 Action Expert 稳定读到与动作相关的语义和空间信息。</div>
+      </section>
+
+      <section id="condition-tabs">
+        <h2>三种条件注入方式：FiLM、Concat、Cross-Attention</h2>
+        <div class="tabs" data-tabs="injectTabs">
+          <button class="tab-btn active" data-tab="film">FiLM</button>
+          <button class="tab-btn" data-tab="concat">Concat</button>
+          <button class="tab-btn" data-tab="cross">Cross-Attention</button>
+          <button class="tab-btn" data-tab="compare">怎么选</button>
+        </div>
+        <div id="film" class="tab-panel active" data-panel="injectTabs">
+          <div class="grid cols-2">
+            <div class="card">
+              <h3>直觉</h3>
+              <p>FiLM 把条件压缩成调制参数，用 <code>gamma</code> 和 <code>beta</code> 去缩放/平移动作特征。它像是在告诉 Action Expert：“当前任务下，哪些通道更重要”。</p>
+              <pre><code>gamma = gamma_net(pooled_condition)
+beta = beta_net(pooled_condition)
+x = gamma * x + beta</code></pre>
+            </div>
+            <div class="card">
+              <h3>优缺点</h3>
+              <table><tbody>
+                <tr><td>优点</td><td>简单、快、显存低、容易实现</td></tr>
+                <tr><td>缺点</td><td>通常需要池化条件，容易丢失空间和 token 结构</td></tr>
+                <tr><td>适合</td><td>条件较简单、延迟要求很高、动作任务较固定</td></tr>
+              </tbody></table>
+            </div>
+          </div>
+        </div>
+        <div id="concat" class="tab-panel" data-panel="injectTabs">
+          <div class="grid cols-2">
+            <div class="card">
+              <h3>直觉</h3>
+              <p>Concat 直接把动作特征和条件特征拼起来，然后交给后续 MLP/Transformer 自己学习融合。</p>
+              <pre><code>cond = condition.mean(dim=1)
+cond = cond[:, None, :].expand(-1, K, -1)
+x = torch.cat([action_features, cond], dim=-1)
+x = projection(x)</code></pre>
+            </div>
+            <div class="card">
+              <h3>优缺点</h3>
+              <table><tbody>
+                <tr><td>优点</td><td>直观，信息路径短，实现成本低</td></tr>
+                <tr><td>缺点</td><td>条件和动作之间的细粒度对应关系需要后续网络自己学</td></tr>
+                <tr><td>适合</td><td>小模型、快速 baseline、条件 token 不长的场景</td></tr>
+              </tbody></table>
+            </div>
+          </div>
+        </div>
+        <div id="cross" class="tab-panel" data-panel="injectTabs">
+          <div class="grid cols-2">
+            <div class="card">
+              <h3>直觉</h3>
+              <p>Cross-Attention 让 action token 主动去查询 VLM condition token。每个动作时间步都可以根据自己当前状态，从图文条件里读取需要的信息。</p>
+              <pre><code>attn_output = cross_attn(
+    query=action_tokens,
+    key=vlm_condition,
+    value=vlm_condition,
+)
+action_tokens = action_tokens + attn_output</code></pre>
+            </div>
+            <div class="card">
+              <h3>为什么常被选择</h3>
+              <table><tbody>
+                <tr><td>序列结构</td><td>保留 VLM token 的空间和语言结构</td></tr>
+                <tr><td>细粒度对齐</td><td>不同动作步可关注不同目标或约束</td></tr>
+                <tr><td>可解释性</td><td>注意力权重可帮助调试条件是否被使用</td></tr>
+                <tr><td>代价</td><td>比 FiLM/Concat 更重，需要控制 token 数和 hidden size</td></tr>
+              </tbody></table>
+            </div>
+          </div>
+        </div>
+        <div id="compare" class="tab-panel" data-panel="injectTabs">
+          <table>
+            <thead><tr><th>方式</th><th>信息保留</th><th>计算代价</th><th>适合场景</th><th>主要风险</th></tr></thead>
+            <tbody>
+              <tr><td>FiLM</td><td>低到中</td><td>低</td><td>低延迟、简单任务</td><td>条件被压扁，空间关系丢失</td></tr>
+              <tr><td>Concat</td><td>中</td><td>中</td><td>快速 baseline</td><td>融合不够结构化</td></tr>
+              <tr><td>Cross-Attention</td><td>高</td><td>中到高</td><td>复杂视觉语言条件、长动作 chunk</td><td>显存和延迟更高</td></tr>
+            </tbody>
+          </table>
+          <div class="callout ok">D114 的重点不是背“π0 一定用了某个固定层数和固定注入层数”，而是理解为什么复杂机器人任务需要细粒度条件读取。</div>
+        </div>
+      </section>
+
+      <section id="expert">
+        <h2>Action Expert 内部：四类输入如何合成速度场</h2>
+        <p class="lead">Action Expert 的输入至少包含：当前带噪动作、Flow Matching 时间步、VLM 条件、本体感受。输出是每个动作维度的速度场。</p>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1120 420" role="img" aria-label="Action Expert inputs">
+            <defs><marker id="expertArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#17324d"/></marker></defs>
+            <rect x="40" y="40" width="1040" height="330" rx="18" fill="#fbfdff" stroke="#d9e2ee"/>
+            <rect x="82" y="110" width="180" height="80" rx="12" fill="#eef6ff" stroke="#aacdec"/><text x="172" y="144" text-anchor="middle" fill="#0b4f88" font-weight="900">noisy action</text><text x="172" y="168" text-anchor="middle" fill="#667085" font-size="12">[B,K,D]</text>
+            <rect x="82" y="232" width="180" height="80" rx="12" fill="#fff7e8" stroke="#f2c782"/><text x="172" y="266" text-anchor="middle" fill="#8a4b00" font-weight="900">time t</text><text x="172" y="290" text-anchor="middle" fill="#667085" font-size="12">FM step</text>
+            <rect x="360" y="110" width="180" height="80" rx="12" fill="#f5f2ff" stroke="#c7bdf4"/><text x="450" y="144" text-anchor="middle" fill="#5a46b5" font-weight="900">VLM condition</text><text x="450" y="168" text-anchor="middle" fill="#667085" font-size="12">[B,L,H]</text>
+            <rect x="360" y="232" width="180" height="80" rx="12" fill="#effaf2" stroke="#b7dfc0"/><text x="450" y="266" text-anchor="middle" fill="#1f7a4d" font-weight="900">proprioception</text><text x="450" y="290" text-anchor="middle" fill="#667085" font-size="12">joint / gripper</text>
+            <rect x="650" y="138" width="210" height="146" rx="14" fill="#fff" stroke="#cbd9e8"/>
+            <text x="755" y="180" text-anchor="middle" fill="#17324d" font-size="20" font-weight="900">Transformer Blocks</text>
+            <text x="755" y="212" text-anchor="middle" fill="#667085" font-size="13">self-attn for action sequence</text>
+            <text x="755" y="238" text-anchor="middle" fill="#667085" font-size="13">cross-attn for VLM condition</text>
+            <rect x="930" y="170" width="118" height="82" rx="12" fill="#fff" stroke="#cbd9e8"/>
+            <text x="989" y="204" text-anchor="middle" fill="#1f7a4d" font-weight="900">velocity</text><text x="989" y="228" text-anchor="middle" fill="#667085" font-size="12">[B,K,D]</text>
+            <g stroke="#17324d" stroke-width="3" fill="none" marker-end="url(#expertArrow)">
+              <path d="M262 150 L650 180"/><path d="M262 272 L650 230"/><path d="M540 150 L650 198"/><path d="M540 272 L650 242"/><path d="M860 211 L930 211"/>
+            </g>
+          </svg>
+        </div>
+        <pre><code>def forward(noisy_actions, t, vlm_condition, proprioception):
+    action_emb = action_encoder(noisy_actions)       # [B,K,H]
+    time_emb = time_encoder(t)[:, None, :]           # [B,1,H]
+    prop_emb = proprio_encoder(proprioception)       # [B,K,H]
+
+    x = action_emb + time_emb + prop_emb
+    x = cross_attention(query=x, key=vlm_condition, value=vlm_condition)
+    x = self_attention_over_action_chunk(x)
+    velocity = output_head(x)                        # [B,K,D]
+    return velocity</code></pre>
+      </section>
+
+      <section id="training">
+        <h2>训练策略：保护 VLM，同时让 Action Expert 学会控制</h2>
+        <p class="lead">D114 的训练核心是一个平衡问题：VLM 已经有视觉语言语义，Action Expert 是新学动作分布。训练太保守，Action Expert 不够适配；训练太激进，VLM 可能遗忘原有能力。</p>
+        <div class="timeline">
+          <div class="phase active"><span class="tag">Stage 1</span><strong>冻结 VLM</strong><p>只训练 Action Expert。目标是先让动作专家学会从稳定条件中预测速度场。</p><code>vlm_lr = 0</code><br><code>expert_lr = 1e-4</code></div>
+          <div class="phase"><span class="tag">Stage 2</span><strong>轻微解冻</strong><p>解冻 VLM 后几层或 adapter，让条件表征开始适配机器人数据。</p><code>vlm_lr = 1e-6</code><br><code>expert_lr = 1e-4</code></div>
+          <div class="phase"><span class="tag">Stage 3</span><strong>联合微调</strong><p>在更谨慎的学习率和数据混合下共同优化，追求更高上限。</p><code>vlm_lr = 1e-5</code><br><code>expert_lr = 1e-4</code></div>
+        </div>
+        <div class="grid cols-3">
+          <div class="card"><h3>差异学习率</h3><p>VLM 使用更小学习率，Action Expert 使用较大学习率，因为前者已有通用能力，后者需要从头学习动作分布。</p></div>
+          <div class="card"><h3>数据混合</h3><p>机器人数据提供动作监督，通用图文数据或语言辅助任务帮助 VLM 保持语义能力。</p></div>
+          <div class="card"><h3>梯度裁剪</h3><p>VLM 梯度通常应更严格，避免少量机器人数据造成表示漂移。</p></div>
+        </div>
+        <pre><code># Flow Matching 训练目标，沿用 D113 的时间方向
+t = torch.rand(B, 1, 1)
+noise = torch.randn_like(actions)
+noisy_actions = (1 - t) * actions + t * noise
+
+velocity_pred = model(images, text, noisy_actions, t, proprio)
+target_velocity = noise - actions
+loss = mse(velocity_pred, target_velocity)</code></pre>
+      </section>
+
+      <section id="training-lab">
+        <h2>交互：选择训练阶段，看参数更新策略</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>训练阶段</h3>
+            <div class="control">
+              <label for="stageSlider">阶段：<span id="stageLabel">Stage 1 冻结 VLM</span></label>
+              <input id="stageSlider" type="range" min="1" max="3" value="1" />
+            </div>
+            <div class="metric">
+              <div><strong id="vlmStatus">冻结</strong><span>VLM</span></div>
+              <div><strong id="vlmLr">0</strong><span>VLM lr</span></div>
+              <div><strong id="expertStatus">训练</strong><span>Expert</span></div>
+              <div><strong id="riskLevel">低</strong><span>遗忘风险</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>解释</h3>
+            <p id="stageText">先固定 VLM，让 Action Expert 在稳定条件下学习动作速度场。这是最稳的冷启动阶段。</p>
+            <div class="callout ok" id="stageAdvice">适合训练初期；如果 action loss 还很高，不要急着解冻 VLM。</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="action-space">
+        <h2>动作空间设计：VLA 落地最容易出错的地方</h2>
+        <p class="lead">“输出 7 维动作”这句话远远不够。你必须说明每一维是什么、在哪个坐标系、是增量还是绝对值、如何归一化、如何安全裁剪。</p>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>典型 7 维 delta action</h3>
+            <table><tbody>
+              <tr><td><code>dx, dy, dz</code></td><td>末端位置增量，单位通常是米</td></tr>
+              <tr><td><code>droll, dpitch, dyaw</code></td><td>末端姿态增量，单位通常是弧度</td></tr>
+              <tr><td><code>gripper</code></td><td>夹爪开合，可以是连续值、二值值或增量</td></tr>
+            </tbody></table>
+          </div>
+          <div class="card">
+            <h3>必须额外说明</h3>
+            <table><tbody>
+              <tr><td>坐标系</td><td>base frame / camera frame / end-effector frame</td></tr>
+              <tr><td>控制频率</td><td>频率越高，每步 delta 应越小</td></tr>
+              <tr><td>限幅</td><td>每步最大平移、最大旋转、夹爪范围</td></tr>
+              <tr><td>执行方式</td><td>执行整个 chunk，还是只执行前几步再规划</td></tr>
+            </tbody></table>
+          </div>
+        </div>
+        <div class="tabs" data-tabs="actionTabs">
+          <button class="tab-btn active" data-tab="delta">增量动作</button>
+          <button class="tab-btn" data-tab="absolute">绝对动作</button>
+          <button class="tab-btn" data-tab="joint">关节动作</button>
+        </div>
+        <div id="delta" class="tab-panel active" data-panel="actionTabs">
+          <div class="callout ok">增量动作更适合闭环控制：输出相对当前状态的小变化，训练分布更集中，也更容易跨场景泛化。</div>
+          <pre><code>new_position = current_position + delta_xyz
+new_rotation = current_rotation @ delta_rotation
+new_gripper = clip(current_gripper + delta_gripper, 0, 1)</code></pre>
+        </div>
+        <div id="absolute" class="tab-panel" data-panel="actionTabs">
+          <div class="callout warn">绝对动作表达直观，但强依赖标定和全局坐标。标定误差、相机外参误差、不同机器人坐标差异都会放大部署风险。</div>
+          <pre><code>target_pose = {
+    "position": action[0:3],
+    "orientation": euler_to_matrix(action[3:6]),
+    "gripper": action[6],
+}</code></pre>
+        </div>
+        <div id="joint" class="tab-panel" data-panel="actionTabs">
+          <div class="callout cool">关节动作贴近底层控制器，适合固定机器人平台；但跨机器人泛化更难，语言目标到关节空间的映射也更复杂。</div>
+          <pre><code>joint_targets = current_joints + delta_joints
+joint_targets = clip(joint_targets, joint_lower, joint_upper)</code></pre>
+        </div>
+      </section>
+
+      <section id="chunking">
+        <h2>Action Chunking：一次预测多步，但滚动执行</h2>
+        <p class="lead">Action chunk 让模型一次生成一段动作，捕获短时序结构；receding horizon 让机器人只执行前几步后重新观察，避免长期误差累积。</p>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>交互参数</h3>
+            <div class="control"><label for="chunkSize">chunk size K：<span id="chunkVal">8</span></label><input id="chunkSize" type="range" min="1" max="16" value="8" /></div>
+            <div class="control"><label for="execSteps">每次执行 m 步：<span id="execVal">2</span></label><input id="execSteps" type="range" min="1" max="8" value="2" /></div>
+            <div class="metric">
+              <div><strong id="replanCount">4</strong><span>约需重规划次数</span></div>
+              <div><strong id="unusedSteps">6</strong><span>每次未执行预测步</span></div>
+              <div><strong id="smoothScore">高</strong><span>短期平滑性</span></div>
+              <div><strong id="riskScore">中</strong><span>开环风险</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Chunk 可视化</h3>
+            <div class="chunk-strip" id="chunkStrip"></div>
+            <div class="callout warn" id="chunkAdvice">绿色表示本轮真正执行的动作；蓝色表示模型预测但本轮不会直接执行的未来动作。</div>
+          </div>
+        </div>
+        <pre><code>for control_cycle in range(max_cycles):
+    images = get_current_images()
+    proprio = get_proprioception()
+    action_chunk = model.predict(images, language, proprio)  # [K,D]
+
+    for i in range(m):          # 只执行前 m 步
+        execute(action_chunk[i])
+
+    # 重新观察，再预测新的 chunk</code></pre>
+      </section>
+
+      <section id="normalization">
+        <h2>动作归一化：连续动作模型能不能训稳的关键</h2>
+        <p class="lead">连续动作并不意味着直接把米、弧度、夹爪状态混在一起训练。不同维度量纲不同，必须归一化到模型友好的范围，再在部署时反归一化。</p>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>归一化公式</h3>
+            <pre><code># min/max 到 [-1, 1]
+norm = 2 * (raw - low) / (high - low) - 1
+
+# 反归一化
+raw = (norm + 1) * (high - low) / 2 + low</code></pre>
+          </div>
+          <div class="card">
+            <h3>交互计算</h3>
+            <div class="control"><label for="rawValue">原始动作值 raw：<span id="rawLabel">0.02</span></label><input id="rawValue" type="range" min="-100" max="100" value="20" /></div>
+            <div class="control"><label for="boundSelect">动作维度</label><select id="boundSelect"><option value="xy">dx/dy: [-0.1, 0.1] 米</option><option value="z">dz: [-0.05, 0.05] 米</option><option value="rot">rotation: [-0.2, 0.2] 弧度</option><option value="gripper">gripper: [0, 1]</option></select></div>
+            <div class="metric">
+              <div><strong id="normValue">0.20</strong><span>normalized</span></div>
+              <div><strong id="clipValue">0.02</strong><span>clipped raw</span></div>
+              <div><strong id="lowValue">-0.10</strong><span>low</span></div>
+              <div><strong id="highValue">0.10</strong><span>high</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="callout danger">部署时最危险的错误之一是训练和推理使用了不同的动作统计或坐标系。模型看起来正常输出，但机器人动作幅度会完全错误。</div>
+      </section>
+
+      <section id="dexterous">
+        <h2>动作空间扩展：从 7 维机械臂到灵巧手</h2>
+        <p class="lead">灵巧手会把动作维度从 7 维扩展到 20、30 甚至更高。此时动作空间设计、分组归一化和延迟控制会变得更重要。</p>
+        <div class="grid cols-3">
+          <div class="card"><h3>机械臂</h3><p>通常关注末端位姿和夹爪，动作维度较低，适合讲清 delta pose、gripper 和控制频率。</p></div>
+          <div class="card"><h3>灵巧手</h3><p>每个手指关节都有动作维度，手部动作和腕部动作耦合强，需要单独归一化和约束。</p></div>
+          <div class="card"><h3>高维风险</h3><p>动作维度越高，数据需求越大，控制稳定性越难，action chunk 的长度和 ODE steps 都需要重新权衡。</p></div>
+        </div>
+        <pre><code>arm_action = full_action[..., :7]
+hand_action = full_action[..., 7:]
+
+arm_norm = arm_normalizer.normalize(arm_action)
+hand_norm = hand_normalizer.normalize(hand_action)
+action_norm = torch.cat([arm_norm, hand_norm], dim=-1)</code></pre>
+      </section>
+
+      <section id="ablation">
+        <h2>消融实验怎么讲：重在趋势，不要死背数字</h2>
+        <p class="lead">D114 原材料中有若干消融表格。作为讲解材料，可以用它们说明趋势，但不要把教学示意数字当成论文固定结论。</p>
+        <table>
+          <thead><tr><th>消融维度</th><th>常见趋势</th><th>合理解释</th><th>面试口径</th></tr></thead>
+          <tbody>
+            <tr><td>条件注入方式</td><td>Cross-Attention 通常强于过度压缩的条件注入</td><td>保留条件 token 结构，动作步可以细粒度查询语义</td><td>强调机制和代价，不背单个成功率</td></tr>
+            <tr><td>VLM 冻结程度</td><td>完全冻结稳定但上限受限，全部解冻风险更高</td><td>需要在适配机器人任务和保留预训练能力之间折中</td><td>讲冻结、adapter、部分解冻三种策略</td></tr>
+            <tr><td>Chunk 大小</td><td>太短缺少时序结构，太长开环误差更大</td><td>chunk size 是平滑性、延迟、闭环纠错之间的 trade-off</td><td>说明必须结合控制频率和任务 horizon 实测</td></tr>
+          </tbody>
+        </table>
+        <div class="callout warn">严谨表达：这些表格用于理解设计取舍。真实数值必须回到同一任务、同一机器人、同一数据和同一评测协议下比较。</div>
+      </section>
+
+      <section id="template">
+        <h2>最小复现骨架：把 D114 三件事连起来</h2>
+        <p class="lead">下面的骨架把中间层条件、Action Expert、Flow Matching 损失和差异学习率放在一起，方便你形成实现地图。</p>
+        <pre><code>class PiZeroLike(nn.Module):
+    def __init__(self, vlm, action_dim=7, hidden_dim=512, mid_layer=16):
+        super().__init__()
+        self.vlm = vlm
+        self.mid_layer = mid_layer
+        self.adapter = nn.Linear(vlm.hidden_size, hidden_dim)
+        self.action_expert = ActionExpert(action_dim, hidden_dim)
+
+    def forward(self, images, text, noisy_actions, t, proprio):
+        vlm_out = self.vlm(images, text, output_hidden_states=True)
+        condition = self.adapter(vlm_out.hidden_states[self.mid_layer])
+        velocity = self.action_expert(noisy_actions, t, condition, proprio)
+        return velocity
+
+optimizer = AdamW([
+    {"params": model.vlm.parameters(), "lr": vlm_lr},
+    {"params": model.adapter.parameters(), "lr": 1e-4},
+    {"params": model.action_expert.parameters(), "lr": 1e-4},
+])
+
+t = torch.rand(B, 1, 1)
+noise = torch.randn_like(actions)
+noisy_actions = (1 - t) * actions + t * noise
+target_velocity = noise - actions
+loss = mse(model(images, text, noisy_actions, t, proprio), target_velocity)</code></pre>
+      </section>
+
+      <section id="checklist">
+        <h2>训练、推理、部署：分别检查什么</h2>
+        <p class="lead">D114 的内容真正落地时，不能只看模型结构。一个 π0-style 系统要同时检查训练稳定性、推理延迟、动作安全和 VLM 能力保持。</p>
+        <table>
+          <thead><tr><th>阶段</th><th>必须检查</th><th>异常信号</th><th>常见修正</th></tr></thead>
+          <tbody>
+            <tr><td>训练前</td><td>动作坐标系、delta/absolute、gripper编码、归一化统计</td><td>同一动作维度范围混乱，夹爪语义不一致</td><td>冻结数据规范，生成动作统计报告</td></tr>
+            <tr><td>训练中</td><td>FM loss、验证成功率、VLM retention、梯度范数</td><td>loss下降但闭环成功率不升，VLM语义能力下降</td><td>调学习率、延后解冻、增加通用图文/语言辅助数据</td></tr>
+            <tr><td>推理中</td><td>ODE steps、VLM condition缓存、action expert延迟</td><td>控制周期内算不完，动作输出滞后</td><td>减少steps、缓存VLM、减小hidden/token数</td></tr>
+            <tr><td>部署前</td><td>反归一化、限速、限加速度、工作空间边界</td><td>动作幅度异常、越界、夹爪状态跳变</td><td>加clip、安全控制器和干运行回放</td></tr>
+            <tr><td>真实执行</td><td>只执行chunk前几步，持续重新观察</td><td>接触失败后仍继续执行旧chunk</td><td>缩短执行窗口，增加失败检测和重规划</td></tr>
+          </tbody>
+        </table>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>推荐日志字段</h3>
+            <pre><code>train_fm_loss
+val_fm_loss
+val_success_rate
+vlm_retention_score
+action_smoothness
+avg_inference_latency_ms
+safety_violation_rate</code></pre>
+          </div>
+          <div class="card">
+            <h3>面试里的稳妥表达</h3>
+            <p>我不会只说“用了 cross-attention 和 chunking”，还会说明动作统计、坐标系、反归一化、安全裁剪、延迟和闭环重规划。VLA 系统能不能落地，往往取决于这些接口是否一致。</p>
+            <div class="callout ok">D114 的核心能力：能从模型结构讲到训练策略，再讲到真实机器人执行接口。</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="interview">
+        <h2>面试表达：D114 高频问题</h2>
+        <div class="tabs" data-tabs="interviewTabs">
+          <button class="tab-btn active" data-tab="i1">条件注入</button>
+          <button class="tab-btn" data-tab="i2">训练策略</button>
+          <button class="tab-btn" data-tab="i3">动作空间</button>
+          <button class="tab-btn" data-tab="i4">系统设计</button>
+        </div>
+        <div id="i1" class="tab-panel active" data-panel="interviewTabs">
+          <div class="callout ok">π0-style 系统通常从 VLM 中间层取视觉语言融合表征，再通过 adapter 或 cross-attention 注入 Action Expert。Cross-attention 的优势是保留 token 结构，让每个动作步按需读取目标、空间关系和任务约束。</div>
+        </div>
+        <div id="i2" class="tab-panel" data-panel="interviewTabs">
+          <div class="callout ok">训练上通常先冻结 VLM，让 Action Expert 学会动作分布；之后可以轻微解冻 adapter 或 VLM 后几层，用小学习率适配机器人任务。这样是在 action performance 和 catastrophic forgetting 之间做折中。</div>
+        </div>
+        <div id="i3" class="tab-panel" data-panel="interviewTabs">
+          <div class="callout ok">动作空间必须说明维度、坐标系、delta/absolute、控制频率、gripper 编码、归一化和安全裁剪。连续动作不等于无约束动作，部署时反归一化和限幅非常关键。</div>
+        </div>
+        <div id="i4" class="tab-panel" data-panel="interviewTabs">
+          <pre><code>如果让我设计一个 π0-style 系统：
+1. 选预训练 VLM，提取中间层视觉语言条件；
+2. 用 adapter/cross-attention 注入 Action Expert；
+3. 定义 delta action space，并统一归一化；
+4. 用 Flow Matching 训练速度场；
+5. 先冻结 VLM，再小学习率解冻；
+6. 推理时生成 action chunk，只执行前几步并重规划。</code></pre>
+        </div>
+      </section>
+
+      <section id="quiz">
+        <h2>自测：确认你真的理解 D114</h2>
+        <div class="quiz-card"><strong>1. 为什么 Action Expert 不应该只接收一个池化后的语言向量？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">因为动作生成需要目标物体、空间关系、场景约束等细粒度信息。单个池化向量容易丢失 token 结构和空间对应关系。</div></div>
+        <div class="quiz-card"><strong>2. Cross-Attention 相比 FiLM 的核心优势是什么？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">它允许动作 token 主动查询 VLM condition token，保留序列结构，并学习动作步和视觉语言条件之间的细粒度对应关系。</div></div>
+        <div class="quiz-card"><strong>3. 为什么训练初期通常先冻结 VLM？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">冻结 VLM 可以提供稳定条件，降低灾难性遗忘风险，让新初始化的 Action Expert 先学会动作速度场。</div></div>
+        <div class="quiz-card"><strong>4. delta action 为什么常比 absolute action 更适合闭环机器人控制？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">delta action 相对当前状态输出小变化，训练分布更集中，对全局坐标标定依赖更低，也更适合滚动重规划。</div></div>
+        <div class="quiz-card"><strong>5. action chunk size 过大有什么风险？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">chunk 太大虽然可能更平滑，但会增加开环预测跨度，环境变化和模型误差更容易累积，因此通常只执行前几步后重新规划。</div></div>
+      </section>
+
+      <section id="summary">
+        <h2>D114 最终总结：必须带走的 6 个结论</h2>
+        <div class="grid cols-2">
+          <div class="card"><h3>1. 条件注入是双塔的桥</h3><p>VLM 和 Action Expert 的关键不只是分开，而是如何把视觉语言条件有效传给动作专家。</p></div>
+          <div class="card"><h3>2. Cross-Attention 的价值</h3><p>它保留条件 token 结构，让动作序列按需读取目标、空间关系和任务约束。</p></div>
+          <div class="card"><h3>3. 训练策略是稳定性核心</h3><p>冻结、轻微解冻、差异学习率和数据混合，本质是在控制遗忘和动作适配之间的平衡。</p></div>
+          <div class="card"><h3>4. 动作空间必须工程化</h3><p>维度、坐标系、delta/absolute、gripper、归一化、限幅和控制频率都要明确。</p></div>
+          <div class="card"><h3>5. Chunking 是平滑与闭环的折中</h3><p>一次预测多步有助于时序一致性，但部署时通常只执行前几步再重规划。</p></div>
+          <div class="card"><h3>6. 消融要讲趋势</h3><p>不要死背教学数字，重点解释设计取舍和实验条件。</p></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <a class="top-link" href="#top" aria-label="返回顶部">↑</a>
+
+  <script>
+    const progress=document.getElementById('progress');
+    const navLinks=Array.from(document.querySelectorAll('#toc a'));
+    const sections=navLinks.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+    function updateProgress(){
+      const scrollTop=document.documentElement.scrollTop||document.body.scrollTop;
+      const height=document.documentElement.scrollHeight-document.documentElement.clientHeight;
+      progress.style.width=(height?scrollTop/height*100:0)+'%';
+      let current='';
+      sections.forEach(sec=>{if(sec.offsetTop-130<=scrollTop)current='#'+sec.id});
+      navLinks.forEach(a=>a.classList.toggle('active',a.getAttribute('href')===current));
+    }
+    window.addEventListener('scroll',updateProgress);updateProgress();
+
+    document.querySelectorAll('[data-tabs]').forEach(group=>{
+      const name=group.getAttribute('data-tabs');
+      group.querySelectorAll('.tab-btn').forEach(button=>{
+        button.addEventListener('click',()=>{
+          group.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+          button.classList.add('active');
+          document.querySelectorAll(`[data-panel="${name}"]`).forEach(panel=>panel.classList.toggle('active',panel.id===button.dataset.tab));
+        });
+      });
+    });
+
+    const stageSlider=document.getElementById('stageSlider');
+    const stageData={
+      1:{label:'Stage 1 冻结 VLM',vlm:'冻结',lr:'0',expert:'训练',risk:'低',text:'先固定 VLM，让 Action Expert 在稳定条件下学习动作速度场。这是最稳的冷启动阶段。',advice:'适合训练初期；如果 action loss 还很高，不要急着解冻 VLM。'},
+      2:{label:'Stage 2 轻微解冻',vlm:'后层/Adapter',lr:'1e-6',expert:'训练',risk:'中',text:'当 Action Expert 已经能利用条件后，轻微解冻 VLM 后层或 adapter，让条件表征适配机器人任务。',advice:'需要监控语言/视觉能力是否下降，同时观察动作成功率是否提升。'},
+      3:{label:'Stage 3 联合微调',vlm:'联合训练',lr:'1e-5',expert:'训练',risk:'高',text:'联合微调追求更高任务上限，但也更容易造成预训练能力漂移。',advice:'适合数据量更大、评测闭环完整、并且能控制灾难性遗忘的阶段。'}
+    };
+    function updateStage(){
+      const d=stageData[stageSlider.value];
+      document.getElementById('stageLabel').textContent=d.label;
+      document.getElementById('vlmStatus').textContent=d.vlm;
+      document.getElementById('vlmLr').textContent=d.lr;
+      document.getElementById('expertStatus').textContent=d.expert;
+      document.getElementById('riskLevel').textContent=d.risk;
+      document.getElementById('stageText').textContent=d.text;
+      document.getElementById('stageAdvice').textContent=d.advice;
+      document.querySelectorAll('.phase').forEach((p,i)=>p.classList.toggle('active',i+1===Number(stageSlider.value)));
+    }
+    stageSlider.addEventListener('input',updateStage);updateStage();
+
+    const chunkSize=document.getElementById('chunkSize');
+    const execSteps=document.getElementById('execSteps');
+    function updateChunk(){
+      let k=Number(chunkSize.value);
+      let m=Math.min(Number(execSteps.value),k);
+      execSteps.value=m;
+      document.getElementById('chunkVal').textContent=k;
+      document.getElementById('execVal').textContent=m;
+      document.getElementById('replanCount').textContent=Math.ceil(k/m);
+      document.getElementById('unusedSteps').textContent=k-m;
+      document.getElementById('smoothScore').textContent=k>=6?'高':k>=3?'中':'低';
+      document.getElementById('riskScore').textContent=k>10&&m>4?'高':k>6?'中':'低';
+      const strip=document.getElementById('chunkStrip');
+      strip.innerHTML='';
+      for(let i=1;i<=k;i++){
+        const cell=document.createElement('div');
+        cell.className='chunk-step '+(i<=m?'exec':'');
+        cell.textContent='a'+i;
+        strip.appendChild(cell);
+      }
+    }
+    chunkSize.addEventListener('input',updateChunk);execSteps.addEventListener('input',updateChunk);updateChunk();
+
+    const rawValue=document.getElementById('rawValue');
+    const boundSelect=document.getElementById('boundSelect');
+    const bounds={xy:[-0.1,0.1],z:[-0.05,0.05],rot:[-0.2,0.2],gripper:[0,1]};
+    function updateNorm(){
+      const [low,high]=bounds[boundSelect.value];
+      let raw=Number(rawValue.value)/1000;
+      if(boundSelect.value==='gripper')raw=(Number(rawValue.value)+100)/200;
+      const clipped=Math.min(high,Math.max(low,raw));
+      const norm=2*(clipped-low)/(high-low)-1;
+      document.getElementById('rawLabel').textContent=raw.toFixed(3);
+      document.getElementById('normValue').textContent=norm.toFixed(2);
+      document.getElementById('clipValue').textContent=clipped.toFixed(3);
+      document.getElementById('lowValue').textContent=low.toFixed(2);
+      document.getElementById('highValue').textContent=high.toFixed(2);
+    }
+    rawValue.addEventListener('input',updateNorm);boundSelect.addEventListener('change',updateNorm);updateNorm();
+
+    document.querySelectorAll('.reveal').forEach(button=>{
+      button.addEventListener('click',()=>{
+        const answer=button.parentElement.querySelector('.answer');
+        answer.classList.toggle('show');
+        button.textContent=answer.classList.contains('show')?'隐藏参考答案':'显示参考答案';
+      });
+    });
+  </script>
+</body>
+</html>

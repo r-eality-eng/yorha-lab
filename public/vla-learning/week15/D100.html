@@ -1,0 +1,1314 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>D100 RT-2 深度讲解 | 动作就是语言 Token</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --paper: #ffffff;
+      --ink: #1d2433;
+      --muted: #647084;
+      --line: #dce3ee;
+      --navy: #203657;
+      --teal: #0f9d92;
+      --cyan: #2bb8d8;
+      --orange: #f28c38;
+      --red: #d95f5f;
+      --green: #3ca66b;
+      --purple: #7367d8;
+      --shadow: 0 18px 45px rgba(32, 54, 87, 0.12);
+      --radius: 8px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, rgba(115,103,216,0.08), rgba(245,247,251,0) 260px),
+        var(--bg);
+      font-family: var(--sans);
+      line-height: 1.72;
+    }
+    .progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 4px;
+      width: 0%;
+      background: linear-gradient(90deg, var(--purple), var(--cyan), var(--teal));
+      z-index: 50;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 28px;
+      width: min(1440px, calc(100% - 36px));
+      margin: 0 auto;
+      padding: 28px 0 64px;
+    }
+    aside {
+      position: sticky;
+      top: 22px;
+      align-self: start;
+      height: calc(100vh - 44px);
+      overflow: auto;
+      padding: 18px;
+      background: rgba(255,255,255,0.88);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+    .brand {
+      display: grid;
+      gap: 6px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 14px;
+    }
+    .brand strong { color: var(--navy); font-size: 18px; }
+    .brand span { color: var(--muted); font-size: 13px; }
+    nav a {
+      display: block;
+      padding: 9px 10px;
+      margin: 3px 0;
+      color: #34415a;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    nav a:hover, nav a.active {
+      color: #241b77;
+      background: rgba(115,103,216,0.12);
+    }
+    main { min-width: 0; }
+    .hero {
+      min-height: 520px;
+      display: grid;
+      grid-template-columns: 1.02fr 0.98fr;
+      gap: 24px;
+      align-items: center;
+      padding: 42px;
+      background: linear-gradient(135deg, #203657, #443f91 66%, #0f9d92);
+      color: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 9px;
+      border: 1px solid rgba(255,255,255,0.34);
+      border-radius: 999px;
+      color: rgba(255,255,255,0.88);
+      font-size: 13px;
+    }
+    h1 {
+      margin: 18px 0 12px;
+      font-size: clamp(36px, 5vw, 68px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+    .hero p {
+      max-width: 780px;
+      color: rgba(255,255,255,0.87);
+      font-size: 18px;
+    }
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 24px;
+    }
+    .btn {
+      border: 0;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font: inherit;
+      cursor: pointer;
+      text-decoration: none;
+      color: #17243a;
+      background: white;
+      font-weight: 800;
+    }
+    .btn.secondary {
+      color: white;
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.28);
+    }
+    .hero-visual { min-height: 390px; display: grid; place-items: center; }
+    section {
+      margin-top: 24px;
+      padding: 30px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 28px rgba(32, 54, 87, 0.08);
+    }
+    section > h2 {
+      margin: 0 0 14px;
+      color: var(--navy);
+      font-size: 28px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+    h3 { margin: 24px 0 10px; color: #263a5d; font-size: 20px; letter-spacing: 0; }
+    p { margin: 10px 0; }
+    .lead { color: #3d4a61; font-size: 17px; }
+    .muted { color: var(--muted); }
+    .grid { display: grid; gap: 16px; }
+    .cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .card {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfcff;
+    }
+    .card h3, .card h4 { margin-top: 0; margin-bottom: 8px; color: var(--navy); }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(115,103,216,0.1);
+      color: #453a9a;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .callout {
+      padding: 16px 18px;
+      border-left: 4px solid var(--purple);
+      background: #f3f1ff;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      margin: 16px 0;
+    }
+    .warn { border-left-color: var(--orange); background: #fff7ed; }
+    .svg-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfdff;
+      padding: 10px;
+    }
+    svg { max-width: 100%; height: auto; display: block; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 16px; }
+    .tab-btn {
+      border: 1px solid var(--line);
+      background: #f8fbff;
+      color: #33415c;
+      padding: 8px 11px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 800;
+    }
+    .tab-btn.active { background: var(--navy); border-color: var(--navy); color: white; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    details {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      background: #fbfcff;
+      margin: 10px 0;
+    }
+    summary { cursor: pointer; font-weight: 800; color: var(--navy); }
+    code, pre { font-family: var(--mono); }
+    code {
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: #eef2f7;
+      color: #27374f;
+    }
+    pre {
+      overflow: auto;
+      padding: 16px;
+      border-radius: var(--radius);
+      background: #f6f8fb;
+      color: #243044;
+      border: 1px solid var(--line);
+      line-height: 1.58;
+      font-size: 13px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+    }
+    th, td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+    th { background: #eef4fa; color: var(--navy); }
+    tr:last-child td { border-bottom: 0; }
+    .quiz-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      background: #fbfcff;
+      margin: 12px 0;
+    }
+    .answer {
+      display: none;
+      margin-top: 10px;
+      padding: 12px;
+      border-radius: 6px;
+      background: #f3f1ff;
+      color: #30266f;
+    }
+    .answer.show { display: block; }
+    .token-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 14px 0;
+    }
+    .token {
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: #eef2f7;
+      border: 1px solid var(--line);
+      font-family: var(--mono);
+      font-weight: 800;
+    }
+    .token.action { background: #f3f1ff; color: #453a9a; border-color: #c8c1f2; }
+    .token.generated { background: #e9faf8; color: #0f5d65; border-color: #9ed9d1; }
+    .top-link {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: white;
+      background: var(--navy);
+      text-decoration: none;
+      box-shadow: var(--shadow);
+    }
+    @media (max-width: 1020px) {
+      .layout { grid-template-columns: 1fr; }
+      aside { position: relative; height: auto; top: 0; }
+      .hero { grid-template-columns: 1fr; min-height: auto; padding: 26px; }
+      .cols-2, .cols-3, .cols-4 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+  <div class="layout">
+    <aside>
+      <div class="brand">
+        <strong>D100 RT-2 深度讲解</strong>
+        <span>第15周 · VLM 输出动作 · 交互式中文讲义</span>
+      </div>
+      <nav id="toc">
+        <a href="#overview">学习目标</a>
+        <a href="#shift">范式转折</a>
+        <a href="#architecture">RT-2 架构</a>
+        <a href="#backbones">基座模型</a>
+        <a href="#tokens">动作=语言 Token</a>
+        <a href="#vocab">词表扩展</a>
+        <a href="#autoregressive">自回归生成</a>
+        <a href="#coft">Co-fine-tuning</a>
+        <a href="#loss">训练损失</a>
+        <a href="#emergent">涌现能力</a>
+        <a href="#compare">RT-1 vs RT-2</a>
+        <a href="#tradeoffs">设计权衡</a>
+        <a href="#impact">后续影响</a>
+        <a href="#code-minimal">最小代码</a>
+        <a href="#interview">面试问答</a>
+        <a href="#quiz">自测清单</a>
+        <a href="#next">下一天过渡</a>
+      </nav>
+    </aside>
+
+    <main>
+      <header class="hero" id="top">
+        <div>
+          <span class="eyebrow">Week 15 / Day 100 / RT-2</span>
+          <h1>RT-2：让 VLM 直接输出机器人动作</h1>
+          <p>
+            RT-2 的核心不是又发明一种动作离散化，而是把机器人动作放进视觉语言模型的 token 生成范式里：
+            图像和指令进入 VLM，模型像生成文本一样生成动作 token，再解码为机器人控制。
+          </p>
+          <div class="hero-actions">
+            <a class="btn" href="#tokens">看动作 token</a>
+            <a class="btn secondary" href="#compare">RT-1 vs RT-2</a>
+            <a class="btn secondary" href="d100_rt2.md">查看提取的 Markdown 原文</a>
+          </div>
+        </div>
+        <div class="hero-visual" aria-label="RT-2 hero diagram">
+          <svg viewBox="0 0 640 430" role="img">
+            <defs>
+              <linearGradient id="heroRT2" x1="0" x2="1">
+                <stop offset="0" stop-color="#7367d8"/>
+                <stop offset="1" stop-color="#0f9d92"/>
+              </linearGradient>
+              <marker id="arrowHero2" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L8,3 z" fill="#ffffff"/>
+              </marker>
+              <filter id="shadow2" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#10243d" flood-opacity="0.28"/>
+              </filter>
+            </defs>
+            <rect x="20" y="22" width="600" height="386" rx="16" fill="rgba(255,255,255,0.10)" stroke="rgba(255,255,255,0.26)"/>
+            <g filter="url(#shadow2)">
+              <rect x="54" y="82" width="150" height="70" rx="10" fill="#ffffff"/>
+              <text x="129" y="112" text-anchor="middle" fill="#203657" font-weight="900">图像 + 指令</text>
+              <text x="129" y="136" text-anchor="middle" fill="#647084" font-size="13">image + prompt</text>
+
+              <rect x="260" y="70" width="150" height="94" rx="12" fill="#ffffff"/>
+              <text x="335" y="108" text-anchor="middle" fill="#443f91" font-weight="900">VLM</text>
+              <text x="335" y="134" text-anchor="middle" fill="#647084" font-size="13">PaLI-X / PaLM-E</text>
+
+              <rect x="466" y="82" width="128" height="70" rx="10" fill="#ffffff"/>
+              <text x="530" y="112" text-anchor="middle" fill="#203657" font-weight="900">动作 token</text>
+              <text x="530" y="136" text-anchor="middle" fill="#647084" font-size="13">&lt;act_12&gt;...</text>
+
+              <rect x="176" y="250" width="288" height="72" rx="10" fill="url(#heroRT2)"/>
+              <text x="320" y="280" text-anchor="middle" fill="#ffffff" font-weight="900">动作像语言一样生成</text>
+              <text x="320" y="304" text-anchor="middle" fill="#e9ffff" font-size="13">next-token prediction for robot control</text>
+            </g>
+            <g stroke="#ffffff" stroke-width="3" fill="none" marker-end="url(#arrowHero2)">
+              <path d="M204 117 L260 117"/>
+              <path d="M410 117 L466 117"/>
+              <path d="M530 152 C530 216 460 244 420 250"/>
+            </g>
+          </svg>
+        </div>
+      </header>
+
+      <section id="overview">
+        <h2>学习目标：D100 要抓住的三个核心问题</h2>
+        <p class="lead">
+          D99 讲的是 RT-1 如何搭建专用机器人策略，D100 讲的是 RT-2 如何把 VLM 的视觉语言知识迁移到动作生成。
+          这一天的重点是范式变化，而不是单独记一个动作 tokenizer。
+        </p>
+        <div class="grid cols-3">
+          <div class="card">
+            <span class="tag">问题 1</span>
+            <h3>为什么需要 RT-2？</h3>
+            <p>RT-1 依赖机器人数据学习语义和动作，开放世界知识不足。RT-2 借助预训练 VLM 弥补这个短板。</p>
+          </div>
+          <div class="card">
+            <span class="tag">问题 2</span>
+            <h3>动作如何变成语言？</h3>
+            <p>连续动作被离散成 token，并放入 VLM 的输出序列中，用 next-token prediction 生成。</p>
+          </div>
+          <div class="card">
+            <span class="tag">问题 3</span>
+            <h3>代价是什么？</h3>
+            <p>RT-2 获得语义泛化，但自回归生成动作较慢，离散动作仍有精度和效率问题。</p>
+          </div>
+        </div>
+        <div class="callout">
+          <strong>一句话抓主线：</strong>
+          RT-2 不是“更大的 RT-1”，而是把机器人动作纳入 VLM 的 token 语言，让模型用互联网视觉语言知识指导机器人控制。
+        </div>
+      </section>
+
+      <section id="shift">
+        <h2>范式转折：从专用策略到 VLM→VLA</h2>
+        <p class="lead">
+          RT-1 的路线是“为机器人任务训练一个专用模型”。RT-2 的路线是“拿一个已经学过海量图文知识的 VLM，
+          再教它输出机器人动作”。这就是 VLM→VLA 的核心转折。
+        </p>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1080 430" role="img" aria-label="RT-1 to RT-2 paradigm shift">
+            <defs>
+              <marker id="arrowShift" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L9,3 z" fill="#203657"/>
+              </marker>
+            </defs>
+            <rect x="30" y="36" width="470" height="330" rx="16" fill="#fbfdff" stroke="#dce3ee"/>
+            <text x="265" y="74" text-anchor="middle" fill="#203657" font-size="22" font-weight="900">RT-1：专用机器人策略</text>
+            <rect x="80" y="115" width="130" height="62" rx="10" fill="#eef5ff" stroke="#b8cbe4"/>
+            <text x="145" y="151" text-anchor="middle" fill="#203657" font-weight="800">图像 + 语言</text>
+            <rect x="280" y="115" width="150" height="62" rx="10" fill="#eefaf8" stroke="#9ed9d1"/>
+            <text x="355" y="151" text-anchor="middle" fill="#0f5d65" font-weight="800">FiLM/TokenLearner</text>
+            <rect x="170" y="235" width="180" height="62" rx="10" fill="#fff4e8" stroke="#f0c596"/>
+            <text x="260" y="271" text-anchor="middle" fill="#7a4314" font-weight="800">专用动作头</text>
+            <g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#arrowShift)">
+              <path d="M210 146 L280 146"/>
+              <path d="M355 177 C355 215 320 230 300 235"/>
+            </g>
+            <text x="265" y="332" text-anchor="middle" fill="#647084" font-size="14">强控制效率，但语义知识主要来自机器人数据</text>
+
+            <rect x="580" y="36" width="470" height="330" rx="16" fill="#fbfdff" stroke="#dce3ee"/>
+            <text x="815" y="74" text-anchor="middle" fill="#203657" font-size="22" font-weight="900">RT-2：VLM 直接生成动作</text>
+            <rect x="625" y="110" width="130" height="70" rx="10" fill="#eef5ff" stroke="#b8cbe4"/>
+            <text x="690" y="140" text-anchor="middle" fill="#203657" font-weight="800">图像 + 指令</text>
+            <text x="690" y="162" text-anchor="middle" fill="#647084" font-size="13">prompt</text>
+            <rect x="805" y="110" width="150" height="70" rx="10" fill="#f3f1ff" stroke="#c8c1f2"/>
+            <text x="880" y="140" text-anchor="middle" fill="#453a9a" font-weight="900">预训练 VLM</text>
+            <text x="880" y="162" text-anchor="middle" fill="#647084" font-size="13">web-scale knowledge</text>
+            <rect x="710" y="235" width="210" height="62" rx="10" fill="#eefaf8" stroke="#9ed9d1"/>
+            <text x="815" y="271" text-anchor="middle" fill="#0f5d65" font-weight="900">生成动作 token</text>
+            <g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#arrowShift)">
+              <path d="M755 145 L805 145"/>
+              <path d="M880 180 C880 218 850 232 832 235"/>
+            </g>
+            <text x="815" y="332" text-anchor="middle" fill="#647084" font-size="14">迁移 VLM 语义知识，但自回归动作生成更慢</text>
+
+            <path d="M515 200 L560 200" stroke="#203657" stroke-width="4" fill="none" marker-end="url(#arrowShift)"/>
+            <text x="538" y="180" text-anchor="middle" fill="#203657" font-weight="900">范式变化</text>
+          </svg>
+        </div>
+      </section>
+
+      <section id="architecture">
+        <h2>RT-2 架构：把 VLM 改造成 VLA</h2>
+        <p class="lead">
+          RT-2 保留 VLM 的视觉-语言理解能力，同时把机器人动作表示成特殊 token，让同一个模型既能回答视觉语言问题，也能输出控制命令。
+        </p>
+        <div class="callout warn">
+          <strong>教学抽象说明：</strong>
+          本页将 RT-2 简化为“图像 + 指令 → VLM → 动作 token → 连续动作”的主线。
+          真实 RT-2 使用的基座模型、tokenizer 扩展方式、动作维度和训练数据混合细节应以论文为准。
+        </div>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1120 520" role="img" aria-label="RT-2 architecture">
+            <defs>
+              <marker id="arrowArch2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L9,3 z" fill="#203657"/>
+              </marker>
+            </defs>
+            <rect x="20" y="24" width="1080" height="472" rx="18" fill="#ffffff" stroke="#dce3ee"/>
+            <text x="560" y="62" text-anchor="middle" fill="#203657" font-size="24" font-weight="900">RT-2：Vision-Language-Action Model</text>
+
+            <g class="arch-node" data-note="输入仍然是图像和语言指令，但不再经过专用机器人视觉融合结构，而是进入预训练VLM。">
+              <rect x="70" y="120" width="160" height="82" rx="10" fill="#eef5ff" stroke="#b8cbe4"/>
+              <text x="150" y="154" text-anchor="middle" fill="#203657" font-weight="900">图像</text>
+              <text x="150" y="178" text-anchor="middle" fill="#647084" font-size="13">visual observation</text>
+            </g>
+            <g class="arch-node" data-note="语言prompt既描述任务，也可以包含动作输出格式约束，让模型知道该生成动作token。">
+              <rect x="70" y="254" width="160" height="82" rx="10" fill="#fff4e8" stroke="#f0c596"/>
+              <text x="150" y="288" text-anchor="middle" fill="#7a4314" font-weight="900">语言指令</text>
+              <text x="150" y="312" text-anchor="middle" fill="#647084" font-size="13">instruction / prompt</text>
+            </g>
+
+            <g class="arch-node" data-note="VLM是RT-2的核心：它带有从互联网图文预训练中获得的语义、常识和视觉理解能力。">
+              <rect x="325" y="116" width="250" height="220" rx="14" fill="#f3f1ff" stroke="#c8c1f2"/>
+              <text x="450" y="164" text-anchor="middle" fill="#453a9a" font-size="24" font-weight="900">预训练 VLM</text>
+              <text x="450" y="198" text-anchor="middle" fill="#647084" font-size="14">PaLI-X / PaLM-E</text>
+              <text x="450" y="230" text-anchor="middle" fill="#647084" font-size="14">视觉语言知识</text>
+              <text x="450" y="256" text-anchor="middle" fill="#647084" font-size="14">next-token prediction</text>
+            </g>
+
+            <g class="arch-node" data-note="动作被离散化后映射为特殊token，例如<act_12>，模型按语言建模方式逐个生成。">
+              <rect x="665" y="116" width="180" height="110" rx="12" fill="#eefaf8" stroke="#9ed9d1"/>
+              <text x="755" y="158" text-anchor="middle" fill="#0f5d65" font-size="20" font-weight="900">动作 token</text>
+              <text x="755" y="186" text-anchor="middle" fill="#647084" font-size="13">&lt;act_12&gt; &lt;act_203&gt;</text>
+            </g>
+
+            <g class="arch-node" data-note="动作token需要被反离散化，恢复成机器人控制器能执行的连续动作。">
+              <rect x="890" y="116" width="160" height="110" rx="12" fill="#fff4e8" stroke="#f0c596"/>
+              <text x="970" y="158" text-anchor="middle" fill="#7a4314" font-size="20" font-weight="900">动作解码</text>
+              <text x="970" y="186" text-anchor="middle" fill="#647084" font-size="13">tokens → action</text>
+            </g>
+
+            <rect x="665" y="286" width="385" height="92" rx="12" fill="#fbfcff" stroke="#dce3ee"/>
+            <text x="858" y="320" text-anchor="middle" fill="#203657" font-weight="900">Co-fine-tuning</text>
+            <text x="858" y="346" text-anchor="middle" fill="#647084" font-size="14">机器人动作数据 + web/VQA数据混合训练</text>
+
+            <g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#arrowArch2)">
+              <path d="M230 160 L325 180"/>
+              <path d="M230 295 L325 260"/>
+              <path d="M575 180 L665 170"/>
+              <path d="M845 170 L890 170"/>
+              <path d="M755 226 C755 260 790 278 828 286"/>
+            </g>
+          </svg>
+        </div>
+        <p id="archNote" class="callout">点击架构图中的模块，可以查看它在 RT-2 中承担的作用。</p>
+      </section>
+
+      <section id="backbones">
+        <h2>两个基座模型：PaLI-X 与 PaLM-E</h2>
+        <p class="lead">
+          RT-2 不是单一模型实例，而是验证了“不同 VLM 基座都可以被改造成 VLA”。论文中重要的两个版本是 RT-2-PaLI-X 和 RT-2-PaLM-E。
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>维度</th>
+              <th>RT-2-PaLI-X</th>
+              <th>RT-2-PaLM-E</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>基座特点</td>
+              <td>强视觉语言模型，偏视觉理解和多模态任务</td>
+              <td>具身多模态语言模型，偏语言推理和 embodied reasoning</td>
+            </tr>
+            <tr>
+              <td>规模印象</td>
+              <td>更大，视觉能力强</td>
+              <td>相对更小，但语言推理和具身任务联系更强</td>
+            </tr>
+            <tr>
+              <td>动作输出</td>
+              <td>通过 decoder 输出动作 token</td>
+              <td>通过自回归语言建模输出动作 token</td>
+            </tr>
+            <tr>
+              <td>直觉优势</td>
+              <td>适合视觉识别要求更高的任务</td>
+              <td>适合语义推理、指令理解更强的任务</td>
+            </tr>
+            <tr>
+              <td>共同点</td>
+              <td colspan="2">都说明：预训练 VLM 可以通过动作 token 和 co-fine-tuning 变成 VLA。</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="callout">
+          <strong>面试表达：</strong>
+          讲 PaLI-X 和 PaLM-E 时，不需要背每个参数细节，重点是说明 RT-2 的贡献不依赖某个单一 backbone，
+          而是验证了 VLM→VLA 这条路线本身可行。
+        </div>
+      </section>
+
+      <section id="tokens">
+        <h2>核心创新：动作 = 语言 Token</h2>
+        <p class="lead">
+          RT-2 的动作表示可以理解为：先把连续动作离散化，再把离散编号包装成特殊 token，
+          让 VLM 像生成文字一样生成机器人动作。
+        </p>
+
+        <div class="grid cols-2">
+          <div>
+            <h3>动作 token 化流程</h3>
+            <ol>
+              <li>将每个连续动作维度裁剪到预设范围。</li>
+              <li>把每个维度映射到 0-255 的离散 bin。</li>
+              <li>把 bin 编号变成特殊 token，例如 <code>&lt;act_160&gt;</code>。</li>
+              <li>VLM 自回归生成这些 token。</li>
+              <li>把 token 解码回连续动作，发给机器人。</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3>交互演示：连续动作转 token</h3>
+            <label for="actTokenSlider"><strong>动作值 v</strong>（范围 [-1, 1]）：</label>
+            <input id="actTokenSlider" type="range" min="-1" max="1" step="0.001" value="0.254" style="width:100%; margin: 14px 0;" />
+            <table>
+              <tr><th>连续值</th><td id="actValue">0.254</td></tr>
+              <tr><th>bin index</th><td id="actBin">160</td></tr>
+              <tr><th>动作 token</th><td><code id="actToken">&lt;act_160&gt;</code></td></tr>
+              <tr><th>解码值</th><td id="actDecoded">0.254</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <h3>一个 RT-2 输出序列长什么样？</h3>
+        <div class="token-strip" aria-label="RT-2 token sequence example">
+          <span class="token">User:</span>
+          <span class="token">pick</span>
+          <span class="token">red</span>
+          <span class="token">cup</span>
+          <span class="token">→</span>
+          <span class="token action">&lt;act_160&gt;</span>
+          <span class="token action">&lt;act_114&gt;</span>
+          <span class="token action">&lt;act_193&gt;</span>
+          <span class="token action">&lt;act_132&gt;</span>
+          <span class="token action">&lt;act_127&gt;</span>
+          <span class="token action">&lt;act_140&gt;</span>
+          <span class="token action">&lt;act_255&gt;</span>
+        </div>
+
+        <div class="callout">
+          <strong>关键区别：</strong>
+          RT-1 的动作预测更像专用动作分类头；RT-2 的动作预测则复用 VLM 的语言建模接口。
+          这就是为什么 RT-2 能把 VLM 的预训练知识迁移到机器人控制里。
+        </div>
+      </section>
+
+      <section id="vocab">
+        <h2>词表扩展：动作 token 如何进入 VLM</h2>
+        <p class="lead">
+          RT-2 的动作 token 不应该和普通数字 token 混淆。更清晰的理解是：在原有 VLM 词表之外，增加一段专门表示动作 bin 的 token ID 区间。
+        </p>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1040 360" role="img" aria-label="RT-2 vocabulary extension">
+            <defs>
+              <marker id="arrowVocab" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L9,3 z" fill="#203657"/>
+              </marker>
+            </defs>
+            <rect x="42" y="80" width="600" height="76" rx="12" fill="#eef5ff" stroke="#b8cbe4"/>
+            <text x="342" y="113" text-anchor="middle" fill="#203657" font-weight="900">原始 VLM 词表</text>
+            <text x="342" y="138" text-anchor="middle" fill="#647084" font-size="14">文本 token / 图文任务 token，例如 pick、up、red、cup、数字 3</text>
+
+            <rect x="642" y="80" width="250" height="76" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/>
+            <text x="767" y="113" text-anchor="middle" fill="#453a9a" font-weight="900">新增动作 token</text>
+            <text x="767" y="138" text-anchor="middle" fill="#647084" font-size="14">&lt;act_0&gt; ... &lt;act_255&gt;</text>
+
+            <rect x="892" y="80" width="98" height="76" rx="12" fill="#fff4e8" stroke="#f0c596"/>
+            <text x="941" y="113" text-anchor="middle" fill="#7a4314" font-weight="900">边界符</text>
+            <text x="941" y="138" text-anchor="middle" fill="#647084" font-size="14">可选</text>
+
+            <line x1="642" y1="118" x2="642" y2="196" stroke="#203657" stroke-width="3" marker-end="url(#arrowVocab)"/>
+            <rect x="520" y="220" width="360" height="76" rx="12" fill="#eefaf8" stroke="#9ed9d1"/>
+            <text x="700" y="253" text-anchor="middle" fill="#0f5d65" font-weight="900">动作输出区间</text>
+            <text x="700" y="278" text-anchor="middle" fill="#647084" font-size="14">生成动作时只在动作 token 范围内取 logits / 采样</text>
+          </svg>
+        </div>
+
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>为什么不用普通数字 token？</h3>
+            <p>
+              如果直接输出文本里的 “3” 或 “128”，模型很难区分这是自然语言数字，还是动作 bin。
+              独立动作 token 区间可以避免语义冲突。
+            </p>
+          </div>
+          <div class="card">
+            <h3>为什么需要输出格式约束？</h3>
+            <p>
+              推理时通常希望模型只生成合法动作 token，而不是自由生成自然语言。
+              因此可以限制 logits 范围、使用特殊起止符，或通过 prompt 约束输出格式。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="autoregressive">
+        <h2>自回归生成：为什么 RT-2 强但可能慢</h2>
+        <p>
+          RT-2 像生成一句话一样生成动作序列。每生成一个动作 token，都要基于前面已经生成的 token 再预测下一个。
+          这带来表达统一性，也带来推理延迟。
+        </p>
+        <div class="card">
+          <h3>点击逐步生成 7 个动作 token</h3>
+          <div class="token-strip" id="genStrip">
+            <span class="token">image</span>
+            <span class="token">instruction</span>
+            <span class="token">→</span>
+          </div>
+          <button class="btn" id="genNext" type="button">生成下一个 token</button>
+          <button class="btn secondary" id="genReset" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">重置</button>
+          <p class="muted" id="genStatus">当前已生成 0 / 7 个动作 token。</p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>方式</th>
+              <th>生成方式</th>
+              <th>优点</th>
+              <th>局限</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>并行动作头</td>
+              <td>一次 forward 输出多个动作维度</td>
+              <td>速度快，适合高频控制</td>
+              <td>较难完全复用语言模型接口</td>
+            </tr>
+            <tr>
+              <td>自回归动作 token</td>
+              <td>逐个 token 生成动作维度</td>
+              <td>统一成语言建模问题，便于迁移 VLM</td>
+              <td>生成 7 个 token 可能需要多步解码，延迟更高</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="coft">
+        <h2>Co-fine-tuning：既学动作，又保留 VLM 能力</h2>
+        <p class="lead">
+          如果只用机器人数据微调 VLM，模型可能学会动作，却忘掉原来的视觉语言知识；
+          如果只保留 web/VQA 数据，模型又不会控制机器人。Co-fine-tuning 的思想是混合训练两类数据。
+        </p>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1060 430" role="img" aria-label="co-fine-tuning pipeline">
+            <defs>
+              <marker id="arrowCoft" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L9,3 z" fill="#203657"/>
+              </marker>
+            </defs>
+            <rect x="50" y="70" width="230" height="120" rx="12" fill="#eefaf8" stroke="#9ed9d1"/>
+            <text x="165" y="112" text-anchor="middle" fill="#0f5d65" font-size="20" font-weight="900">机器人动作数据</text>
+            <text x="165" y="142" text-anchor="middle" fill="#647084" font-size="14">image + instruction + action token</text>
+            <text x="165" y="166" text-anchor="middle" fill="#647084" font-size="14">学习控制</text>
+
+            <rect x="50" y="240" width="230" height="120" rx="12" fill="#eef5ff" stroke="#b8cbe4"/>
+            <text x="165" y="282" text-anchor="middle" fill="#203657" font-size="20" font-weight="900">Web / VQA 数据</text>
+            <text x="165" y="312" text-anchor="middle" fill="#647084" font-size="14">image + text answer</text>
+            <text x="165" y="336" text-anchor="middle" fill="#647084" font-size="14">保持语义知识</text>
+
+            <rect x="410" y="150" width="220" height="130" rx="14" fill="#f3f1ff" stroke="#c8c1f2"/>
+            <text x="520" y="198" text-anchor="middle" fill="#453a9a" font-size="22" font-weight="900">混合训练</text>
+            <text x="520" y="230" text-anchor="middle" fill="#647084" font-size="14">同一个 VLM</text>
+            <text x="520" y="254" text-anchor="middle" fill="#647084" font-size="14">两类目标共同优化</text>
+
+            <rect x="760" y="150" width="230" height="130" rx="14" fill="#fff4e8" stroke="#f0c596"/>
+            <text x="875" y="198" text-anchor="middle" fill="#7a4314" font-size="22" font-weight="900">RT-2</text>
+            <text x="875" y="230" text-anchor="middle" fill="#647084" font-size="14">能回答视觉语言问题</text>
+            <text x="875" y="254" text-anchor="middle" fill="#647084" font-size="14">也能输出动作 token</text>
+
+            <g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#arrowCoft)">
+              <path d="M280 130 C340 130 356 180 410 190"/>
+              <path d="M280 300 C340 300 356 250 410 238"/>
+              <path d="M630 215 L760 215"/>
+            </g>
+          </svg>
+        </div>
+        <div class="grid cols-3">
+          <div class="card">
+            <h3>只用机器人数据</h3>
+            <p>动作学习更直接，但数据量小，容易破坏 VLM 原本语义能力，出现灾难性遗忘。</p>
+          </div>
+          <div class="card">
+            <h3>只用 Web/VQA 数据</h3>
+            <p>保持语义和视觉问答能力，但不会学到机器人动作 token 的含义。</p>
+          </div>
+          <div class="card">
+            <h3>Co-fine-tuning</h3>
+            <p>用混合数据同时优化语言/视觉能力和动作输出能力，是 RT-2 保持涌现能力的关键。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="loss">
+        <h2>训练损失结构：文本 CE + 动作 CE</h2>
+        <p class="lead">
+          Co-fine-tuning 不只是“把两种数据放一起”。更准确地说，不同样本在不同 token 位置计算不同的 cross-entropy loss：
+          视觉语言数据保持 VLM 的文本生成能力，机器人数据训练动作 token 生成能力。
+        </p>
+        <div class="callout">
+          <strong>简化公式：</strong>
+          <code>L_total = λ_text · L_text + λ_action · L_action</code>。
+          其中 <code>L_text</code> 来自普通文本/视觉语言 token 的预测，<code>L_action</code> 来自动作 token 位置的预测。
+        </div>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1040 420" role="img" aria-label="RT-2 loss structure">
+            <defs>
+              <marker id="arrowLoss" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L9,3 z" fill="#203657"/>
+              </marker>
+            </defs>
+            <rect x="52" y="70" width="260" height="100" rx="12" fill="#eef5ff" stroke="#b8cbe4"/>
+            <text x="182" y="110" text-anchor="middle" fill="#203657" font-weight="900">视觉语言样本</text>
+            <text x="182" y="138" text-anchor="middle" fill="#647084" font-size="14">image + question → answer</text>
+
+            <rect x="52" y="248" width="260" height="100" rx="12" fill="#eefaf8" stroke="#9ed9d1"/>
+            <text x="182" y="288" text-anchor="middle" fill="#0f5d65" font-weight="900">机器人动作样本</text>
+            <text x="182" y="316" text-anchor="middle" fill="#647084" font-size="14">image + instruction → action tokens</text>
+
+            <rect x="420" y="70" width="220" height="100" rx="12" fill="#f8fbff" stroke="#dce3ee"/>
+            <text x="530" y="110" text-anchor="middle" fill="#203657" font-weight="900">文本 token 位置</text>
+            <text x="530" y="138" text-anchor="middle" fill="#647084" font-size="14">计算 L_text</text>
+
+            <rect x="420" y="248" width="220" height="100" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/>
+            <text x="530" y="288" text-anchor="middle" fill="#453a9a" font-weight="900">动作 token 位置</text>
+            <text x="530" y="316" text-anchor="middle" fill="#647084" font-size="14">计算 L_action</text>
+
+            <rect x="760" y="158" width="220" height="120" rx="14" fill="#fff4e8" stroke="#f0c596"/>
+            <text x="870" y="200" text-anchor="middle" fill="#7a4314" font-size="20" font-weight="900">联合优化</text>
+            <text x="870" y="228" text-anchor="middle" fill="#647084" font-size="14">λ_text L_text</text>
+            <text x="870" y="252" text-anchor="middle" fill="#647084" font-size="14">+ λ_action L_action</text>
+
+            <g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#arrowLoss)">
+              <path d="M312 120 L420 120"/>
+              <path d="M312 298 L420 298"/>
+              <path d="M640 120 C710 120 730 176 760 194"/>
+              <path d="M640 298 C710 298 730 250 760 234"/>
+            </g>
+          </svg>
+        </div>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>λ 怎么理解？</h3>
+            <p>
+              它代表两类任务的训练权重。机器人数据权重过高可能损害 VLM 原能力；文本/VQA 权重过高则动作学不充分。
+              实际训练中，数据采样比例和 loss 权重都属于关键超参数。
+            </p>
+          </div>
+          <div class="card">
+            <h3>为什么只在动作位置算动作 loss？</h3>
+            <p>
+              因为动作 token 是目标控制输出。普通 prompt、图像 token 或文本上下文只是条件，不应该被当作动作预测目标。
+              这和语言模型中“在目标 token 位置计算 CE”是同一个思想。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="emergent">
+        <h2>涌现能力：RT-2 为什么能做训练集中没直接出现的事</h2>
+        <p class="lead">
+          RT-2 最有影响力的地方，是展示了 VLM 预训练知识可以迁移到机器人动作。
+          例如模型未必在机器人数据里见过“已灭绝动物”这样的指令，但 VLM 可能知道恐龙属于已灭绝动物。
+        </p>
+        <div class="grid cols-3">
+          <div class="card">
+            <span class="tag">语义泛化</span>
+            <h3>抽象概念</h3>
+            <p>把“已灭绝动物”“可以喝水的容器”这类语义概念映射到场景中的具体物体。</p>
+          </div>
+          <div class="card">
+            <span class="tag">语言泛化</span>
+            <h3>同义表达</h3>
+            <p>理解 grab / pick up / lift 等不同表达背后的相似动作意图。</p>
+          </div>
+          <div class="card">
+            <span class="tag">常识迁移</span>
+            <h3>世界知识</h3>
+            <p>利用 VLM 从互联网图文中学到的常识，而不是只依赖机器人演示数据。</p>
+          </div>
+        </div>
+        <div class="callout warn">
+          <strong>不要过度神化：</strong>
+          涌现能力不是魔法。它依赖预训练数据覆盖、场景视觉识别是否准确、动作空间是否能表达目标行为，以及机器人数据是否教会模型把语义落到动作上。
+        </div>
+      </section>
+
+      <section id="compare">
+        <h2>RT-1 vs RT-2：系统性对比</h2>
+        <div class="tabs" data-tabs="compare">
+          <button class="tab-btn active" data-tab="cmp-arch">架构</button>
+          <button class="tab-btn" data-tab="cmp-action">动作表示</button>
+          <button class="tab-btn" data-tab="cmp-speed">推理速度</button>
+          <button class="tab-btn" data-tab="cmp-gen">泛化能力</button>
+        </div>
+        <div id="cmp-arch" class="tab-panel active" data-panel="compare">
+          <table>
+            <tr><th>RT-1</th><td>FiLM EfficientNet + TokenLearner + 专用 Transformer / 动作头。</td></tr>
+            <tr><th>RT-2</th><td>预训练 VLM 作为主干，通过动作 token 微调成 VLA。</td></tr>
+          </table>
+        </div>
+        <div id="cmp-action" class="tab-panel" data-panel="compare">
+          <table>
+            <tr><th>RT-1</th><td>动作离散化后由专用动作头预测，偏机器人策略网络范式。</td></tr>
+            <tr><th>RT-2</th><td>动作离散化后作为特殊语言 token，由 VLM 自回归生成。</td></tr>
+          </table>
+        </div>
+        <div id="cmp-speed" class="tab-panel" data-panel="compare">
+          <table>
+            <tr><th>RT-1</th><td>更轻量，更适合实时控制。</td></tr>
+            <tr><th>RT-2</th><td>模型更大，动作 token 自回归生成，推理延迟更高。</td></tr>
+          </table>
+        </div>
+        <div id="cmp-gen" class="tab-panel" data-panel="compare">
+          <table>
+            <tr><th>RT-1</th><td>泛化主要来自机器人数据规模和多样性。</td></tr>
+            <tr><th>RT-2</th><td>泛化来自机器人数据 + VLM 预训练语义知识。</td></tr>
+          </table>
+        </div>
+
+        <h3>完整对比表</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>维度</th>
+              <th>RT-1</th>
+              <th>RT-2</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>核心范式</td>
+              <td>专用语言条件机器人策略</td>
+              <td>VLM 微调为 VLA</td>
+            </tr>
+            <tr>
+              <td>知识来源</td>
+              <td>主要来自机器人数据和视觉 backbone 预训练</td>
+              <td>来自机器人数据 + 大规模图文预训练</td>
+            </tr>
+            <tr>
+              <td>动作生成</td>
+              <td>专用动作预测</td>
+              <td>语言模型式自回归动作 token 生成</td>
+            </tr>
+            <tr>
+              <td>优势</td>
+              <td>效率高、结构清晰、适合固定机器人场景</td>
+              <td>语义泛化强、能迁移 VLM 常识、定义后续 OpenVLA 范式</td>
+            </tr>
+            <tr>
+              <td>局限</td>
+              <td>开放世界语义能力有限</td>
+              <td>推理慢、训练成本高、仍受离散动作限制</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="tradeoffs">
+        <h2>RT-2 关键设计 Trade-off</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>设计</th>
+              <th>收益</th>
+              <th>代价</th>
+              <th>后续方向</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>复用 VLM</td>
+              <td>获得视觉语言预训练知识和语义泛化</td>
+              <td>模型大，推理和训练成本高</td>
+              <td>OpenVLA 开源化，轻量化 VLA，蒸馏和量化</td>
+            </tr>
+            <tr>
+              <td>动作 token 化</td>
+              <td>把控制纳入语言建模接口</td>
+              <td>量化误差，动作维度越多 token 越长</td>
+              <td>FAST tokenizer、连续动作头、Flow/Diffusion action expert</td>
+            </tr>
+            <tr>
+              <td>自回归生成</td>
+              <td>统一序列建模，能建模动作维度依赖</td>
+              <td>生成速度慢，控制频率受限</td>
+              <td>并行动作生成、action chunking、π0 风格连续生成</td>
+            </tr>
+            <tr>
+              <td>Co-fine-tuning</td>
+              <td>保留 VLM 能力并学习机器人动作</td>
+              <td>数据配比敏感，训练工程复杂</td>
+              <td>更系统的数据混合策略和机器人数据 scaling law</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="impact">
+        <h2>RT-2 对后续 VLA 的影响</h2>
+        <p class="lead">
+          RT-2 的历史意义在于证明 VLM→VLA 可行。后续很多工作不是推翻 RT-2，而是在解决它留下的工程和表示问题。
+        </p>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1080 380" role="img" aria-label="RT-2 impact timeline">
+            <defs>
+              <marker id="arrowImpact" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L9,3 z" fill="#203657"/>
+              </marker>
+            </defs>
+            <rect x="50" y="135" width="150" height="84" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/>
+            <text x="125" y="168" text-anchor="middle" fill="#453a9a" font-weight="900">RT-2</text>
+            <text x="125" y="194" text-anchor="middle" fill="#647084" font-size="13">VLM→VLA</text>
+
+            <rect x="300" y="60" width="170" height="84" rx="12" fill="#eef5ff" stroke="#b8cbe4"/>
+            <text x="385" y="92" text-anchor="middle" fill="#203657" font-weight="900">OpenVLA</text>
+            <text x="385" y="118" text-anchor="middle" fill="#647084" font-size="13">开源化 / 更实用</text>
+
+            <rect x="300" y="210" width="170" height="84" rx="12" fill="#eefaf8" stroke="#9ed9d1"/>
+            <text x="385" y="242" text-anchor="middle" fill="#0f5d65" font-weight="900">π0</text>
+            <text x="385" y="268" text-anchor="middle" fill="#647084" font-size="13">VLM + Flow action</text>
+
+            <rect x="570" y="60" width="190" height="84" rx="12" fill="#fff4e8" stroke="#f0c596"/>
+            <text x="665" y="92" text-anchor="middle" fill="#7a4314" font-weight="900">π-FAST</text>
+            <text x="665" y="118" text-anchor="middle" fill="#647084" font-size="13">更高效动作 token</text>
+
+            <rect x="570" y="210" width="190" height="84" rx="12" fill="#f8fbff" stroke="#dce3ee"/>
+            <text x="665" y="242" text-anchor="middle" fill="#203657" font-weight="900">RDT / Diffusion / FM</text>
+            <text x="665" y="268" text-anchor="middle" fill="#647084" font-size="13">连续动作生成</text>
+
+            <rect x="850" y="135" width="180" height="84" rx="12" fill="#fbfcff" stroke="#dce3ee"/>
+            <text x="940" y="168" text-anchor="middle" fill="#203657" font-weight="900">下一代 VLA</text>
+            <text x="940" y="194" text-anchor="middle" fill="#647084" font-size="13">更快 / 更准 / 更通用</text>
+
+            <g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#arrowImpact)">
+              <path d="M200 168 C250 120 260 102 300 102"/>
+              <path d="M200 188 C250 232 260 252 300 252"/>
+              <path d="M470 102 L570 102"/>
+              <path d="M470 252 L570 252"/>
+              <path d="M760 102 C812 120 820 152 850 165"/>
+              <path d="M760 252 C812 232 820 200 850 190"/>
+            </g>
+          </svg>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>RT-2 留下的问题</th>
+              <th>为什么重要</th>
+              <th>后续代表方向</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>自回归动作慢</td>
+              <td>机器人控制需要较高频率，延迟会影响执行稳定性</td>
+              <td>π0 的 Flow Matching action expert、并行动作头、action chunking</td>
+            </tr>
+            <tr>
+              <td>离散动作精度有限</td>
+              <td>精细操作需要连续、平滑、高频动作</td>
+              <td>π-FAST、连续动作生成、Diffusion/Flow Matching</td>
+            </tr>
+            <tr>
+              <td>模型规模和部署成本高</td>
+              <td>真实机器人部署受算力、功耗、延迟约束</td>
+              <td>OpenVLA、量化、蒸馏、轻量化视觉编码器</td>
+            </tr>
+            <tr>
+              <td>机器人数据仍然稀缺</td>
+              <td>VLM 知识不能自动替代动作经验</td>
+              <td>OXE、DROID、仿真数据、跨 embodiment 迁移</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="code-minimal">
+        <h2>最小代码片段：动作 token 和自回归生成</h2>
+        <p class="lead">
+          下面代码只展示 RT-2 思路的最小抽象：连续动作转特殊 token，以及模型逐个生成动作 token。
+        </p>
+
+        <h3>1. 动作 token 化</h3>
+        <pre><code>class RT2ActionTokenizer:
+    def __init__(self, bins=256, low=-1.0, high=1.0):
+        self.bins = bins
+        self.low = low
+        self.high = high
+        self.width = (high - low) / bins
+
+    def encode_value(self, value):
+        idx = int((max(self.low, min(self.high, value)) - self.low) / self.width)
+        idx = max(0, min(self.bins - 1, idx))
+        return f"&lt;act_{idx}&gt;"
+
+    def decode_token(self, token):
+        idx = int(token.replace("&lt;act_", "").replace("&gt;", ""))
+        return self.low + (idx + 0.5) * self.width</code></pre>
+
+        <h3>2. 自回归动作生成伪代码</h3>
+        <pre><code>prompt = [
+    image_tokens,
+    "Instruction: pick up the red cup",
+    "Action:"
+]
+
+generated = []
+for i in range(7):  # 7个动作维度
+    next_token = vlm.generate_next_token(prompt + generated)
+    generated.append(next_token)
+
+action = action_tokenizer.decode(generated)</code></pre>
+      </section>
+
+      <section id="interview">
+        <h2>面试问答：D100 必须能讲清楚的题</h2>
+        <div class="callout">
+          <strong>高分回答模板：</strong>
+          RT-2 证明了 VLM→VLA 的可行性：它把连续机器人动作离散成特殊 token，
+          通过 co-fine-tuning 让预训练 VLM 学会生成动作，同时保留互联网图文预训练带来的语义知识。
+          它最大的价值是带来语义泛化和涌现能力；最大的工程挑战是推理速度、模型规模和动作表示精度。
+          后续 OpenVLA、π0、π-FAST 分别从开源实用化、连续快速动作生成和高效动作 tokenization 方向继续改进。
+        </div>
+        <details open>
+          <summary>Q1：RT-2 的核心创新是什么？</summary>
+          <p>
+            RT-2 的核心创新是把预训练 VLM 扩展成 VLA，让模型把机器人动作当作特殊 token 生成。
+            它不是从零训练一个专用策略，而是通过 co-fine-tuning 让 VLM 同时保留视觉语言知识并学会输出动作。
+          </p>
+        </details>
+        <details>
+          <summary>Q2：为什么 RT-2 会有涌现能力？</summary>
+          <p>
+            因为 RT-2 的基座 VLM 已经从大规模图文数据中学到了语义、常识和视觉概念。机器人数据教会模型把这些语义映射到动作 token，
+            所以在遇到抽象指令或训练中没直接出现的组合时，可能利用预训练知识完成任务。
+          </p>
+        </details>
+        <details>
+          <summary>Q3：RT-2 相比 RT-1 最大的代价是什么？</summary>
+          <p>
+            主要代价是推理速度和工程成本。RT-2 模型更大，并且动作 token 通常自回归生成，控制频率可能低于专用策略。
+            此外，训练数据混合比例、动作 token 设计和模型部署都更复杂。
+          </p>
+        </details>
+        <details>
+          <summary>Q4：动作 token 和文本 token 是一回事吗？</summary>
+          <p>
+            它们在模型接口上都是 token，但语义不同。文本 token 表示自然语言片段，动作 token 表示离散化后的控制值。
+            RT-2 的关键是让模型在同一个序列建模框架下学习这两类 token 的关系。
+          </p>
+        </details>
+      </section>
+
+      <section id="quiz">
+        <h2>自测清单：看完能不能过关</h2>
+        <div class="quiz-card">
+          <strong>1. 用一句话解释 RT-2。</strong>
+          <button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button>
+          <div class="answer">RT-2 是把预训练 VLM 微调成 VLA 的方法，让模型像生成语言一样生成机器人动作 token，从而把视觉语言知识迁移到机器人控制。</div>
+        </div>
+        <div class="quiz-card">
+          <strong>2. RT-2 为什么不是简单的“RT-1 加大模型”？</strong>
+          <button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button>
+          <div class="answer">因为 RT-2 的关键范式是复用 VLM 的 next-token prediction 和预训练知识，让动作成为语言模型输出序列的一部分，而不是只扩大专用机器人策略网络。</div>
+        </div>
+        <div class="quiz-card">
+          <strong>3. Co-fine-tuning 解决什么问题？</strong>
+          <button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button>
+          <div class="answer">它在机器人动作数据和 web/VQA 数据之间做混合训练，让模型既学会动作输出，又尽量不遗忘原有视觉语言能力。</div>
+        </div>
+        <h3>最终检查</h3>
+        <ul>
+          <li>能画出 RT-2 的 VLM→动作 token 架构。</li>
+          <li>能解释动作 token 化和自回归生成流程。</li>
+          <li>能讲清 co-fine-tuning 的必要性。</li>
+          <li>能系统比较 RT-1 和 RT-2 的优缺点。</li>
+        </ul>
+      </section>
+
+      <section id="next">
+        <h2>D100 → D101：下一天为什么要继续深入 RT-2</h2>
+        <p class="lead">
+          D100 解决“RT-2 是什么、怎么把动作变成语言 token”。D101 要进一步回答：
+          这个方法为什么有效、泛化到底来自哪里、离散动作和连续动作该怎么取舍。
+        </p>
+        <div class="grid cols-3">
+          <div class="card">
+            <h3>Co-fine-tuning 细节</h3>
+            <p>数据混合比例、损失设计、灾难性遗忘和 VLM 能力保持。</p>
+          </div>
+          <div class="card">
+            <h3>涌现能力分析</h3>
+            <p>哪些能力是真的迁移，哪些可能只是数据覆盖或评估设计导致的表象。</p>
+          </div>
+          <div class="card">
+            <h3>离散 vs 连续</h3>
+            <p>为什么 RT-2/OpenVLA 用离散动作，而 π0/RDT 等方法转向连续生成。</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <a class="top-link" href="#top" aria-label="返回顶部">↑</a>
+  <script>
+    const progress = document.getElementById('progress');
+    const navLinks = Array.from(document.querySelectorAll('#toc a'));
+    const sections = navLinks
+      .map(a => document.querySelector(a.getAttribute('href')))
+      .filter(Boolean);
+
+    function updateProgress() {
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+      progress.style.width = pct + '%';
+      let current = sections[0];
+      for (const section of sections) {
+        if (section.getBoundingClientRect().top <= 120) current = section;
+      }
+      navLinks.forEach(a => {
+        a.classList.toggle('active', current && a.getAttribute('href') === '#' + current.id);
+      });
+    }
+    window.addEventListener('scroll', updateProgress, { passive: true });
+    window.addEventListener('resize', updateProgress);
+    updateProgress();
+
+    document.querySelectorAll('[data-tabs]').forEach(group => {
+      const name = group.getAttribute('data-tabs');
+      group.querySelectorAll('.tab-btn').forEach(button => {
+        button.addEventListener('click', () => {
+          group.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          button.classList.add('active');
+          document.querySelectorAll(`[data-panel="${name}"]`).forEach(panel => {
+            panel.classList.toggle('active', panel.id === button.dataset.tab);
+          });
+        });
+      });
+    });
+
+    document.querySelectorAll('.arch-node').forEach(node => {
+      node.style.cursor = 'pointer';
+      node.addEventListener('click', () => {
+        const note = document.getElementById('archNote');
+        note.innerHTML = '<strong>模块说明：</strong>' + node.dataset.note;
+        document.querySelectorAll('.arch-node rect').forEach(rect => rect.setAttribute('stroke-width', '1'));
+        const rect = node.querySelector('rect');
+        if (rect) rect.setAttribute('stroke-width', '4');
+      });
+    });
+
+    const slider = document.getElementById('actTokenSlider');
+    const actValue = document.getElementById('actValue');
+    const actBin = document.getElementById('actBin');
+    const actToken = document.getElementById('actToken');
+    const actDecoded = document.getElementById('actDecoded');
+    function updateActionToken() {
+      const value = Number(slider.value);
+      const low = -1;
+      const high = 1;
+      const bins = 256;
+      const width = (high - low) / bins;
+      let idx = Math.floor((value - low) / width);
+      idx = Math.max(0, Math.min(bins - 1, idx));
+      const decoded = low + (idx + 0.5) * width;
+      actValue.textContent = value.toFixed(3);
+      actBin.textContent = String(idx);
+      actToken.textContent = `<act_${idx}>`;
+      actDecoded.textContent = decoded.toFixed(4);
+    }
+    if (slider) {
+      slider.addEventListener('input', updateActionToken);
+      updateActionToken();
+    }
+
+    const genTokens = ['<act_160>', '<act_114>', '<act_193>', '<act_132>', '<act_127>', '<act_140>', '<act_255>'];
+    const genStrip = document.getElementById('genStrip');
+    const genNext = document.getElementById('genNext');
+    const genReset = document.getElementById('genReset');
+    const genStatus = document.getElementById('genStatus');
+    let genIndex = 0;
+    function renderGenStatus() {
+      genStatus.textContent = `当前已生成 ${genIndex} / ${genTokens.length} 个动作 token。`;
+      genNext.disabled = genIndex >= genTokens.length;
+    }
+    if (genNext) {
+      genNext.addEventListener('click', () => {
+        if (genIndex >= genTokens.length) return;
+        const span = document.createElement('span');
+        span.className = 'token generated';
+        span.textContent = genTokens[genIndex];
+        genStrip.appendChild(span);
+        genIndex += 1;
+        renderGenStatus();
+      });
+    }
+    if (genReset) {
+      genReset.addEventListener('click', () => {
+        genStrip.querySelectorAll('.generated').forEach(el => el.remove());
+        genIndex = 0;
+        renderGenStatus();
+      });
+    }
+    renderGenStatus();
+
+    document.querySelectorAll('.reveal').forEach(button => {
+      button.addEventListener('click', () => {
+        const answer = button.parentElement.querySelector('.answer');
+        if (!answer) return;
+        answer.classList.toggle('show');
+        button.textContent = answer.classList.contains('show') ? '隐藏参考答案' : '显示参考答案';
+      });
+    });
+  </script>
+</body>
+</html>

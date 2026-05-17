@@ -1,0 +1,896 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>D104 OXE 数据实操 | Pipeline 实战与瓶颈分析</title>
+  <style>
+    :root {
+      --bg:#f5f7fb; --paper:#fff; --ink:#1d2433; --muted:#647084; --line:#dce3ee;
+      --navy:#203657; --teal:#0f9d92; --cyan:#2bb8d8; --orange:#f28c38; --red:#d95f5f;
+      --green:#3ca66b; --purple:#7367d8; --shadow:0 18px 45px rgba(32,54,87,.12);
+      --radius:8px; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+      --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;color:var(--ink);background:linear-gradient(180deg,rgba(15,157,146,.10),rgba(245,247,251,0) 270px),var(--bg);font-family:var(--sans);line-height:1.72}
+    .progress{position:fixed;top:0;left:0;height:4px;width:0;background:linear-gradient(90deg,var(--teal),var(--cyan),var(--orange));z-index:60}
+    .layout{display:grid;grid-template-columns:286px minmax(0,1fr);gap:28px;width:min(1460px,calc(100% - 36px));margin:0 auto;padding:28px 0 64px}
+    aside{position:sticky;top:22px;align-self:start;height:calc(100vh - 44px);overflow:auto;padding:18px;background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);backdrop-filter:blur(10px)}
+    .brand{display:grid;gap:6px;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:14px}.brand strong{color:var(--navy);font-size:18px}.brand span{color:var(--muted);font-size:13px}
+    nav a{display:block;padding:9px 10px;margin:3px 0;color:#34415a;text-decoration:none;border-radius:6px;font-size:14px}
+    nav a:hover,nav a.active{color:#073d54;background:rgba(43,184,216,.13)}
+    main{min-width:0}.hero{min-height:540px;display:grid;grid-template-columns:1.02fr .98fr;gap:24px;align-items:center;padding:42px;background:linear-gradient(135deg,#203657,#176b75 58%,#0f9d92);color:white;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+    .eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 9px;border:1px solid rgba(255,255,255,.34);border-radius:999px;color:rgba(255,255,255,.88);font-size:13px}
+    h1{margin:18px 0 12px;font-size:clamp(36px,5vw,66px);line-height:1.05;letter-spacing:0}.hero p{max-width:780px;color:rgba(255,255,255,.88);font-size:18px}
+    .hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}.btn{border:0;border-radius:6px;padding:10px 14px;font:inherit;cursor:pointer;text-decoration:none;color:#17243a;background:white;font-weight:800}.btn.secondary{color:white;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28)}
+    .hero-visual{min-height:410px;display:grid;place-items:center}
+    section{margin-top:24px;padding:30px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 10px 28px rgba(32,54,87,.08)}
+    section>h2{margin:0 0 14px;color:var(--navy);font-size:28px;line-height:1.25;letter-spacing:0}h3{margin:24px 0 10px;color:#263a5d;font-size:20px;letter-spacing:0}p{margin:10px 0}.lead{color:#3d4a61;font-size:17px}.muted{color:var(--muted)}
+    .grid{display:grid;gap:16px}.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .card{padding:18px;border:1px solid var(--line);border-radius:var(--radius);background:#fbfcff}.card h3,.card h4{margin-top:0;margin-bottom:8px;color:var(--navy)}
+    .metric{display:grid;gap:4px;padding:18px;border-radius:var(--radius);background:#fbfcff;border:1px solid var(--line)}.metric strong{font-size:28px;color:var(--navy);line-height:1}.metric span{color:var(--muted);font-size:13px}
+    .tag{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;background:rgba(43,184,216,.12);color:#07516a;font-size:12px;font-weight:800}
+    .callout{padding:16px 18px;border-left:4px solid var(--cyan);background:#effbff;border-radius:0 var(--radius) var(--radius) 0;margin:16px 0}.warn{border-left-color:var(--orange);background:#fff7ed}.cool{border-left-color:var(--purple);background:#f3f1ff}.ok{border-left-color:var(--teal);background:#eefaf8}.bad{border-left-color:var(--red);background:#fff3f3}
+    .svg-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:#fbfdff;padding:10px}svg{max-width:100%;height:auto;display:block}
+    .tabs{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 16px}.tab-btn{border:1px solid var(--line);background:#f8fbff;color:#33415c;padding:8px 11px;border-radius:6px;cursor:pointer;font-weight:800}.tab-btn.active{background:var(--navy);border-color:var(--navy);color:white}.tab-panel{display:none}.tab-panel.active{display:block}
+    details{border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;background:#fbfcff;margin:10px 0}summary{cursor:pointer;font-weight:800;color:var(--navy)}
+    code,pre{font-family:var(--mono)}code{padding:2px 5px;border-radius:4px;background:#eef2f7;color:#27374f}pre{overflow:auto;padding:16px;border-radius:var(--radius);background:#f6f8fb;color:#243044;border:1px solid var(--line);line-height:1.58;font-size:13px}
+    table{width:100%;border-collapse:collapse;overflow:hidden;border-radius:var(--radius);border:1px solid var(--line)}th,td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}th{background:#eef4fa;color:var(--navy)}tr:last-child td{border-bottom:0}
+    .control{display:grid;gap:8px;margin:12px 0}.control label{font-weight:800;color:var(--navy)}input[type="range"]{width:100%}select{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;background:white;color:var(--ink);font:inherit}
+    .quiz-card{border:1px solid var(--line);border-radius:var(--radius);padding:16px;background:#fbfcff;margin:12px 0}.answer{display:none;margin-top:10px;padding:12px;border-radius:6px;background:#effbff;color:#073d54}.answer.show{display:block}
+    .top-link{position:fixed;right:22px;bottom:22px;width:42px;height:42px;display:grid;place-items:center;border-radius:50%;color:white;background:var(--navy);text-decoration:none;box-shadow:var(--shadow)}
+    @media(max-width:1040px){.layout{grid-template-columns:1fr}aside{position:relative;height:auto;top:0}.hero{grid-template-columns:1fr;min-height:auto;padding:26px}.cols-2,.cols-3,.cols-4{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+  <div class="layout">
+    <aside>
+      <div class="brand">
+        <strong>D104 OXE 与 Pipeline</strong>
+        <span>第15周 · 数据实操 · 工程瓶颈 · 交互式中文讲义</span>
+      </div>
+      <nav id="toc">
+        <a href="#overview">学习目标</a>
+        <a href="#oxe-value">OXE 的价值</a>
+        <a href="#rlds">RLDS 结构</a>
+        <a href="#loading-practice">数据加载实操</a>
+        <a href="#pipeline-map">Pipeline 总图</a>
+        <a href="#preprocess">预处理与标准化</a>
+        <a href="#action-space">动作空间细节</a>
+        <a href="#visual-check">可视化检查</a>
+        <a href="#mixing">多数据集混合</a>
+        <a href="#training-loop">训练闭环</a>
+        <a href="#bottleneck">瓶颈诊断</a>
+        <a href="#profiler">交互诊断器</a>
+        <a href="#step-profiler">Step Time 分解</a>
+        <a href="#memory-estimate">显存估算</a>
+        <a href="#optimization">优化策略</a>
+        <a href="#evaluation">评估协议</a>
+        <a href="#code">代码骨架</a>
+        <a href="#interview">面试问答</a>
+        <a href="#quiz">自测清单</a>
+        <a href="#next">D104 到 D105</a>
+      </nav>
+    </aside>
+    <main>
+      <header class="hero" id="top">
+        <div>
+          <span class="eyebrow">Week 15 / Day 104 / OXE Pipeline</span>
+          <h1>从模型理解走向 VLA 工程实战</h1>
+          <p>
+            D104 的核心不是再背一个模型名字，而是理解：数据格式、动作标准化、采样策略、训练吞吐和评估协议，
+            会直接决定 VLA 模型能不能训练、能不能复现、能不能部署。
+          </p>
+          <div class="hero-actions">
+            <a class="btn" href="#pipeline-map">看 Pipeline 总图</a>
+            <a class="btn secondary" href="#profiler">做瓶颈诊断</a>
+            <a class="btn secondary" href="d104_oxe_pipeline_clean.md">查看 Markdown 原文</a>
+          </div>
+        </div>
+        <div class="hero-visual">
+          <svg viewBox="0 0 680 440" role="img" aria-label="OXE to VLA training pipeline">
+            <defs>
+              <marker id="arrowHero104" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#fff"/></marker>
+              <filter id="shadow104" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#10243d" flood-opacity=".28"/></filter>
+            </defs>
+            <rect x="24" y="28" width="632" height="384" rx="18" fill="rgba(255,255,255,.10)" stroke="rgba(255,255,255,.26)"/>
+            <g filter="url(#shadow104)">
+              <rect x="70" y="82" width="150" height="82" rx="12" fill="#fff"/><text x="145" y="116" text-anchor="middle" fill="#0f5d65" font-size="19" font-weight="900">OXE</text><text x="145" y="143" text-anchor="middle" fill="#647084" font-size="13">多机器人数据</text>
+              <rect x="265" y="82" width="150" height="82" rx="12" fill="#fff"/><text x="340" y="116" text-anchor="middle" fill="#203657" font-size="19" font-weight="900">RLDS</text><text x="340" y="143" text-anchor="middle" fill="#647084" font-size="13">Episode / Step</text>
+              <rect x="460" y="82" width="150" height="82" rx="12" fill="#fff"/><text x="535" y="116" text-anchor="middle" fill="#7a4314" font-size="19" font-weight="900">Pipeline</text><text x="535" y="143" text-anchor="middle" fill="#647084" font-size="13">预处理与采样</text>
+              <rect x="170" y="260" width="150" height="82" rx="12" fill="#fff"/><text x="245" y="294" text-anchor="middle" fill="#453a9a" font-size="19" font-weight="900">VLA</text><text x="245" y="321" text-anchor="middle" fill="#647084" font-size="13">模型训练</text>
+              <rect x="365" y="260" width="150" height="82" rx="12" fill="#fff"/><text x="440" y="294" text-anchor="middle" fill="#d95f5f" font-size="19" font-weight="900">Bottleneck</text><text x="440" y="321" text-anchor="middle" fill="#647084" font-size="13">诊断与优化</text>
+            </g>
+            <g stroke="#fff" stroke-width="3" fill="none" marker-end="url(#arrowHero104)">
+              <path d="M220 123 L265 123"/><path d="M415 123 L460 123"/>
+              <path d="M535 164 C510 220 470 250 440 260"/>
+              <path d="M365 301 L320 301"/><path d="M245 260 C250 220 290 185 340 164"/>
+            </g>
+          </svg>
+        </div>
+      </header>
+
+      <section id="overview">
+        <h2>学习目标：从“知道模型”到“能跑训练”</h2>
+        <p class="lead">
+          D99-D103 已经回答了模型怎么设计。D104 要回答另一个更工程化的问题：
+          给你 OXE/RLDS 数据，你如何把它变成一个可训练、可诊断、可优化的 VLA pipeline。
+        </p>
+        <div class="grid cols-3">
+          <div class="card"><span class="tag">数据结构</span><h3>读懂 OXE/RLDS</h3><p>理解 Dataset、Episode、Step、observation、action、reward、language instruction 的层次关系。</p></div>
+          <div class="card"><span class="tag">训练工程</span><h3>搭建 Pipeline</h3><p>完成读取、预处理、增强、动作标准化、混合采样、batch 组织、模型训练和评估。</p></div>
+          <div class="card"><span class="tag">性能诊断</span><h3>定位瓶颈</h3><p>判断慢在数据加载、GPU 计算、显存、通信、多数据集采样还是数据质量。</p></div>
+        </div>
+        <div class="callout">
+          <strong>阅读规则：</strong>
+          D104 里的代码更适合作为工程结构示意图。真实 OXE 字段、数据集名和动作空间要以具体数据集说明为准，不能机械套用。
+        </div>
+      </section>
+
+      <section id="oxe-value">
+        <h2>OXE 的价值：机器人数据的“混合训练底座”</h2>
+        <p class="lead">
+          Open X-Embodiment 的关键价值不只是“大”，而是把不同实验室、不同机器人、不同任务的数据放到统一训练视角下。
+          对 VLA 来说，这一步相当于从单机器人策略走向跨 embodiment 泛化。
+        </p>
+        <div class="grid cols-4">
+          <div class="metric"><strong>22+</strong><span>独立机器人数据集，覆盖不同来源和机器人平台</span></div>
+          <div class="metric"><strong>1M+</strong><span>演示轨迹规模，支撑大模型策略训练</span></div>
+          <div class="metric"><strong>500+</strong><span>任务类型，包含桌面操作、厨房、实验室等场景</span></div>
+          <div class="metric"><strong>RLDS</strong><span>统一 episode/step 数据格式，便于混合训练</span></div>
+        </div>
+        <div class="grid cols-2" style="margin-top:16px">
+          <div class="card">
+            <h3>传统机器人数据的问题</h3>
+            <ul>
+              <li>每个实验室自己采集，数据封闭，难以复用。</li>
+              <li>字段格式、相机视角、动作定义不一致。</li>
+              <li>单个机器人数据量有限，泛化能力受限。</li>
+              <li>训练和评估协议不同，复现困难。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>OXE 带来的工程收益</h3>
+            <ul>
+              <li>用 RLDS 统一数据层次，减少接入成本。</li>
+              <li>多机器人、多任务混合训练，提升覆盖面。</li>
+              <li>支持 OpenVLA、RT-X、Octo 等路线的数据基础。</li>
+              <li>让研究重点从“收一份小数据”转向“如何混合和标准化”。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout ok">
+          <strong>一句话理解：</strong>
+          OXE 解决的是 VLA 的数据规模和数据异构问题，RLDS 解决的是这些异构数据如何被统一读取和组织的问题。
+        </div>
+      </section>
+
+      <section id="rlds">
+        <h2>RLDS 结构：Dataset → Episode → Step</h2>
+        <p class="lead">
+          读懂 RLDS 的关键是把它当作“轨迹数据库”，不是普通图片分类数据集。每条 episode 是一次完整演示，每个 step 是控制闭环中的一个时间片。
+        </p>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1120 520" role="img" aria-label="RLDS dataset structure">
+            <defs><marker id="arrowRlds104" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#203657"/></marker></defs>
+            <rect x="40" y="54" width="240" height="80" rx="14" fill="#eefaf8" stroke="#9ed9d1"/><text x="160" y="88" text-anchor="middle" fill="#0f5d65" font-size="20" font-weight="900">Dataset</text><text x="160" y="115" text-anchor="middle" fill="#647084" font-size="13">一个机器人数据集</text>
+            <rect x="360" y="54" width="240" height="80" rx="14" fill="#f3f1ff" stroke="#c8c1f2"/><text x="480" y="88" text-anchor="middle" fill="#453a9a" font-size="20" font-weight="900">Episode</text><text x="480" y="115" text-anchor="middle" fill="#647084" font-size="13">一次完整任务轨迹</text>
+            <rect x="680" y="54" width="240" height="80" rx="14" fill="#fff7ed" stroke="#f0c596"/><text x="800" y="88" text-anchor="middle" fill="#7a4314" font-size="20" font-weight="900">Step</text><text x="800" y="115" text-anchor="middle" fill="#647084" font-size="13">一个时间步</text>
+            <g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#arrowRlds104)"><path d="M280 94 L360 94"/><path d="M600 94 L680 94"/></g>
+
+            <rect x="75" y="220" width="970" height="236" rx="16" fill="#fbfdff" stroke="#dce3ee"/>
+            <text x="560" y="258" text-anchor="middle" fill="#203657" font-size="22" font-weight="900">Step 内部字段</text>
+            <rect x="120" y="305" width="220" height="96" rx="12" fill="#fff" stroke="#dce3ee"/><text x="230" y="337" text-anchor="middle" fill="#203657" font-weight="900">observation</text><text x="230" y="364" text-anchor="middle" fill="#647084" font-size="13">image / state / wrist image</text><text x="230" y="386" text-anchor="middle" fill="#647084" font-size="13">language instruction</text>
+            <rect x="450" y="305" width="220" height="96" rx="12" fill="#fff" stroke="#dce3ee"/><text x="560" y="337" text-anchor="middle" fill="#203657" font-weight="900">action</text><text x="560" y="364" text-anchor="middle" fill="#647084" font-size="13">Δx Δy Δz Δroll</text><text x="560" y="386" text-anchor="middle" fill="#647084" font-size="13">Δpitch Δyaw gripper</text>
+            <rect x="780" y="305" width="220" height="96" rx="12" fill="#fff" stroke="#dce3ee"/><text x="890" y="337" text-anchor="middle" fill="#203657" font-weight="900">transition flags</text><text x="890" y="364" text-anchor="middle" fill="#647084" font-size="13">reward / is_first</text><text x="890" y="386" text-anchor="middle" fill="#647084" font-size="13">is_terminal / discount</text>
+          </svg>
+        </div>
+        <table>
+          <thead><tr><th>层级</th><th>含义</th><th>VLA 训练中怎么用</th></tr></thead>
+          <tbody>
+            <tr><td>Dataset</td><td>某个来源的数据集，例如 bridge、kuka、fractal 等</td><td>决定采样权重、动作空间配置、字段适配规则</td></tr>
+            <tr><td>Episode</td><td>一次完整任务演示，包含多个连续 step</td><td>切成固定长度训练序列，保留时间上下文</td></tr>
+            <tr><td>Step</td><td>一个时间步的观测、动作、奖励和终止标记</td><td>构造模型输入和动作监督目标</td></tr>
+            <tr><td>Observation</td><td>图像、状态、语言指令、腕部相机等</td><td>形成视觉语言输入，并与动作对齐</td></tr>
+            <tr><td>Action</td><td>机器人控制量，常见为 7 维末端增量加夹爪</td><td>需要标准化、离散化或映射成 action tokens</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="loading-practice">
+        <h2>OXE 数据加载实操：先拿到一条可解释样本</h2>
+        <p class="lead">
+          真正开始训练前，不要急着写模型。第一步应该是确认数据能被稳定读取，并且每个字段的 shape、dtype、单位和含义都可解释。
+          这一步做不好，后面 loss 下降也可能是在学习错误映射。
+        </p>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>最小加载流程</h3>
+            <ol>
+              <li>选择一个小数据集或少量 shard，避免一开始加载全量 OXE。</li>
+              <li>读取一个 episode，打印 episode 长度。</li>
+              <li>读取前几个 step，检查 observation、action、reward、terminal flags。</li>
+              <li>可视化图像帧和动作分布，确认没有字段错位。</li>
+              <li>再进入预处理、标准化和 batch 组织。</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3>必须打印的字段</h3>
+            <table>
+              <thead><tr><th>字段</th><th>检查内容</th></tr></thead>
+              <tbody>
+                <tr><td><code>image</code></td><td>shape、dtype、是否 RGB、是否相机视角正确</td></tr>
+                <tr><td><code>state</code></td><td>维度、单位、是否包含关节或末端状态</td></tr>
+                <tr><td><code>action</code></td><td>维度、范围、坐标系、夹爪定义</td></tr>
+                <tr><td><code>language</code></td><td>是否为空、是否与任务画面匹配</td></tr>
+                <tr><td><code>is_terminal</code></td><td>episode 结束标记是否合理</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <pre><code>def inspect_one_episode(dataset):
+    episode = next(iter(dataset))
+    print("episode length:", len(episode["steps"]))
+
+    for i, step in enumerate(episode["steps"][:3]):
+        obs = step["observation"]
+        print(f"step {i}")
+        print("  image:", obs["image"].shape, obs["image"].dtype)
+        print("  state:", obs.get("state", None))
+        print("  action:", step["action"].shape, step["action"].min(), step["action"].max())
+        print("  instruction:", obs.get("language_instruction", ""))
+        print("  terminal:", step.get("is_terminal", False))</code></pre>
+        <div class="callout warn">
+          <strong>实操提醒：</strong>
+          D104 的代码骨架用于理解工程结构。真实 OXE/RLDS 字段名会因具体数据集和转换版本不同而变化，必须先用 inspection 脚本确认字段，再写通用 dataloader。
+        </div>
+      </section>
+
+      <section id="pipeline-map">
+        <h2>完整 VLA 训练 Pipeline：从磁盘到模型更新</h2>
+        <p class="lead">
+          一个可用的 VLA pipeline 不是单个 dataloader，而是一条持续流动的数据链路。任何一环慢了，GPU 都可能空等。
+        </p>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1180 520" role="img" aria-label="VLA training pipeline overview">
+            <defs><marker id="arrowPipe104" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#203657"/></marker></defs>
+            <rect x="36" y="84" width="160" height="78" rx="12" fill="#eefaf8" stroke="#9ed9d1"/><text x="116" y="116" text-anchor="middle" fill="#0f5d65" font-weight="900">OXE / RLDS</text><text x="116" y="141" text-anchor="middle" fill="#647084" font-size="13">TFRecord + metadata</text>
+            <rect x="246" y="84" width="160" height="78" rx="12" fill="#fff" stroke="#dce3ee"/><text x="326" y="116" text-anchor="middle" fill="#203657" font-weight="900">加载与解码</text><text x="326" y="141" text-anchor="middle" fill="#647084" font-size="13">image / state / action</text>
+            <rect x="456" y="84" width="160" height="78" rx="12" fill="#fff" stroke="#dce3ee"/><text x="536" y="116" text-anchor="middle" fill="#203657" font-weight="900">预处理</text><text x="536" y="141" text-anchor="middle" fill="#647084" font-size="13">resize / normalize</text>
+            <rect x="666" y="84" width="160" height="78" rx="12" fill="#fff" stroke="#dce3ee"/><text x="746" y="116" text-anchor="middle" fill="#203657" font-weight="900">序列构建</text><text x="746" y="141" text-anchor="middle" fill="#647084" font-size="13">episode → chunks</text>
+            <rect x="876" y="84" width="160" height="78" rx="12" fill="#fff" stroke="#dce3ee"/><text x="956" y="116" text-anchor="middle" fill="#203657" font-weight="900">Batch 组织</text><text x="956" y="141" text-anchor="middle" fill="#647084" font-size="13">pad / collate</text>
+
+            <rect x="246" y="270" width="160" height="78" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/><text x="326" y="302" text-anchor="middle" fill="#453a9a" font-weight="900">VLA 前向</text><text x="326" y="327" text-anchor="middle" fill="#647084" font-size="13">vision + language</text>
+            <rect x="456" y="270" width="160" height="78" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/><text x="536" y="302" text-anchor="middle" fill="#453a9a" font-weight="900">动作 Loss</text><text x="536" y="327" text-anchor="middle" fill="#647084" font-size="13">CE / MSE / token loss</text>
+            <rect x="666" y="270" width="160" height="78" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/><text x="746" y="302" text-anchor="middle" fill="#453a9a" font-weight="900">反向传播</text><text x="746" y="327" text-anchor="middle" fill="#647084" font-size="13">AMP / checkpoint</text>
+            <rect x="876" y="270" width="160" height="78" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/><text x="956" y="302" text-anchor="middle" fill="#453a9a" font-weight="900">评估与日志</text><text x="956" y="327" text-anchor="middle" fill="#647084" font-size="13">success / loss / speed</text>
+
+            <g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#arrowPipe104)">
+              <path d="M196 123 L246 123"/><path d="M406 123 L456 123"/><path d="M616 123 L666 123"/><path d="M826 123 L876 123"/>
+              <path d="M956 162 C956 222 890 309 826 309"/><path d="M666 309 L616 309"/><path d="M456 309 L406 309"/>
+              <path d="M326 270 C326 220 536 205 536 162"/>
+            </g>
+            <text x="590" y="445" text-anchor="middle" fill="#203657" font-size="18" font-weight="900">核心数据流：磁盘 → CPU 解码/预处理 → pinned memory → GPU → 模型 → loss → optimizer → 日志与评估</text>
+          </svg>
+        </div>
+      </section>
+
+      <section id="preprocess">
+        <h2>预处理与动作标准化：跨 embodiment 的核心难点</h2>
+        <p class="lead">
+          OXE 不是“直接拼起来就能训”。不同机器人动作含义、尺度、坐标系、夹爪定义可能都不同。
+          预处理的目标是把异构数据变成模型能稳定学习的共同表示。
+        </p>
+        <div class="tabs" data-tabs="prep">
+          <button class="tab-btn active" data-tab="prep-image">图像预处理</button>
+          <button class="tab-btn" data-tab="prep-action">动作标准化</button>
+          <button class="tab-btn" data-tab="prep-seq">序列构建</button>
+          <button class="tab-btn" data-tab="prep-quality">质量过滤</button>
+        </div>
+        <div id="prep-image" class="tab-panel active" data-panel="prep">
+          <div class="card">
+            <h3>图像预处理</h3>
+            <p>常见步骤包括 resize、中心裁剪或随机裁剪、归一化、颜色增强、相机视角选择。VLA 中图像增强不能过强，否则可能破坏精细操作需要的位置信息。</p>
+            <pre><code>image = decode(step["observation"]["image"])
+image = resize(image, (256, 256))
+image = normalize(image, mean, std)
+if training:
+    image = light_color_jitter(image)</code></pre>
+          </div>
+        </div>
+        <div id="prep-action" class="tab-panel" data-panel="prep">
+          <div class="card">
+            <h3>动作标准化</h3>
+            <p>动作标准化要解决三个问题：不同机器人动作维度不同、同一维度尺度不同、夹爪开合方向不同。常见做法是映射到统一 7 维末端增量，并按数据集统计量做归一化。</p>
+            <pre><code>standard_action = map_to_7d_action(raw_action, dataset_name)
+standard_action[:6] = (standard_action[:6] - mean[:6]) / std[:6]
+standard_action[6] = normalize_gripper(standard_action[6])</code></pre>
+          </div>
+        </div>
+        <div id="prep-seq" class="tab-panel" data-panel="prep">
+          <div class="card">
+            <h3>Episode 切成训练序列</h3>
+            <p>VLA 通常不直接把完整 episode 一次喂进去，而是切成固定长度窗口。窗口太短，缺少时间上下文；窗口太长，显存和训练速度压力变大。</p>
+            <pre><code>for episode in dataset:
+    for start in range(0, len(episode) - seq_len + 1, stride):
+        chunk = episode[start:start + seq_len]
+        yield build_training_sample(chunk)</code></pre>
+          </div>
+        </div>
+        <div id="prep-quality" class="tab-panel" data-panel="prep">
+          <div class="card">
+            <h3>质量过滤</h3>
+            <p>过滤异常 episode、空语言指令、损坏图像、极端动作值和过短轨迹。数据质量差时，模型 loss 可能下降，但真实 rollout 成功率仍然很差。</p>
+            <pre><code>if len(episode) < min_len: skip()
+if image_is_corrupted(step): skip()
+if action_norm(action) > threshold: clip_or_skip()
+if instruction_missing and model_needs_language: skip()</code></pre>
+          </div>
+        </div>
+        <div class="callout warn">
+          <strong>容易踩坑：</strong>
+          动作空间不是只看 shape。两个数据集都可能是 7 维 action，但坐标系、单位、夹爪符号和控制频率完全不同。
+        </div>
+      </section>
+
+      <section id="action-space">
+        <h2>动作空间标准化细节：跨机器人训练最容易出错的地方</h2>
+        <p class="lead">
+          动作标准化的目标不是把所有 action 粗暴缩放到同一个数值范围，而是让模型看到的动作 token 或连续向量具有一致控制语义。
+          这里要同时处理坐标系、动作模式、夹爪、尺度和异常值。
+        </p>
+        <table>
+          <thead><tr><th>问题</th><th>常见差异</th><th>处理方式</th><th>不处理的后果</th></tr></thead>
+          <tbody>
+            <tr><td>坐标系</td><td>相机坐标、机器人基座坐标、末端局部坐标</td><td>统一到 dataset action spec 中声明的目标坐标系</td><td>同一动作维度在不同数据集表示不同方向</td></tr>
+            <tr><td>动作类型</td><td>绝对 pose、相对 delta、关节控制、末端控制</td><td>尽量映射到统一 7D 末端增量或显式保留 action mode token</td><td>模型把绝对位置和增量混学，控制不稳定</td></tr>
+            <tr><td>尺度</td><td>米、厘米、归一化单位、角度/弧度</td><td>per-dataset mean/std 或 min/max 归一化</td><td>大尺度数据集主导 loss，小尺度动作学不到</td></tr>
+            <tr><td>夹爪</td><td>1 表示张开或闭合，不同数据集相反</td><td>统一为 open=1、close=0 或统一为 {-1,1}</td><td>同一 token 在不同数据集含义相反</td></tr>
+            <tr><td>控制频率</td><td>5Hz、10Hz、20Hz，不同 step 时间间隔</td><td>重采样、动作 chunk 或在 metadata 中编码频率</td><td>相同 delta 对应不同速度，rollout 抖动</td></tr>
+            <tr><td>异常值</td><td>传感器抖动、重置动作、标注错误</td><td>clip、winsorize、过滤异常 episode</td><td>动作分布长尾导致训练不稳</td></tr>
+          </tbody>
+        </table>
+        <div class="grid cols-2" style="margin-top:16px">
+          <div class="card">
+            <h3>推荐 action spec 结构</h3>
+            <pre><code>action_spec = {
+    "dataset": "bridge_v2",
+    "mode": "eef_delta",
+    "frame": "robot_base",
+    "dims": ["dx", "dy", "dz", "droll", "dpitch", "dyaw", "gripper"],
+    "units": ["m", "m", "m", "rad", "rad", "rad", "binary"],
+    "gripper_open_value": 1.0,
+    "mean": [...],
+    "std": [...]
+}</code></pre>
+          </div>
+          <div class="card">
+            <h3>训练前的 sanity check</h3>
+            <ul>
+              <li>每个动作维度画直方图，确认范围合理。</li>
+              <li>按数据集分别统计 mean/std，不要只看全局统计。</li>
+              <li>随机播放 episode，确认动作方向和画面变化一致。</li>
+              <li>检查夹爪维度是否出现相反定义。</li>
+              <li>检查 action clipping 后是否丢掉过多样本。</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="visual-check">
+        <h2>可视化与数据检查：在训练前发现坏数据</h2>
+        <p class="lead">
+          OXE 可视化不是为了好看，而是为了做数据 sanity check。很多 VLA 训练问题不是模型问题，而是图像错位、指令缺失、动作异常或 episode 切分错误。
+        </p>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1120 430" role="img" aria-label="OXE visualization sanity checks">
+            <defs><marker id="arrowVisual104" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#203657"/></marker></defs>
+            <rect x="54" y="72" width="190" height="98" rx="12" fill="#eefaf8" stroke="#9ed9d1"/><text x="149" y="110" text-anchor="middle" fill="#0f5d65" font-weight="900">帧序列</text><text x="149" y="138" text-anchor="middle" fill="#647084" font-size="13">任务是否连续</text>
+            <rect x="326" y="72" width="190" height="98" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/><text x="421" y="110" text-anchor="middle" fill="#453a9a" font-weight="900">语言指令</text><text x="421" y="138" text-anchor="middle" fill="#647084" font-size="13">是否匹配画面</text>
+            <rect x="598" y="72" width="190" height="98" rx="12" fill="#fff7ed" stroke="#f0c596"/><text x="693" y="110" text-anchor="middle" fill="#7a4314" font-weight="900">动作曲线</text><text x="693" y="138" text-anchor="middle" fill="#647084" font-size="13">是否异常跳变</text>
+            <rect x="870" y="72" width="190" height="98" rx="12" fill="#fff3f3" stroke="#efb3b3"/><text x="965" y="110" text-anchor="middle" fill="#a33b3b" font-weight="900">数据报告</text><text x="965" y="138" text-anchor="middle" fill="#647084" font-size="13">坏样本比例</text>
+            <g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#arrowVisual104)">
+              <path d="M244 121 L326 121"/><path d="M516 121 L598 121"/><path d="M788 121 L870 121"/>
+            </g>
+            <rect x="104" y="258" width="912" height="88" rx="14" fill="#fbfdff" stroke="#dce3ee"/>
+            <text x="560" y="296" text-anchor="middle" fill="#203657" font-size="20" font-weight="900">目标：训练前确认“图像、语言、动作、终止标记”四者对齐</text>
+            <text x="560" y="326" text-anchor="middle" fill="#647084" font-size="14">如果这一步没做，后面再复杂的模型和优化器都可能只是在放大数据错误。</text>
+          </svg>
+        </div>
+        <div class="grid cols-3">
+          <div class="card"><h3>Episode 播放</h3><p>按时间采样 8-16 帧，检查任务是否从开始自然走到结束，避免 episode 被截断或拼接错误。</p></div>
+          <div class="card"><h3>动作分布</h3><p>每个维度画直方图和时间曲线，重点看长尾、突变、全零动作、夹爪维度是否合理。</p></div>
+          <div class="card"><h3>数据集对比</h3><p>按 dataset 分组比较图像尺寸、episode 长度、action mean/std、语言缺失率和成功标记比例。</p></div>
+        </div>
+        <pre><code>def sanity_report(batch):
+    report = {}
+    report["image_shape"] = batch["images"].shape
+    report["action_mean"] = batch["actions"].mean(axis=(0, 1))
+    report["action_std"] = batch["actions"].std(axis=(0, 1))
+    report["empty_language_ratio"] = mean(text == "" for text in batch["texts"])
+    report["terminal_ratio"] = batch["is_terminal"].mean()
+    return report</code></pre>
+      </section>
+
+      <section id="mixing">
+        <h2>多数据集混合采样：数据多不等于训练自然变好</h2>
+        <p class="lead">
+          OXE 里不同数据集规模差异很大。如果完全按样本量采样，大数据集会主导训练；如果完全均匀采样，小数据集可能被过度放大。
+          温度采样是常见折中。
+        </p>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>温度采样公式</h3>
+            <p>设第 i 个数据集样本数为 <code>n_i</code>，采样概率可以写成：</p>
+            <pre><code>p_i = n_i ** tau / sum(n_j ** tau for j in datasets)</code></pre>
+            <ul>
+              <li><code>tau = 1</code>：按数据量采样，大数据集优势最大。</li>
+              <li><code>tau = 0</code>：每个数据集等概率。</li>
+              <li><code>tau = 0.5</code>：常见折中，既尊重规模又照顾小数据集。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>交互理解：调节采样温度</h3>
+            <div class="control">
+              <label for="tauRange">采样温度 tau：<span id="tauValue">0.50</span></label>
+              <input id="tauRange" type="range" min="0" max="1" value="0.5" step="0.05" />
+            </div>
+            <div class="callout ok" id="tauExplain">
+              折中采样：大数据集仍然更常出现，但小数据集不会被完全淹没。
+            </div>
+            <table>
+              <thead><tr><th>数据集</th><th>样本量</th><th>采样概率</th></tr></thead>
+              <tbody id="tauTable"></tbody>
+            </table>
+          </div>
+        </div>
+        <h3>采样之外还要考虑 loss weighting</h3>
+        <p>
+          温度采样控制“样本出现的频率”，loss weighting 控制“每个样本对梯度的影响”。如果小数据集任务很关键，但样本量少，
+          可以在采样概率之外额外提高 loss 权重；如果某个数据集噪声大，则应该降低权重或先过滤。
+        </p>
+        <table>
+          <thead><tr><th>策略</th><th>解决的问题</th><th>风险</th><th>推荐用法</th></tr></thead>
+          <tbody>
+            <tr><td>按数据量采样</td><td>尊重大数据集统计稳定性</td><td>小数据集被淹没</td><td>作为 baseline</td></tr>
+            <tr><td>均匀采样</td><td>每个数据集都有存在感</td><td>小数据集噪声被放大</td><td>做对照实验</td></tr>
+            <tr><td>温度采样</td><td>在规模和公平之间折中</td><td>tau 需要调参</td><td>常用默认 tau=0.5 左右</td></tr>
+            <tr><td>loss weighting</td><td>提升关键任务梯度影响</td><td>权重过大导致过拟合</td><td>结合分数据集 loss 监控</td></tr>
+            <tr><td>课程学习</td><td>先学基础能力，再学稀有任务</td><td>流程复杂</td><td>大规模训练后期使用</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="training-loop">
+        <h2>训练闭环：VLA Pipeline 的最小可运行结构</h2>
+        <p class="lead">
+          训练闭环的目标是把 batch 变成稳定的梯度更新，并同时记录速度、loss、显存和评估指标。工程上要先让小数据跑通，再扩大到多数据集和多 GPU。
+        </p>
+        <div class="grid cols-3">
+          <div class="card">
+            <h3>Dataset / DataLoader</h3>
+            <p>负责从 RLDS 读取样本、做预处理、构造序列、组织 batch。这里最容易出现 CPU 解码慢、worker 不够、随机 IO 过多。</p>
+          </div>
+          <div class="card">
+            <h3>VLA Model</h3>
+            <p>通常包含视觉编码器、语言模型或融合模块、动作预测头。OpenVLA/RT-2 风格会把动作看成 token，RT-1 风格更偏专用动作头。</p>
+          </div>
+          <div class="card">
+            <h3>Trainer / Evaluator</h3>
+            <p>负责 AMP、梯度累积、日志、checkpoint、仿真或真实机器人评估。训练 loss 只是过程指标，最终仍要看任务成功率。</p>
+          </div>
+        </div>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1030 380" role="img" aria-label="VLA training loop">
+            <defs><marker id="arrowLoop104" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#203657"/></marker></defs>
+            <circle cx="515" cy="190" r="144" fill="#fbfdff" stroke="#dce3ee" stroke-width="3"/>
+            <rect x="416" y="40" width="198" height="62" rx="10" fill="#eefaf8" stroke="#9ed9d1"/><text x="515" y="77" text-anchor="middle" fill="#0f5d65" font-weight="900">Batch</text>
+            <rect x="664" y="159" width="198" height="62" rx="10" fill="#f3f1ff" stroke="#c8c1f2"/><text x="763" y="196" text-anchor="middle" fill="#453a9a" font-weight="900">Forward</text>
+            <rect x="416" y="278" width="198" height="62" rx="10" fill="#fff7ed" stroke="#f0c596"/><text x="515" y="315" text-anchor="middle" fill="#7a4314" font-weight="900">Loss</text>
+            <rect x="168" y="159" width="198" height="62" rx="10" fill="#fff" stroke="#dce3ee"/><text x="267" y="196" text-anchor="middle" fill="#203657" font-weight="900">Backward + Step</text>
+            <g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#arrowLoop104)">
+              <path d="M614 72 C705 80 762 112 763 159"/><path d="M763 221 C738 270 670 304 614 309"/>
+              <path d="M416 309 C350 300 290 258 267 221"/><path d="M267 159 C300 96 350 76 416 72"/>
+            </g>
+          </svg>
+        </div>
+      </section>
+
+      <section id="bottleneck">
+        <h2>瓶颈全景：训练慢到底慢在哪里</h2>
+        <p class="lead">
+          VLA 训练瓶颈通常不是单点问题。诊断时要先看 GPU 利用率、step time 分解、显存余量、dataloader 等待时间，再决定优化方向。
+        </p>
+        <table>
+          <thead><tr><th>瓶颈类型</th><th>典型现象</th><th>诊断信号</th><th>优先解决方案</th></tr></thead>
+          <tbody>
+            <tr><td>数据加载瓶颈</td><td>GPU 经常空等，训练 step 间隔不稳定</td><td>GPU 利用率低于 50%，data time 占比高</td><td>增加 workers、缓存预处理、使用 SSD、减少随机 IO</td></tr>
+            <tr><td>图像编码瓶颈</td><td>GPU 很忙但吞吐低</td><td>forward time 占比高，视觉编码器耗时大</td><td>混合精度、冻结部分视觉层、降低图像分辨率、compile</td></tr>
+            <tr><td>自回归动作瓶颈</td><td>推理慢，控制频率低</td><td>生成多个动作 token 导致延迟累积</td><td>并行动作头、动作 chunking、蒸馏、Flow Matching</td></tr>
+            <tr><td>显存瓶颈</td><td>OOM 或 batch size 很小</td><td>显存接近上限，无法增加序列长度</td><td>gradient checkpointing、bf16、ZeRO/FSDP、缩短序列</td></tr>
+            <tr><td>通信瓶颈</td><td>单 GPU 快，多 GPU 扩展差</td><td>NCCL 等待时间高，扩展效率低</td><td>梯度累积、ZeRO、检查网络拓扑、减少同步频率</td></tr>
+            <tr><td>数据质量瓶颈</td><td>loss 下降但 rollout 差，或 loss 不稳定</td><td>各数据集 loss 差异大，异常动作多</td><td>数据清洗、任务重加权、动作裁剪、分数据集评估</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="profiler">
+        <h2>交互诊断器：根据现象定位瓶颈</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>选择你的训练现象</h3>
+            <select id="symptomSelect">
+              <option value="low_gpu">GPU 利用率很低，训练时快时慢</option>
+              <option value="high_gpu_slow">GPU 利用率很高，但 step time 仍然很长</option>
+              <option value="oom">经常 OOM，只能用很小 batch size</option>
+              <option value="multi_gpu_bad">单卡还可以，多卡扩展效率很差</option>
+              <option value="loss_bad">loss 不稳定或 rollout 成功率很差</option>
+              <option value="inference_slow">训练能跑，但真实机器人推理太慢</option>
+            </select>
+            <div class="callout ok" id="symptomAnswer">
+              大概率是数据加载瓶颈。先看 dataloader time、CPU 利用率、磁盘 IO 和 worker 数。
+            </div>
+          </div>
+          <div class="card">
+            <h3>Worker 与 Batch 的吞吐直觉</h3>
+            <div class="control">
+              <label for="workerRange">num_workers：<span id="workerValue">8</span></label>
+              <input id="workerRange" type="range" min="0" max="32" value="8" step="1" />
+            </div>
+            <div class="control">
+              <label for="batchRange">batch size：<span id="batchValue">64</span></label>
+              <input id="batchRange" type="range" min="8" max="256" value="64" step="8" />
+            </div>
+            <div class="callout" id="throughputBox">
+              估算状态：worker 数适中，batch size 中等，通常适合作为初始配置。
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="step-profiler">
+        <h2>Step Time Profiler：把一步训练拆开看</h2>
+        <p class="lead">
+          只看 samples/sec 不够。你需要知道一步训练时间花在数据加载、H2D 传输、前向、反向、优化器还是日志上。
+          下面这张图是排查训练慢时最应该画出来的 profiler 视图。
+        </p>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1120 430" role="img" aria-label="step time breakdown">
+            <rect x="70" y="88" width="980" height="76" rx="12" fill="#eef4fa" stroke="#dce3ee"/>
+            <rect x="70" y="88" width="230" height="76" rx="12" fill="#2bb8d8"/><text x="185" y="132" text-anchor="middle" fill="#fff" font-weight="900">Data 23%</text>
+            <rect x="300" y="88" width="90" height="76" fill="#0f9d92"/><text x="345" y="132" text-anchor="middle" fill="#fff" font-weight="900">H2D 9%</text>
+            <rect x="390" y="88" width="260" height="76" fill="#7367d8"/><text x="520" y="132" text-anchor="middle" fill="#fff" font-weight="900">Forward 26%</text>
+            <rect x="650" y="88" width="270" height="76" fill="#f28c38"/><text x="785" y="132" text-anchor="middle" fill="#fff" font-weight="900">Backward 27%</text>
+            <rect x="920" y="88" width="90" height="76" fill="#d95f5f"/><text x="965" y="132" text-anchor="middle" fill="#fff" font-weight="900">Opt 9%</text>
+            <rect x="1010" y="88" width="40" height="76" rx="12" fill="#647084"/><text x="1030" y="132" text-anchor="middle" fill="#fff" font-weight="900">Log</text>
+            <g fill="#203657" font-size="14" font-weight="800">
+              <text x="185" y="214" text-anchor="middle">数据加载慢</text>
+              <text x="345" y="214" text-anchor="middle">CPU→GPU</text>
+              <text x="520" y="214" text-anchor="middle">视觉/语言前向</text>
+              <text x="785" y="214" text-anchor="middle">反向传播</text>
+              <text x="965" y="214" text-anchor="middle">优化器</text>
+            </g>
+            <rect x="92" y="270" width="936" height="86" rx="14" fill="#fbfdff" stroke="#dce3ee"/>
+            <text x="560" y="306" text-anchor="middle" fill="#203657" font-size="20" font-weight="900">诊断原则：占比最高的环节优先优化，但也要看 GPU 是否在空等</text>
+            <text x="560" y="336" text-anchor="middle" fill="#647084" font-size="14">Data 高且 GPU 低利用率：先优化 dataloader；Forward/Backward 高且 GPU 忙：优化模型计算；H2D 高：检查 pin_memory 和 batch 搬运。</text>
+          </svg>
+        </div>
+        <pre><code>timer.start("data")
+batch = next(loader)
+timer.stop("data")
+
+timer.start("h2d")
+batch = move_to_gpu(batch, non_blocking=True)
+timer.stop("h2d")
+
+timer.start("forward")
+loss = model(batch)
+timer.stop("forward")
+
+timer.start("backward")
+loss.backward()
+timer.stop("backward")</code></pre>
+      </section>
+
+      <section id="memory-estimate">
+        <h2>显存估算：OOM 前先算清楚钱花在哪</h2>
+        <p class="lead">
+          VLA 显存通常由参数、梯度、优化器状态、activation 和 batch 数据组成。大模型训练时，optimizer states 和 activation 往往比你直觉中更占空间。
+        </p>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>粗略估算公式</h3>
+            <pre><code>total_memory =
+    model_params
+  + gradients
+  + optimizer_states
+  + activations
+  + batch_tensors
+  + fragmentation_margin</code></pre>
+            <p>Adam 类优化器通常需要额外保存一阶和二阶动量；如果用 fp32 optimizer states，即使模型参数用 bf16，优化器仍可能很占显存。</p>
+          </div>
+          <div class="card">
+            <h3>常见优化收益</h3>
+            <table>
+              <thead><tr><th>方法</th><th>主要节省</th><th>代价</th></tr></thead>
+              <tbody>
+                <tr><td>bf16 / fp16</td><td>参数、activation、梯度约减半</td><td>需要注意数值稳定</td></tr>
+                <tr><td>Gradient Checkpointing</td><td>activation 可省 50-70%</td><td>反向时重算，速度变慢</td></tr>
+                <tr><td>ZeRO / FSDP</td><td>参数、梯度、优化器状态分片</td><td>通信和配置复杂</td></tr>
+                <tr><td>8-bit optimizer</td><td>优化器状态</td><td>可能影响收敛，需要验证</td></tr>
+                <tr><td>缩短序列/分辨率</td><td>activation 和 batch tensor</td><td>可能损失上下文或细节</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="callout">
+          <strong>判断顺序：</strong>
+          如果 batch size 只能开很小，先看 activation 和 optimizer states；如果多卡后仍 OOM，看 ZeRO/FSDP；如果速度也慢，优先 bf16 和 attention 优化。
+        </div>
+      </section>
+
+      <section id="optimization">
+        <h2>优化策略：按瓶颈类型动手，不要盲目调参</h2>
+        <div class="tabs" data-tabs="opt">
+          <button class="tab-btn active" data-tab="opt-data">数据加载</button>
+          <button class="tab-btn" data-tab="opt-compute">模型计算</button>
+          <button class="tab-btn" data-tab="opt-memory">显存</button>
+          <button class="tab-btn" data-tab="opt-quality">数据质量</button>
+        </div>
+        <div id="opt-data" class="tab-panel active" data-panel="opt">
+          <div class="grid cols-2">
+            <div class="card"><h3>优先检查</h3><p>数据是否在网络盘、是否每步重复解码图像、worker 是否不足、batch collate 是否有 Python 慢循环。</p></div>
+            <div class="card"><h3>常用优化</h3><p>预处理缓存、内存映射、TFRecord 顺序读取、persistent workers、prefetch、pin memory、把昂贵增强前移到离线阶段。</p></div>
+          </div>
+        </div>
+        <div id="opt-compute" class="tab-panel" data-panel="opt">
+          <div class="grid cols-2">
+            <div class="card"><h3>优先检查</h3><p>视觉编码器是否过大、序列长度是否过长、attention 是否低效、是否没有打开混合精度。</p></div>
+            <div class="card"><h3>常用优化</h3><p>bf16/AMP、Flash Attention、torch.compile、冻结一部分 backbone、降低图像分辨率、梯度累积增加有效 batch。</p></div>
+          </div>
+        </div>
+        <div id="opt-memory" class="tab-panel" data-panel="opt">
+          <div class="grid cols-2">
+            <div class="card"><h3>优先检查</h3><p>显存主要被模型参数、optimizer states、activation、KV cache 或 batch 数据占用。</p></div>
+            <div class="card"><h3>常用优化</h3><p>gradient checkpointing、ZeRO/FSDP、8-bit optimizer、缩短序列、减少相机视角、动作 chunk 训练。</p></div>
+          </div>
+        </div>
+        <div id="opt-quality" class="tab-panel" data-panel="opt">
+          <div class="grid cols-2">
+            <div class="card"><h3>优先检查</h3><p>异常动作、失败轨迹、语言指令缺失、任务分布偏斜、不同数据集 loss 差异。</p></div>
+            <div class="card"><h3>常用优化</h3><p>分数据集统计、异常样本过滤、温度采样、loss reweighting、按任务难度课程学习、仿真与真实评估分开看。</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="evaluation">
+        <h2>评估协议：离线 loss 不等于机器人会做</h2>
+        <p class="lead">
+          VLA 评估必须分层。训练 loss 能告诉你模型是否在拟合数据，但不能证明真实机器人能成功完成任务。
+          D104 的工程闭环应该同时包含离线、仿真和真实世界评估。
+        </p>
+        <table>
+          <thead><tr><th>评估层级</th><th>看什么</th><th>优点</th><th>局限</th></tr></thead>
+          <tbody>
+            <tr><td>离线指标</td><td>action loss、action accuracy、per-dataset loss、梯度范数</td><td>便宜、频繁、适合训练监控</td><td>不等价于 rollout 成功率</td></tr>
+            <tr><td>仿真评估</td><td>任务成功率、完成时间、碰撞、轨迹平滑度</td><td>可重复、可批量评估</td><td>sim-to-real gap 可能很大</td></tr>
+            <tr><td>真实机器人</td><td>真实任务成功率、失败类型、安全性、人机交互体验</td><td>最终可信指标</td><td>昂贵、慢、有安全风险</td></tr>
+            <tr><td>泛化评估</td><td>未见物体、未见指令、未见背景、未见组合</td><td>检验 VLA 的核心价值</td><td>需要严格设计测试集</td></tr>
+          </tbody>
+        </table>
+        <div class="grid cols-3" style="margin-top:16px">
+          <div class="card"><h3>训练中</h3><p>每 100-500 step 看 loss、吞吐、显存和各数据集 loss，及时发现数据或训练不稳定。</p></div>
+          <div class="card"><h3>阶段性</h3><p>每几千 step 做仿真 rollout，按任务、物体、指令类型拆分成功率。</p></div>
+          <div class="card"><h3>最终</h3><p>真实机器人评估要记录失败原因：没看懂语言、抓取失败、碰撞、动作慢、恢复能力差。</p></div>
+        </div>
+      </section>
+
+      <section id="code">
+        <h2>代码骨架：最小 VLA Pipeline 结构</h2>
+        <p class="lead">
+          下面不是官方实现，而是帮助你建立工程结构的最小骨架。真实项目要替换为具体 RLDS 字段、tokenizer、模型和评估环境。
+        </p>
+        <pre><code>class OXEPipeline:
+    def __init__(self, datasets, action_specs, tokenizer):
+        self.datasets = datasets
+        self.action_specs = action_specs
+        self.tokenizer = tokenizer
+
+    def load_episode(self, dataset_name):
+        # 读取 RLDS episode: observation, action, reward, flags
+        return next_episode(dataset_name)
+
+    def preprocess_step(self, step, dataset_name):
+        image = resize_and_normalize(step["observation"]["image"])
+        text = step["observation"].get("language_instruction", "")
+        action = standardize_action(step["action"], self.action_specs[dataset_name])
+        return {"image": image, "text": text, "action": action}
+
+    def build_sequence(self, episode, dataset_name, seq_len=8):
+        steps = [self.preprocess_step(s, dataset_name) for s in episode]
+        return sliding_windows(steps, seq_len)
+
+class VLATrainer:
+    def train_step(self, batch):
+        with autocast_bf16():
+            outputs = model(batch["images"], batch["texts"])
+            loss = action_loss(outputs, batch["actions"])
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+        return {"loss": loss.item()}</code></pre>
+      </section>
+
+      <section id="interview">
+        <h2>面试问答：D104 要讲清工程判断</h2>
+        <details open>
+          <summary>Q1：OXE 数据集有什么特点？为什么重要？</summary>
+          <p>OXE 是面向机器人操作的大规模多数据集集合，价值在于多机器人、多任务和统一 RLDS 格式。它让 VLA 可以从单一机器人数据走向跨 embodiment 训练，但也带来动作空间、数据质量和采样不平衡问题。</p>
+        </details>
+        <details>
+          <summary>Q2：RLDS 的基本结构是什么？</summary>
+          <p>RLDS 可以理解为 Dataset、Episode、Step 三层。Dataset 是某个来源的数据集，Episode 是一次完整轨迹，Step 包含 observation、action、reward、is_first、is_terminal 等字段。</p>
+        </details>
+        <details>
+          <summary>Q3：如何处理不同机器人的动作空间差异？</summary>
+          <p>先为每个数据集定义 action spec，再映射到统一动作表示，例如 7 维末端增量加夹爪；之后做尺度归一化、夹爪方向统一、异常动作过滤。不能只看 action shape，必须确认坐标系、单位和控制频率。</p>
+        </details>
+        <details>
+          <summary>Q4：如何设计一个高效 VLA 训练 Pipeline？</summary>
+          <p>先让单数据集小规模跑通，然后加入预处理缓存、混合采样、pinned memory、prefetch、AMP、日志和评估。Pipeline 要记录 data time、forward time、backward time、显存和各数据集 loss，方便定位瓶颈。</p>
+        </details>
+        <details>
+          <summary>Q5：VLA 训练最常见瓶颈是什么？怎么诊断？</summary>
+          <p>最常见是数据加载瓶颈。GPU 利用率低、step time 抖动、data time 占比高时，应先检查 worker 数、磁盘 IO、图像解码、预处理缓存和 collate 逻辑。如果 GPU 利用率很高但吞吐低，再看模型计算和显存。</p>
+        </details>
+        <details>
+          <summary>Q6：如何评估 VLA 模型训练效果？</summary>
+          <p>训练 loss 只是第一层指标，还要看分数据集 loss、动作预测误差、仿真成功率、真实机器人成功率、未见物体和未见指令泛化。最终判断不能只靠离线 loss。</p>
+        </details>
+        <details>
+          <summary>Q7：训练前为什么要做数据可视化？</summary>
+          <p>因为很多问题不是模型导致的，而是数据字段错位、图像损坏、语言缺失、动作异常或 episode 切分错误。可视化帧序列、动作曲线和分数据集统计，可以在训练前发现这些问题。</p>
+        </details>
+        <details>
+          <summary>Q8：怎么解释 step time profiler？</summary>
+          <p>把一步训练拆成 data、H2D、forward、backward、optimizer 和 logging。Data 高且 GPU 空闲时优化 dataloader；forward/backward 高且 GPU 忙时优化模型计算；H2D 高时检查 pin memory 和 non_blocking 传输。</p>
+        </details>
+      </section>
+
+      <section id="quiz">
+        <h2>自测清单：是否真正具备工程理解</h2>
+        <div class="quiz-card">
+          <strong>1. 用一句话解释 OXE 和 RLDS 的关系。</strong>
+          <button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button>
+          <div class="answer">OXE 是多机器人数据集合，RLDS 是组织这些机器人轨迹数据的标准格式。</div>
+        </div>
+        <div class="quiz-card">
+          <strong>2. 为什么同样是 7 维 action，也不能直接混合训练？</strong>
+          <button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button>
+          <div class="answer">因为不同机器人的坐标系、单位、夹爪方向、控制频率和动作含义可能不同，必须做 action spec 映射和标准化。</div>
+        </div>
+        <div class="quiz-card">
+          <strong>3. GPU 利用率低于 50%，你优先检查什么？</strong>
+          <button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button>
+          <div class="answer">优先检查数据加载瓶颈，包括 worker 数、磁盘 IO、图像解码、预处理是否重复、prefetch 和 pin memory。</div>
+        </div>
+        <h3>完成 D104 后你应该能做到</h3>
+        <ul>
+          <li>画出 OXE/RLDS 的 Dataset、Episode、Step 结构。</li>
+          <li>说明 VLA pipeline 的读取、预处理、采样、batch、训练和评估环节。</li>
+          <li>解释跨 embodiment 动作标准化为什么困难。</li>
+          <li>根据 GPU 利用率、step time 和显存判断瓶颈类型。</li>
+          <li>回答 OXE、Pipeline、瓶颈分析相关面试题。</li>
+        </ul>
+      </section>
+
+      <section id="next">
+        <h2>D104 → D105：从工程实战到总结表达</h2>
+        <p class="lead">
+          D104 让你知道 VLA 不只是论文架构，还包括数据和训练工程。D105 要把 D99-D104 的知识整理成可表达、可面试、可复现的材料。
+        </p>
+        <div class="grid cols-3">
+          <div class="card"><h3>你已经有模型主线</h3><p>RT-1、RT-2、Gato 的设计哲学和取舍。</p></div>
+          <div class="card"><h3>你已经有工程主线</h3><p>OXE/RLDS、pipeline、动作标准化和瓶颈诊断。</p></div>
+          <div class="card"><h3>D105 要形成产出</h3><p>知识总结、叙述练习、面试答案和复现规划。</p></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <a class="top-link" href="#top" aria-label="返回顶部">↑</a>
+  <script>
+    const progress = document.getElementById('progress');
+    const navLinks = Array.from(document.querySelectorAll('#toc a'));
+    const sections = navLinks.map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+    function updateProgress(){
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      progress.style.width = (docHeight > 0 ? scrollTop / docHeight * 100 : 0) + '%';
+      let current = sections[0];
+      for (const section of sections) if (section.getBoundingClientRect().top <= 120) current = section;
+      navLinks.forEach(a => a.classList.toggle('active', current && a.getAttribute('href') === '#' + current.id));
+    }
+    window.addEventListener('scroll', updateProgress, {passive:true});
+    window.addEventListener('resize', updateProgress); updateProgress();
+
+    document.querySelectorAll('[data-tabs]').forEach(group => {
+      const name = group.getAttribute('data-tabs');
+      group.querySelectorAll('.tab-btn').forEach(button => {
+        button.addEventListener('click', () => {
+          group.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          button.classList.add('active');
+          document.querySelectorAll(`[data-panel="${name}"]`).forEach(panel => panel.classList.toggle('active', panel.id === button.dataset.tab));
+        });
+      });
+    });
+
+    const tauRange = document.getElementById('tauRange');
+    const tauValue = document.getElementById('tauValue');
+    const tauExplain = document.getElementById('tauExplain');
+    const tauTable = document.getElementById('tauTable');
+    const toyDatasets = [
+      {name:'large_robot_set', n:1000000},
+      {name:'bridge_like_set', n:250000},
+      {name:'small_skill_set', n:30000},
+      {name:'rare_task_set', n:5000}
+    ];
+    function updateTau(){
+      if (!tauRange || !tauTable) return;
+      const tau = Number(tauRange.value);
+      tauValue.textContent = tau.toFixed(2);
+      const weights = toyDatasets.map(d => Math.pow(d.n, tau));
+      const total = weights.reduce((a,b) => a + b, 0);
+      tauTable.innerHTML = toyDatasets.map((d, i) => `<tr><td>${d.name}</td><td>${d.n.toLocaleString()}</td><td>${(weights[i] / total * 100).toFixed(1)}%</td></tr>`).join('');
+      if (tau < 0.2) tauExplain.textContent = '接近均匀采样：小数据集存在感强，但可能过度放大小数据噪声。';
+      else if (tau > 0.8) tauExplain.textContent = '接近按数据量采样：大数据集主导训练，小数据集容易被淹没。';
+      else tauExplain.textContent = '折中采样：大数据集仍然更常出现，但小数据集不会被完全淹没。';
+    }
+    if (tauRange) tauRange.addEventListener('input', updateTau); updateTau();
+
+    const symptomSelect = document.getElementById('symptomSelect');
+    const symptomAnswer = document.getElementById('symptomAnswer');
+    const symptomMap = {
+      low_gpu: '大概率是数据加载瓶颈。先看 dataloader time、CPU 利用率、磁盘 IO 和 worker 数。',
+      high_gpu_slow: '大概率是模型计算瓶颈。重点检查视觉编码器、attention、序列长度、混合精度和 torch.compile。',
+      oom: '大概率是显存瓶颈。优先考虑 bf16、gradient checkpointing、缩短序列、减小分辨率或 ZeRO/FSDP。',
+      multi_gpu_bad: '大概率是通信瓶颈或负载不均衡。检查 NCCL、网络拓扑、梯度同步频率和每张卡 batch 是否一致。',
+      loss_bad: '可能是数据质量或混合采样问题。按数据集拆 loss，检查异常动作、失败轨迹、语言缺失和采样权重。',
+      inference_slow: '可能是自回归动作生成瓶颈。考虑动作 chunk、并行动作头、蒸馏、量化或 Flow Matching 类连续动作生成。'
+    };
+    if (symptomSelect) symptomSelect.addEventListener('change', () => { symptomAnswer.textContent = symptomMap[symptomSelect.value]; });
+
+    const workerRange = document.getElementById('workerRange');
+    const batchRange = document.getElementById('batchRange');
+    const workerValue = document.getElementById('workerValue');
+    const batchValue = document.getElementById('batchValue');
+    const throughputBox = document.getElementById('throughputBox');
+    function updateThroughput(){
+      if (!workerRange || !batchRange) return;
+      const workers = Number(workerRange.value);
+      const batch = Number(batchRange.value);
+      workerValue.textContent = workers;
+      batchValue.textContent = batch;
+      let text = '估算状态：worker 数适中，batch size 中等，通常适合作为初始配置。';
+      if (workers <= 2) text = '估算状态：worker 偏少，图像解码和预处理可能跟不上 GPU。';
+      if (workers >= 24) text = '估算状态：worker 很多，可能带来 CPU 争用和内存压力，需要实测。';
+      if (batch >= 192) text += ' batch 很大，要重点观察显存和梯度稳定性。';
+      if (batch <= 16) text += ' batch 很小，吞吐可能低，梯度也可能更抖。';
+      throughputBox.textContent = text;
+    }
+    if (workerRange) workerRange.addEventListener('input', updateThroughput);
+    if (batchRange) batchRange.addEventListener('input', updateThroughput);
+    updateThroughput();
+
+    document.querySelectorAll('.reveal').forEach(button => {
+      button.addEventListener('click', () => {
+        const answer = button.parentElement.querySelector('.answer');
+        if (!answer) return;
+        answer.classList.toggle('show');
+        button.textContent = answer.classList.contains('show') ? '隐藏参考答案' : '显示参考答案';
+      });
+    });
+  </script>
+</body>
+</html>

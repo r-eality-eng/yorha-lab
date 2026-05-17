@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>D117 FAST / π0-FAST 精讲：DCT Tokenizer 与动作离散化</title>
+  <style>
+    :root{
+      --bg:#f5f7fb;--paper:#fff;--ink:#1f2937;--muted:#667085;--line:#d9e2ee;
+      --navy:#17324d;--blue:#2563eb;--cyan:#0891b2;--green:#238636;--amber:#d97706;--red:#d64545;--violet:#6d5bd0;
+      --soft-blue:#eef6ff;--soft-cyan:#ecfeff;--soft-green:#effaf2;--soft-amber:#fff7e8;--soft-violet:#f5f2ff;
+      --shadow:0 16px 40px rgba(23,50,77,.12);--radius:8px;
+      --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+      --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    }
+    *{box-sizing:border-box}html{scroll-behavior:smooth}
+    body{margin:0;color:var(--ink);font-family:var(--sans);line-height:1.72;background:linear-gradient(180deg,#e8f7ff 0,#f5f7fb 420px)}
+    .progress{position:fixed;top:0;left:0;height:4px;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--green),var(--amber));z-index:20}
+    .layout{width:min(1520px,calc(100% - 36px));margin:0 auto;display:grid;grid-template-columns:310px minmax(0,1fr);gap:26px;padding:28px 0 72px}
+    aside{position:sticky;top:22px;align-self:start;height:calc(100vh - 44px);overflow:auto;padding:18px;background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .brand{padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:12px}.brand strong{display:block;color:var(--navy);font-size:18px}.brand span{display:block;color:var(--muted);font-size:13px}
+    nav a{display:block;text-decoration:none;color:#33415c;border-radius:6px;padding:8px 10px;margin:3px 0;font-size:14px}nav a:hover,nav a.active{background:#e8f2ff;color:#0a5ca8}
+    main{min-width:0}.hero{min-height:560px;display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center;padding:42px;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;color:#fff;background:linear-gradient(135deg,#17324d,#155e75 52%,#146c43)}
+    .eyebrow{display:inline-flex;padding:5px 10px;border:1px solid rgba(255,255,255,.34);border-radius:999px;color:rgba(255,255,255,.92);font-size:13px}
+    h1{margin:18px 0 12px;font-size:clamp(34px,5vw,60px);line-height:1.05;letter-spacing:0}.hero p{font-size:18px;color:rgba(255,255,255,.9)}
+    .hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}.btn{border:0;border-radius:6px;padding:10px 14px;font:inherit;font-weight:800;text-decoration:none;cursor:pointer;background:#fff;color:#17243a}.btn.secondary{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);color:#fff}
+    section{margin-top:24px;padding:30px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 10px 28px rgba(23,50,77,.08)}
+    section>h2{margin:0 0 14px;color:var(--navy);font-size:28px;line-height:1.25;letter-spacing:0}h3{margin:22px 0 10px;color:#263a5d;font-size:20px;letter-spacing:0}p{margin:10px 0}.lead{font-size:17px;color:#3d4a61}
+    .grid{display:grid;gap:16px}.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .card{padding:18px;border:1px solid var(--line);border-radius:var(--radius);background:#fbfcff}.card h3{margin-top:0}.tag{display:inline-flex;padding:4px 8px;border-radius:999px;background:#e9f4ff;color:#0b5fa5;font-size:12px;font-weight:800}
+    .callout{padding:16px 18px;border-left:4px solid var(--blue);background:#eef7ff;border-radius:0 var(--radius) var(--radius) 0;margin:16px 0}.ok{border-left-color:var(--green);background:var(--soft-green)}.warn{border-left-color:var(--amber);background:var(--soft-amber)}.cool{border-left-color:var(--violet);background:var(--soft-violet)}.danger{border-left-color:var(--red);background:#fff1f1}
+    .svg-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:#fbfdff;padding:10px}svg{max-width:100%;height:auto;display:block}
+    code,pre{font-family:var(--mono)}code{padding:2px 5px;border-radius:4px;background:#eef2f7;color:#243044}
+    pre{overflow:auto;padding:16px;border:1px solid var(--line);border-radius:var(--radius);background:#f6f8fb;color:#243044;line-height:1.58;font-size:13px}
+    table{width:100%;border-collapse:collapse;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#edf5fc;color:var(--navy)}tr:last-child td{border-bottom:0}
+    .control{display:grid;gap:8px;margin:12px 0}.control label{font-weight:800;color:var(--navy)}input[type=range],select{width:100%}select{padding:9px;border:1px solid var(--line);border-radius:6px;background:#fff;font:inherit}
+    .metric{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.metric div{padding:12px;border:1px solid var(--line);border-radius:6px;background:#fff}.metric strong{display:block;color:var(--navy);font-size:20px}
+    .bars{display:grid;gap:8px}.bar{height:34px;border-radius:6px;background:#edf2f7;overflow:hidden;border:1px solid var(--line)}.bar span{display:block;height:100%;min-width:34px;background:linear-gradient(90deg,#2563eb,#0891b2);color:#fff;font-weight:900;padding-left:10px;line-height:34px;white-space:nowrap}
+    .chart{width:100%;height:300px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;display:block}
+    .tabs{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 16px}.tab-btn{border:1px solid var(--line);background:#f8fbff;color:#33415c;padding:8px 11px;border-radius:6px;cursor:pointer;font-weight:800}.tab-btn.active{background:var(--navy);border-color:var(--navy);color:white}.tab-panel{display:none}.tab-panel.active{display:block}
+    .quiz-card{border:1px solid var(--line);border-radius:var(--radius);padding:16px;background:#fbfcff;margin:12px 0}.answer{display:none;margin-top:10px;padding:12px;border-radius:6px;background:#effbff;color:#073d54}.answer.show{display:block}
+    .top-link{position:fixed;right:22px;bottom:22px;width:42px;height:42px;display:grid;place-items:center;border-radius:50%;color:white;background:var(--navy);text-decoration:none;box-shadow:var(--shadow)}
+    @media(max-width:1040px){.layout{grid-template-columns:1fr}aside{position:relative;height:auto;top:0}.hero{grid-template-columns:1fr;min-height:auto;padding:26px}.cols-2,.cols-3,.cols-4,.metric{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+  <div class="layout">
+    <aside>
+      <div class="brand"><strong>D117 FAST / π0-FAST</strong><span>DCT Tokenizer · 动作离散化 · VLA 集成</span></div>
+      <nav id="toc">
+        <a href="#overview">学习目标</a>
+        <a href="#why">为什么需要 Tokenization</a>
+        <a href="#dct">DCT 直觉</a>
+        <a href="#pipeline">FAST 流程</a>
+        <a href="#lab">压缩率交互</a>
+        <a href="#implementation">核心实现</a>
+        <a href="#bins">256 bins 对比</a>
+        <a href="#lm">接入语言模型</a>
+        <a href="#training">Tokenizer 训练</a>
+        <a href="#homework">作业闭环</a>
+        <a href="#pitfalls">实现坑位</a>
+        <a href="#benchmark">评测方法</a>
+        <a href="#interview">面试表达</a>
+        <a href="#quiz">自测</a>
+        <a href="#summary">最终总结</a>
+      </nav>
+    </aside>
+
+    <main>
+      <header class="hero" id="top">
+        <div>
+          <span class="eyebrow">Week 17 / Day 117 / FAST 与 π0-FAST</span>
+          <h1>用 DCT 把连续动作变成高效动作 Token</h1>
+          <p>这一天的重点不是背公式，而是理解：机器人动作轨迹通常是平滑信号，FAST-style tokenizer 利用低频结构，用更少 token 表示更长、更稳定的动作序列。</p>
+          <div class="hero-actions">
+            <a class="btn" href="#pipeline">看 FAST 流程</a>
+            <a class="btn secondary" href="#lab">调压缩率</a>
+            <a class="btn secondary" href="d117_fast_pi0_fast_dct_tokenizer_clean.md">查看 Markdown</a>
+          </div>
+        </div>
+        <div class="svg-wrap" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25)">
+          <svg viewBox="0 0 760 470" role="img" aria-label="FAST tokenizer hero">
+            <defs><marker id="heroArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#fff"/></marker></defs>
+            <rect x="36" y="38" width="688" height="394" rx="20" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.28)"/>
+            <g fill="none" stroke="#fff" stroke-width="3" opacity=".9">
+              <path d="M94 285 C145 210,190 210,236 285 S330 360,382 285 S478 210,530 285 S620 360,675 285"/>
+              <path d="M94 330 C150 300,190 300,236 330 S330 360,382 330 S478 300,530 330 S620 360,675 330" opacity=".38"/>
+            </g>
+            <rect x="96" y="78" width="150" height="58" rx="12" fill="#fff"/><text x="171" y="112" text-anchor="middle" fill="#17324d" font-weight="900">时域动作</text>
+            <rect x="306" y="78" width="150" height="58" rx="12" fill="#fff"/><text x="381" y="112" text-anchor="middle" fill="#0b5fa5" font-weight="900">DCT 频域</text>
+            <rect x="516" y="78" width="150" height="58" rx="12" fill="#fff"/><text x="591" y="112" text-anchor="middle" fill="#1f7a4d" font-weight="900">离散 Token</text>
+            <g stroke="#fff" stroke-width="3" marker-end="url(#heroArrow)"><path d="M246 107 L306 107"/><path d="M456 107 L516 107"/></g>
+            <g>
+              <rect x="122" y="170" width="20" height="58" fill="#e8fbff"/><rect x="152" y="155" width="20" height="73" fill="#e8fbff"/><rect x="182" y="188" width="20" height="40" fill="#e8fbff"/><rect x="212" y="132" width="20" height="96" fill="#e8fbff"/>
+              <rect x="332" y="130" width="24" height="98" fill="#dff7ed"/><rect x="366" y="158" width="24" height="70" fill="#dff7ed"/><rect x="400" y="198" width="24" height="30" fill="#dff7ed"/><rect x="434" y="215" width="24" height="13" fill="#dff7ed"/>
+              <rect x="538" y="152" width="34" height="34" rx="6" fill="#fff7e8"/><rect x="580" y="152" width="34" height="34" rx="6" fill="#fff7e8"/><rect x="622" y="152" width="34" height="34" rx="6" fill="#fff7e8"/>
+            </g>
+            <text x="380" y="402" text-anchor="middle" fill="rgba(255,255,255,.92)" font-weight="800">动作平滑性 → 低频能量集中 → token 更少 → 自回归解码更短</text>
+          </svg>
+        </div>
+      </header>
+
+      <section id="overview">
+        <h2>学习目标：今天要建立一条完整链路</h2>
+        <div class="grid cols-4">
+          <div class="card"><span class="tag">目标</span><h3>动作压缩</h3><p>理解为什么把 `[T,D]` 动作序列直接逐维离散化会浪费 token。</p></div>
+          <div class="card"><span class="tag">方法</span><h3>DCT 变换</h3><p>把时间序列转到频域，优先保留低频系数，因为机器人动作通常连续且平滑。</p></div>
+          <div class="card"><span class="tag">接口</span><h3>Tokenizer</h3><p>完成 action → coefficient → token → coefficient → action 的闭环。</p></div>
+          <div class="card"><span class="tag">系统</span><h3>π0-FAST</h3><p>把动作 token 接入 VLA，让模型像生成文本 token 一样生成动作 token。</p></div>
+        </div>
+        <div class="callout warn">准确性口径：本页代码是教学版接口，用来讲清楚数据形状和设计逻辑；真实 FAST / FAST+ 还包含 tokenizer 训练、BPE/序列压缩、词表扩展、数据归一化和系统级优化。</div>
+      </section>
+
+      <section id="why">
+        <h2>为什么需要动作 Tokenization</h2>
+        <p class="lead">VLA 模型最终要输出机器人动作。动作可以连续回归，也可以离散成 token。FAST 的动机是尽量同时拿到“连续动作的高保真”和“离散 token 的高生成效率”。</p>
+        <table>
+          <thead><tr><th>方案</th><th>优点</th><th>问题</th><th>适合场景</th></tr></thead>
+          <tbody>
+            <tr><td>Flow Matching 连续动作</td><td>动作质量高，适合多峰分布和平滑控制</td><td>采样可能需要多步，难以直接复用 LM token 生成范式</td><td>高精度短 chunk 控制</td></tr>
+            <tr><td>256 bins 逐维离散</td><td>简单、易接入语言模型、解码快</td><td>token 数随 `T*D` 增长，容易丢失时序结构</td><td>短序列、低维动作、快速 baseline</td></tr>
+            <tr><td>FAST-style DCT Tokenizer</td><td>利用轨迹平滑性压缩时间维，token 更少且动作更平滑</td><td>tokenizer 更复杂，重建质量依赖频率截断和量化策略</td><td>长动作 chunk、VLA token 生成、低延迟推理</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="dct">
+        <h2>DCT 直觉：为什么低频能代表主要动作</h2>
+        <div class="grid cols-2">
+          <div>
+            <p>机器人末端轨迹、关节角、夹爪开合通常不是随机抖动，而是有连续趋势的平滑信号。DCT 会把这种趋势集中到低频系数里，高频部分更多描述细小抖动或局部修正。</p>
+            <div class="callout ok">直觉上，低频回答“整体往哪走”，高频回答“局部怎么抖”。对于机器人控制，整体趋势通常比高频细节更重要。</div>
+          </div>
+          <div class="svg-wrap">
+            <svg viewBox="0 0 720 360" role="img" aria-label="DCT low frequency explanation">
+              <defs><marker id="dctArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#17324d"/></marker></defs>
+              <rect x="30" y="30" width="660" height="300" rx="16" fill="#fff" stroke="#d9e2ee"/>
+              <text x="170" y="70" text-anchor="middle" fill="#17324d" font-weight="900">时域动作 x[t]</text>
+              <path d="M70 210 C115 120,160 120,205 210 S295 300,340 210" stroke="#2563eb" stroke-width="5" fill="none"/>
+              <text x="520" y="70" text-anchor="middle" fill="#17324d" font-weight="900">频域系数 X[k]</text>
+              <rect x="425" y="120" width="28" height="140" fill="#238636"/><rect x="465" y="150" width="28" height="110" fill="#238636"/><rect x="505" y="205" width="28" height="55" fill="#d97706"/><rect x="545" y="230" width="28" height="30" fill="#d97706"/><rect x="585" y="246" width="28" height="14" fill="#d97706"/>
+              <text x="477" y="292" fill="#238636" font-weight="900">低频：主要趋势</text><text x="560" y="318" fill="#d97706" font-weight="900">高频：细节</text>
+              <path d="M350 180 L405 180" stroke="#17324d" stroke-width="3" marker-end="url(#dctArrow)"/><text x="377" y="166" text-anchor="middle" fill="#667085">DCT</text>
+            </svg>
+          </div>
+        </div>
+        <pre><code># 正交 DCT-II 的教学实现
+def dct_time(actions):
+    # actions: [B, T, D]
+    C = build_dct_matrix(T)      # [T, T]
+    coeffs = torch.einsum("kt,btd->bkd", C, actions)
+    return coeffs                # [B, T, D]</code></pre>
+      </section>
+
+      <section id="pipeline">
+        <h2>FAST Tokenizer 数据流</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1220 560" role="img" aria-label="FAST tokenizer pipeline">
+            <defs><marker id="pipeArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#17324d"/></marker></defs>
+            <rect x="38" y="42" width="1144" height="470" rx="18" fill="#fbfdff" stroke="#d9e2ee"/>
+            <g>
+              <rect x="80" y="130" width="160" height="110" rx="12" fill="#eef6ff" stroke="#aacdec"/><text x="160" y="175" text-anchor="middle" fill="#0b4f88" font-weight="900">动作序列</text><text x="160" y="205" text-anchor="middle" fill="#667085">[B,T,D]</text>
+              <rect x="300" y="130" width="160" height="110" rx="12" fill="#ecfeff" stroke="#9bdce5"/><text x="380" y="175" text-anchor="middle" fill="#0f6875" font-weight="900">DCT</text><text x="380" y="205" text-anchor="middle" fill="#667085">时域 → 频域</text>
+              <rect x="520" y="130" width="160" height="110" rx="12" fill="#effaf2" stroke="#b7dfc0"/><text x="600" y="175" text-anchor="middle" fill="#1f7a4d" font-weight="900">保留低频</text><text x="600" y="205" text-anchor="middle" fill="#667085">[B,K,D]</text>
+              <rect x="740" y="130" width="160" height="110" rx="12" fill="#fff7e8" stroke="#f2c782"/><text x="820" y="175" text-anchor="middle" fill="#8a4b00" font-weight="900">向量量化</text><text x="820" y="205" text-anchor="middle" fill="#667085">VQ / codebook</text>
+              <rect x="960" y="130" width="160" height="110" rx="12" fill="#f5f2ff" stroke="#cabdf8"/><text x="1040" y="175" text-anchor="middle" fill="#5842b0" font-weight="900">动作 Token</text><text x="1040" y="205" text-anchor="middle" fill="#667085">[B,K] 或 [B,K,D]</text>
+            </g>
+            <g stroke="#17324d" stroke-width="3" marker-end="url(#pipeArrow)"><path d="M240 185 L300 185"/><path d="M460 185 L520 185"/><path d="M680 185 L740 185"/><path d="M900 185 L960 185"/></g>
+            <g>
+              <rect x="250" y="345" width="170" height="90" rx="12" fill="#fff" stroke="#d9e2ee"/><text x="335" y="382" text-anchor="middle" fill="#17324d" font-weight="900">反量化</text><text x="335" y="410" text-anchor="middle" fill="#667085">token → 系数</text>
+              <rect x="530" y="345" width="170" height="90" rx="12" fill="#fff" stroke="#d9e2ee"/><text x="615" y="382" text-anchor="middle" fill="#17324d" font-weight="900">补零高频</text><text x="615" y="410" text-anchor="middle" fill="#667085">恢复 [B,T,D]</text>
+              <rect x="810" y="345" width="170" height="90" rx="12" fill="#fff" stroke="#d9e2ee"/><text x="895" y="382" text-anchor="middle" fill="#17324d" font-weight="900">IDCT</text><text x="895" y="410" text-anchor="middle" fill="#667085">频域 → 动作</text>
+            </g>
+            <path d="M1040 240 C1040 305,895 305,895 345" fill="none" stroke="#17324d" stroke-width="3" marker-end="url(#pipeArrow)"/>
+            <path d="M810 390 L700 390" fill="none" stroke="#17324d" stroke-width="3" marker-end="url(#pipeArrow)"/>
+            <path d="M530 390 L420 390" fill="none" stroke="#17324d" stroke-width="3" marker-end="url(#pipeArrow)"/>
+          </svg>
+        </div>
+        <div class="grid cols-3">
+          <div class="card"><h3>Token 数变少</h3><p>逐维 bins 通常需要 `T*D` 个 token；低频 DCT 可以只用 `K` 个向量 token，或 `K*D` 个标量 token。</p></div>
+          <div class="card"><h3>时序结构保留</h3><p>DCT 先沿时间维建模整体轨迹，再量化频域结构，比逐时间步独立 bins 更懂“动作是一条轨迹”。</p></div>
+          <div class="card"><h3>与 LM 对齐</h3><p>动作变成离散 token 后，可以接入自回归 Transformer、统一词表和 KV cache 优化。</p></div>
+        </div>
+      </section>
+
+      <section id="lab">
+        <h2>交互实验：调一调 Horizon、动作维度和保留频率</h2>
+        <div class="grid cols-2">
+          <div>
+            <div class="control"><label>动作 Horizon T：<span id="tVal">16</span></label><input id="horizon" type="range" min="8" max="128" step="8" value="16"></div>
+            <div class="control"><label>动作维度 D：<span id="dVal">7</span></label><input id="dim" type="range" min="2" max="14" step="1" value="7"></div>
+            <div class="control"><label>保留低频 K：<span id="kVal">8</span></label><input id="freq" type="range" min="2" max="32" step="1" value="8"></div>
+            <select id="mode">
+              <option value="vector">向量 VQ：每个频率一个 token，token 数 = K</option>
+              <option value="scalar">标量量化：每个频率每个维度一个 token，token 数 = K*D</option>
+            </select>
+          </div>
+          <div>
+            <div class="metric">
+              <div><strong id="binsTok">112</strong><span>256 bins token</span></div>
+              <div><strong id="fastTok">8</strong><span>FAST token</span></div>
+              <div><strong id="ratio">14.0x</strong><span>token 压缩</span></div>
+              <div><strong id="keep">50%</strong><span>频率保留</span></div>
+            </div>
+            <h3>Token 数对比</h3>
+            <div class="bars">
+              <div class="bar"><span id="barBins" style="width:100%">256 bins</span></div>
+              <div class="bar"><span id="barFast" style="width:7%">FAST</span></div>
+            </div>
+            <div class="callout cool" id="labNote">当前设置代表：16 步、7 维动作，如果用向量 VQ 保留 8 个低频，只需 8 个动作 token。</div>
+            <div class="metric">
+              <div><strong id="dctMse">0.0000</strong><span>DCT重建MSE</span></div>
+              <div><strong id="binsMse">0.0000</strong><span>256 bins MSE</span></div>
+              <div><strong id="dctMae">0.0000</strong><span>DCT重建MAE</span></div>
+              <div><strong id="smoothScore">0.0000</strong><span>重建平滑性</span></div>
+            </div>
+            <canvas id="curveCanvas" class="chart" width="920" height="300" aria-label="DCT reconstruction curve"></canvas>
+            <div class="svg-wrap">
+              <svg viewBox="0 0 680 210" role="img" aria-label="frequency retention tradeoff">
+                <rect x="28" y="28" width="624" height="154" rx="14" fill="#fff" stroke="#d9e2ee"/>
+                <text x="340" y="62" text-anchor="middle" fill="#17324d" font-weight="900">K 的取舍：压缩率 vs 高频细节</text>
+                <path d="M72 145 C135 76,205 76,270 145 S402 214,468 145 S585 76,624 145" fill="none" stroke="#2563eb" stroke-width="4"/>
+                <path id="smoothCurve" d="M72 145 C160 100,220 100,300 145 S455 190,624 145" fill="none" stroke="#238636" stroke-width="5" opacity=".85"/>
+                <text x="134" y="96" fill="#2563eb" font-weight="800">原始动作</text>
+                <text x="470" y="102" fill="#238636" font-weight="800">低频重建</text>
+                <text id="freqHint" x="340" y="172" text-anchor="middle" fill="#667085">K 越小越压缩，但高频细节越少；K 越大越保真，但 token 更多。</text>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="implementation">
+        <h2>核心实现：先把形状讲对</h2>
+        <p class="lead">最容易出错的地方不是 DCT 公式，而是 token shape。下面采用“每个频率向量 `[D]` 对应一个 codebook id”的 VQ 口径。</p>
+        <pre><code>class FASTTokenizerVQ(nn.Module):
+    def tokenize(self, actions):
+        # actions: [B, T, D]
+        coeffs = DCTTransform.dct_time(actions)      # [B, T, D]
+        low = coeffs[:, :K, :]                       # [B, K, D]
+        quantized, token_flat, loss = vq(low.reshape(B*K, D))
+        tokens = token_flat.reshape(B, K)            # [B, K]
+        return tokens, quantized.reshape(B, K, D), loss
+
+    def detokenize(self, tokens):
+        # tokens: [B, K]
+        quantized = codebook(tokens.reshape(-1)).reshape(B, K, D)
+        full = zeros([B, T, D])
+        full[:, :K, :] = quantized
+        return DCTTransform.idct_time(full)</code></pre>
+        <div class="callout ok">如果你希望 token 是 `[B,K,D]`，那是另一种设计：每个动作维度单独标量量化。两种都可以讲，但不能混在同一段代码里。</div>
+      </section>
+
+      <section id="bins">
+        <h2>FAST vs 256 bins：不是简单谁更快</h2>
+        <table>
+          <thead><tr><th>维度</th><th>256 bins</th><th>FAST / DCT Tokenizer</th></tr></thead>
+          <tbody>
+            <tr><td>离散对象</td><td>每个时间步、每个动作维度独立离散</td><td>先编码整个时间序列，再量化低频系数</td></tr>
+            <tr><td>token 数</td><td>`T*D` 线性增长</td><td>`K` 或 `K*D`，通常 `K < T`</td></tr>
+            <tr><td>误差形态</td><td>逐维量化误差，可能造成抖动</td><td>频域截断误差，通常表现为更平滑</td></tr>
+            <tr><td>工程复杂度</td><td>很低</td><td>需要 DCT、量化、码本训练、反变换</td></tr>
+            <tr><td>系统收益</td><td>适合 baseline</td><td>自回归步数更少，KV cache 压力更低，长 chunk 更有优势</td></tr>
+          </tbody>
+        </table>
+        <div class="callout warn">速度比较不能只测 tokenizer/detokenizer。真正重要的是端到端：VLA 生成多少动作 token、Transformer 解码多少步、KV cache 占多少、控制周期是否满足机器人实时性。</div>
+      </section>
+
+      <section id="lm">
+        <h2>π0-FAST：动作 Token 如何接入 VLA</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1180 520" role="img" aria-label="pi0 fast integration">
+            <defs><marker id="lmArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#17324d"/></marker></defs>
+            <rect x="40" y="40" width="1100" height="420" rx="18" fill="#fbfdff" stroke="#d9e2ee"/>
+            <rect x="90" y="100" width="190" height="80" rx="12" fill="#eef6ff" stroke="#aacdec"/><text x="185" y="133" text-anchor="middle" fill="#0b4f88" font-weight="900">图像 Token</text><text x="185" y="160" text-anchor="middle" fill="#667085">vision encoder</text>
+            <rect x="90" y="220" width="190" height="80" rx="12" fill="#fff7e8" stroke="#f2c782"/><text x="185" y="253" text-anchor="middle" fill="#8a4b00" font-weight="900">语言 Token</text><text x="185" y="280" text-anchor="middle" fill="#667085">instruction</text>
+            <rect x="370" y="150" width="260" height="120" rx="14" fill="#f5f2ff" stroke="#cabdf8"/><text x="500" y="198" text-anchor="middle" fill="#5842b0" font-weight="900" font-size="20">VLA Transformer</text><text x="500" y="230" text-anchor="middle" fill="#667085">融合视觉、语言、历史动作</text>
+            <rect x="730" y="150" width="190" height="120" rx="14" fill="#effaf2" stroke="#b7dfc0"/><text x="825" y="195" text-anchor="middle" fill="#1f7a4d" font-weight="900">动作 Token</text><text x="825" y="225" text-anchor="middle" fill="#667085">AR decode</text>
+            <rect x="990" y="150" width="110" height="120" rx="14" fill="#ecfeff" stroke="#9bdce5"/><text x="1045" y="195" text-anchor="middle" fill="#0f6875" font-weight="900">IDCT</text><text x="1045" y="225" text-anchor="middle" fill="#667085">动作</text>
+            <g stroke="#17324d" stroke-width="3" marker-end="url(#lmArrow)"><path d="M280 140 L370 190"/><path d="M280 260 L370 230"/><path d="M630 210 L730 210"/><path d="M920 210 L990 210"/></g>
+            <text x="590" y="360" text-anchor="middle" fill="#33415c" font-weight="900">训练时：目标动作先 tokenize，模型学习预测动作 token</text>
+            <text x="590" y="395" text-anchor="middle" fill="#33415c" font-weight="900">推理时：模型生成动作 token，再 detokenize 成连续 action chunk</text>
+          </svg>
+        </div>
+        <div class="grid cols-3">
+          <div class="card"><h3>统一序列</h3><p>视觉 token、文本 token、动作 token 可以进入同一个 Transformer 序列，但需要清晰的 modality embedding。</p></div>
+          <div class="card"><h3>动作位置编码</h3><p>动作 token 的位置最好编码频率 index、chunk index、甚至 embodiment，否则模型难以理解 token 的控制含义。</p></div>
+          <div class="card"><h3>词表扩展</h3><p>动作 token 可以作为额外词表，也可以用单独 action head；关键是训练损失和解码接口一致。</p></div>
+        </div>
+      </section>
+
+      <section id="training">
+        <h2>FAST Tokenizer 训练流程：从离线轨迹到动作词表</h2>
+        <p class="lead">真实 FAST-style 系统不是手写一个 DCT 函数就结束。tokenizer 本身需要离线训练、验证、保存统计量，并和 VLA 的词表或 action head 对齐。</p>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1220 520" role="img" aria-label="FAST tokenizer training pipeline">
+            <defs><marker id="trainArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#17324d"/></marker></defs>
+            <rect x="40" y="48" width="1140" height="390" rx="18" fill="#fbfdff" stroke="#d9e2ee"/>
+            <g>
+              <rect x="80" y="125" width="150" height="86" rx="12" fill="#eef6ff" stroke="#aacdec"/><text x="155" y="158" text-anchor="middle" fill="#0b4f88" font-weight="900">轨迹数据</text><text x="155" y="185" text-anchor="middle" fill="#667085">episodes</text>
+              <rect x="270" y="125" width="150" height="86" rx="12" fill="#fff7e8" stroke="#f2c782"/><text x="345" y="158" text-anchor="middle" fill="#8a4b00" font-weight="900">归一化</text><text x="345" y="185" text-anchor="middle" fill="#667085">mean/std</text>
+              <rect x="460" y="125" width="150" height="86" rx="12" fill="#ecfeff" stroke="#9bdce5"/><text x="535" y="158" text-anchor="middle" fill="#0f6875" font-weight="900">DCT</text><text x="535" y="185" text-anchor="middle" fill="#667085">[T,D]→[T,D]</text>
+              <rect x="650" y="125" width="150" height="86" rx="12" fill="#effaf2" stroke="#b7dfc0"/><text x="725" y="158" text-anchor="middle" fill="#1f7a4d" font-weight="900">低频选择</text><text x="725" y="185" text-anchor="middle" fill="#667085">保留 K</text>
+              <rect x="840" y="125" width="150" height="86" rx="12" fill="#f5f2ff" stroke="#cabdf8"/><text x="915" y="158" text-anchor="middle" fill="#5842b0" font-weight="900">码本训练</text><text x="915" y="185" text-anchor="middle" fill="#667085">VQ / k-means</text>
+              <rect x="1030" y="125" width="110" height="86" rx="12" fill="#fff1f1" stroke="#efb3b3"/><text x="1085" y="158" text-anchor="middle" fill="#b42318" font-weight="900">VLA</text><text x="1085" y="185" text-anchor="middle" fill="#667085">词表/Head</text>
+            </g>
+            <g stroke="#17324d" stroke-width="3" marker-end="url(#trainArrow)"><path d="M230 168 L270 168"/><path d="M420 168 L460 168"/><path d="M610 168 L650 168"/><path d="M800 168 L840 168"/><path d="M990 168 L1030 168"/></g>
+            <text x="610" y="290" text-anchor="middle" fill="#33415c" font-weight="900">关键保存物：normalization统计量、DCT配置、K、codebook、动作token词表映射</text>
+            <text x="610" y="330" text-anchor="middle" fill="#33415c" font-weight="900">关键验证项：roundtrip重建误差、shape单测、无NaN、真实控制闭环表现</text>
+          </svg>
+        </div>
+        <div class="grid cols-3">
+          <div class="card"><h3>预处理</h3><p>统一坐标系、动作尺度、chunk 长度和夹爪定义。不同机器人混训时，这一步决定码本是否能泛化。</p></div>
+          <div class="card"><h3>码本学习</h3><p>码本太小会过度平滑，码本太大会增加词表压力。训练时要同时看重建误差、码本使用率和稀有 token 比例。</p></div>
+          <div class="card"><h3>接入策略</h3><p>可以扩展统一词表，也可以用独立 action head。教学和工程排错阶段，独立 action head 通常更清晰。</p></div>
+        </div>
+        <pre><code>def test_fast_tokenizer_shapes():
+    tokenizer = FASTTokenizer(action_dim=7, chunk_size=16, num_freq_bins=8)
+    actions = torch.randn(4, 16, 7)
+    tokens, quantized, loss = tokenizer.tokenize(actions)
+    assert tokens.shape == (4, 8)
+    assert quantized.shape == (4, 8, 7)
+    assert tokenizer.detokenize(tokens).shape == actions.shape</code></pre>
+      </section>
+
+      <section id="homework">
+        <h2>本日作业：把 D117 从“看懂”变成“会验证”</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>作业1：跑通最小实验</h3>
+            <pre><code>python3 week17_html/d117_fast_tokenizer_experiment.py</code></pre>
+            <p>验收：能解释 `K=2/8/32` 的 token 数、压缩率、MSE 和平滑性差异。</p>
+          </div>
+          <div class="card">
+            <h3>作业2：制造高频动作</h3>
+            <p>把脚本里的某个维度改成更高频正弦，观察低 K 重建误差是否上升。</p>
+          </div>
+          <div class="card">
+            <h3>作业3：手算 token 数</h3>
+            <p>`T=32,D=7,K=8` 时，向量VQ是 `8`，标量量化是 `56`，256 bins 是 `224`。</p>
+          </div>
+          <div class="card">
+            <h3>作业4：写上线排错清单</h3>
+            <p>至少覆盖 DCT 维度、shape、normalization、codebook 使用率、高频动作和端到端解码成本。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="pitfalls">
+        <h2>实现坑位：D117 最该补的地方</h2>
+        <div class="grid cols-2">
+          <div class="card"><h3>1. token shape 混乱</h3><p>`[B,K]` 和 `[B,K,D]` 是两种不同设计。向量 VQ 是 `[B,K]`；逐维标量量化才是 `[B,K,D]`。</p></div>
+          <div class="card"><h3>2. 层次化切片错误</h3><p>频段 token 的切片长度由 `high-low` 决定，不由 `codebook_size` 决定。码本大小只影响 token 取值范围。</p></div>
+          <div class="card"><h3>3. 部署版变量未定义</h3><p>detokenize 不能引用不存在的 `actions`。应显式创建 `[B,T,D]` 的零张量，再写回重要维度。</p></div>
+          <div class="card"><h3>4. 忽略归一化</h3><p>不同机器人动作尺度差异很大。DCT 前后都应有 action normalization，否则码本会被尺度差异污染。</p></div>
+        </div>
+        <pre><code># 正确切层次化 token：用频段长度移动 cursor
+cursor = 0
+for low, high in zip(freq_bands[:-1], freq_bands[1:]):
+    band_size = high - low
+    band_tokens = tokens[:, cursor:cursor + band_size]
+    cursor += band_size</code></pre>
+      </section>
+
+      <section id="benchmark">
+        <h2>评测方法：不要只看 MSE</h2>
+        <table>
+          <thead><tr><th>类别</th><th>指标</th><th>为什么重要</th></tr></thead>
+          <tbody>
+            <tr><td>重建质量</td><td>MSE、MAE、最大误差、终点误差</td><td>判断 tokenization 是否破坏动作精度</td></tr>
+            <tr><td>轨迹性质</td><td>速度/加速度平滑性、jerk、频谱能量</td><td>机器人更关心动作是否平滑稳定</td></tr>
+            <tr><td>生成成本</td><td>token 数、解码步数、端到端延迟、KV cache</td><td>FAST 的关键收益常在整体解码链路</td></tr>
+            <tr><td>任务表现</td><td>成功率、失败恢复率、碰撞率</td><td>动作重建好不等于真实任务好</td></tr>
+            <tr><td>泛化</td><td>跨任务、跨机器人、跨动作尺度</td><td>检验 tokenizer 是否过拟合某一类轨迹</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="interview">
+        <h2>面试表达：把 FAST 讲成系统设计</h2>
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="q1">为什么 DCT</button>
+          <button class="tab-btn" data-tab="q2">如何接 VLA</button>
+          <button class="tab-btn" data-tab="q3">怎么评测</button>
+          <button class="tab-btn" data-tab="q4">风险是什么</button>
+        </div>
+        <div class="tab-panel active" id="q1"><p>DCT 适合动作 tokenization，是因为机器人动作在时间上通常平滑，低频系数能覆盖大部分轨迹能量。保留低频可以压缩 token，同时保持主要运动趋势；高频被截断后，误差通常表现为更平滑，而不是逐维随机抖动。</p></div>
+        <div class="tab-panel" id="q2"><p>训练时先把目标动作通过 FAST tokenizer 转成动作 token，再让 VLA 根据图像和语言预测这些 token；推理时 VLA 自回归生成动作 token，再通过反量化和 IDCT 还原连续 action chunk。工程上要处理词表扩展、动作位置编码和 modality embedding。</p></div>
+        <div class="tab-panel" id="q3"><p>不能只报告 tokenizer 局部速度和 MSE。应该同时报告重建质量、轨迹平滑性、端到端解码延迟、token 数、KV cache、真实任务成功率和跨机器人泛化表现。</p></div>
+        <div class="tab-panel" id="q4"><p>主要风险是 tokenizer 复杂度上升、码本训练不稳定、动作尺度归一化不足、高频细节丢失，以及 token shape 或频段切片实现错误。系统上线前需要可逆性单测、边界动作测试和真实控制闭环评估。</p></div>
+      </section>
+
+      <section id="quiz">
+        <h2>自测：确认你真的理解 D117</h2>
+        <div class="quiz-card"><strong>1. 如果动作是 `[B,T,D]`，向量 VQ 对每个频率的 `[D]` 系数量化，token 形状应该是什么？</strong><br><button class="btn" data-answer="a1">显示答案</button><div class="answer" id="a1">应该是 `[B,K]`。每个低频频率向量对应一个 codebook index。若是 `[B,K,D]`，那代表逐维标量量化，是另一种设计。</div></div>
+        <div class="quiz-card"><strong>2. FAST 的速度收益主要来自 DCT 本身很快吗？</strong><br><button class="btn" data-answer="a2">显示答案</button><div class="answer" id="a2">不主要是。收益更多来自动作 token 数减少，自回归解码步数变少，KV cache 压力降低，端到端生成链路更短。</div></div>
+        <div class="quiz-card"><strong>3. 为什么不能只用 MSE 评价动作 tokenizer？</strong><br><button class="btn" data-answer="a3">显示答案</button><div class="answer" id="a3">机器人控制还关心轨迹平滑性、终点误差、碰撞率、成功率和闭环稳定性。MSE 小不一定代表任务执行好。</div></div>
+      </section>
+
+      <section id="summary">
+        <h2>最终总结</h2>
+        <div class="callout ok">
+          D117 的一句话总结：FAST / π0-FAST 把动作看成时间信号，先用 DCT 提取低频结构，再把频域系数量化为动作 token，从而让 VLA 用更少 token 生成更长、更平滑的 action chunk。
+        </div>
+        <div class="grid cols-3">
+          <div class="card"><h3>你要记住的本质</h3><p>动作 tokenization 不是简单离散化，而是在压缩率、重建质量和生成效率之间做系统权衡。</p></div>
+          <div class="card"><h3>你要警惕的问题</h3><p>token shape、频段切片、归一化、码本训练和真实控制闭环，是最容易出错的工程点。</p></div>
+          <div class="card"><h3>下一天预告</h3><p>D118 会进入 HPT、RDT 与 DiT scaling 的架构设计空间，对比不同机器人基础模型范式。</p></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <a class="top-link" href="#top">↑</a>
+
+  <script>
+    const progress = document.getElementById('progress');
+    const links = [...document.querySelectorAll('nav a')];
+    const sections = links.map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+    window.addEventListener('scroll', () => {
+      const h = document.documentElement;
+      progress.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
+      let current = sections[0];
+      for (const sec of sections) if (sec.offsetTop - 120 <= scrollY) current = sec;
+      links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + current.id));
+    });
+
+    function dctMatrix(n){
+      const C = [];
+      for(let k=0;k<n;k++){
+        const row = [];
+        const scale = k === 0 ? Math.sqrt(1/n) : Math.sqrt(2/n);
+        for(let t=0;t<n;t++) row.push(scale * Math.cos(Math.PI / n * (t + 0.5) * k));
+        C.push(row);
+      }
+      return C;
+    }
+    function makeSignal(T){
+      const y = [];
+      for(let t=0;t<T;t++){
+        const x = 2 * Math.PI * t / Math.max(1, T - 1);
+        y.push(0.52*Math.sin(x) + 0.16*Math.sin(2.5*x + 0.4) + 0.06*Math.sin(7*x));
+      }
+      return y;
+    }
+    function dctReconstruct(y, K){
+      const T = y.length, C = dctMatrix(T);
+      const coeff = C.map(row => row.reduce((s,v,i) => s + v*y[i], 0));
+      const kept = coeff.map((v,i) => i < K ? v : 0);
+      return Array.from({length:T}, (_,t) => C.reduce((s,row,k) => s + row[t]*kept[k], 0));
+    }
+    function binsReconstruct(y, bins=256){
+      return y.map(v => {
+        const q = Math.max(0, Math.min(bins - 1, Math.round((v + 1) / 2 * (bins - 1))));
+        return q / (bins - 1) * 2 - 1;
+      });
+    }
+    function metric(a,b){
+      let mse=0, mae=0, smooth=0;
+      for(let i=0;i<a.length;i++){ const d=b[i]-a[i]; mse+=d*d; mae+=Math.abs(d); }
+      for(let i=2;i<b.length;i++){ const acc=b[i] - 2*b[i-1] + b[i-2]; smooth += acc*acc; }
+      return {mse:mse/a.length, mae:mae/a.length, smooth:smooth/Math.max(1,b.length-2)};
+    }
+    function drawCurves(T,K){
+      const canvas = document.getElementById('curveCanvas');
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      const original = makeSignal(T);
+      const dct = dctReconstruct(original, K);
+      const bins = binsReconstruct(original);
+      const dctM = metric(original, dct);
+      const binsM = metric(original, bins);
+      document.getElementById('dctMse').textContent = dctM.mse.toFixed(5);
+      document.getElementById('binsMse').textContent = binsM.mse.toFixed(5);
+      document.getElementById('dctMae').textContent = dctM.mae.toFixed(5);
+      document.getElementById('smoothScore').textContent = dctM.smooth.toFixed(5);
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,W,H);
+      ctx.strokeStyle = '#d9e2ee'; ctx.lineWidth = 1;
+      for(let i=0;i<=5;i++){ const y=34+i*(H-68)/5; ctx.beginPath(); ctx.moveTo(44,y); ctx.lineTo(W-22,y); ctx.stroke(); }
+      ctx.fillStyle = '#667085'; ctx.font = '14px sans-serif';
+      ctx.fillText('动态重建实验：蓝=原始动作，绿=DCT低频重建，橙=256 bins重建', 44, 24);
+      const all = original.concat(dct,bins);
+      const min = Math.min(...all), max = Math.max(...all), pad = (max-min)*0.15 + 1e-6;
+      const sx = i => 44 + i/(T-1)*(W-70);
+      const sy = v => H-34 - (v-(min-pad))/(max-min+2*pad)*(H-76);
+      function line(arr,color,width){
+        ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath();
+        arr.forEach((v,i) => i ? ctx.lineTo(sx(i), sy(v)) : ctx.moveTo(sx(i), sy(v)));
+        ctx.stroke();
+      }
+      line(original,'#2563eb',3);
+      line(dct,'#238636',3);
+      line(bins,'#d97706',2);
+      ctx.fillStyle = '#17324d';
+      ctx.fillText(`T=${T}, K=${K}, DCT MSE=${dctM.mse.toFixed(5)}, 256 bins MSE=${binsM.mse.toFixed(5)}`, 44, H-10);
+    }
+
+    function updateLab(){
+      const T = +document.getElementById('horizon').value;
+      const D = +document.getElementById('dim').value;
+      const freqInput = document.getElementById('freq');
+      if (+freqInput.value > T) freqInput.value = T;
+      freqInput.max = T;
+      const K = +freqInput.value;
+      const mode = document.getElementById('mode').value;
+      const bins = T * D;
+      const fast = mode === 'vector' ? K : K * D;
+      const ratio = bins / fast;
+      document.getElementById('tVal').textContent = T;
+      document.getElementById('dVal').textContent = D;
+      document.getElementById('kVal').textContent = K;
+      document.getElementById('binsTok').textContent = bins;
+      document.getElementById('fastTok').textContent = fast;
+      document.getElementById('ratio').textContent = ratio.toFixed(1) + 'x';
+      document.getElementById('keep').textContent = Math.round(K / T * 100) + '%';
+      document.getElementById('barBins').style.width = '100%';
+      document.getElementById('barFast').style.width = Math.max(5, fast / bins * 100) + '%';
+      document.getElementById('barBins').textContent = '256 bins: ' + bins;
+      document.getElementById('barFast').textContent = 'FAST: ' + fast;
+      document.getElementById('labNote').textContent = `当前设置代表：${T} 步、${D} 维动作，${mode === 'vector' ? '向量 VQ' : '标量量化'} 保留 ${K} 个低频，动作 token 数约为 ${fast}，相对逐维 256 bins 压缩 ${ratio.toFixed(1)} 倍。`;
+      const hint = K / T < 0.35
+        ? '当前 K 偏小：压缩率高，但局部细节和快速夹爪变化可能丢失。'
+        : K / T < 0.7
+          ? '当前 K 较均衡：通常能保留主要运动趋势，同时控制 token 数。'
+          : '当前 K 偏大：重建更保真，但自回归 token 数和解码成本会上升。';
+      document.getElementById('freqHint').textContent = hint;
+      drawCurves(T,K);
+    }
+    ['horizon','dim','freq','mode'].forEach(id => document.getElementById(id).addEventListener('input', updateLab));
+    updateLab();
+
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+    }));
+    document.querySelectorAll('[data-answer]').forEach(btn => btn.addEventListener('click', () => {
+      document.getElementById(btn.dataset.answer).classList.toggle('show');
+    }));
+  </script>
+</body>
+</html>

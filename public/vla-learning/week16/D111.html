@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>D111 OpenVLA 改进实验、量化效果与优缺点分析</title>
+  <style>
+    :root{--bg:#f5f7fb;--paper:#fff;--ink:#1d2433;--muted:#647084;--line:#dce3ee;--navy:#203657;--teal:#0f9d92;--blue:#2b83d6;--orange:#f08b38;--red:#d95f5f;--green:#2f9e64;--violet:#7367d8;--shadow:0 18px 45px rgba(32,54,87,.12);--radius:8px;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;--sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--ink);background:linear-gradient(180deg,rgba(240,139,56,.12),rgba(245,247,251,0) 330px),var(--bg);font-family:var(--sans);line-height:1.72}.progress{position:fixed;top:0;left:0;height:4px;width:0;background:linear-gradient(90deg,var(--orange),var(--teal),var(--blue),var(--violet));z-index:80}
+    .layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:28px;width:min(1500px,calc(100% - 36px));margin:0 auto;padding:28px 0 64px}aside{position:sticky;top:22px;align-self:start;height:calc(100vh - 44px);overflow:auto;padding:18px;background:rgba(255,255,255,.93);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);backdrop-filter:blur(10px)}.brand{display:grid;gap:6px;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:14px}.brand strong{color:var(--navy);font-size:18px}.brand span{color:var(--muted);font-size:13px}nav a{display:block;padding:9px 10px;margin:3px 0;color:#34415a;text-decoration:none;border-radius:6px;font-size:14px}nav a:hover,nav a.active{background:rgba(240,139,56,.13);color:#7a4314}
+    main{min-width:0}.hero{min-height:540px;display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:center;padding:42px;background:linear-gradient(135deg,#203657,#0f766e 48%,#884b20);color:white;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}.eyebrow{display:inline-flex;padding:5px 10px;border:1px solid rgba(255,255,255,.34);border-radius:999px;color:rgba(255,255,255,.9);font-size:13px}h1{margin:18px 0 12px;font-size:clamp(34px,5vw,62px);line-height:1.05;letter-spacing:0}.hero p{max-width:790px;color:rgba(255,255,255,.9);font-size:18px}.hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}.btn{border:0;border-radius:6px;padding:10px 14px;font:inherit;cursor:pointer;text-decoration:none;color:#17243a;background:white;font-weight:800}.btn.secondary{color:white;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28)}.hero-visual{min-height:390px;display:grid;place-items:center}
+    section{margin-top:24px;padding:30px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 10px 28px rgba(32,54,87,.08)}section>h2{margin:0 0 14px;color:var(--navy);font-size:28px;line-height:1.25;letter-spacing:0}h3{margin:24px 0 10px;color:#263a5d;font-size:20px;letter-spacing:0}p{margin:10px 0}.lead{color:#3d4a61;font-size:17px}.grid{display:grid;gap:16px}.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}.card{padding:18px;border:1px solid var(--line);border-radius:var(--radius);background:#fbfcff}.card h3{margin-top:0}.tag{display:inline-flex;padding:4px 8px;border-radius:999px;background:rgba(240,139,56,.13);color:#7a4314;font-size:12px;font-weight:800}.callout{padding:16px 18px;border-left:4px solid var(--blue);background:#eef7ff;border-radius:0 var(--radius) var(--radius) 0;margin:16px 0}.ok{border-left-color:var(--green);background:#eefaf3}.warn{border-left-color:var(--orange);background:#fff7ed}.danger{border-left-color:var(--red);background:#fff3f3}.cool{border-left-color:var(--violet);background:#f3f1ff}
+    .svg-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:#fbfdff;padding:10px}svg{max-width:100%;height:auto;display:block}.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 16px}.tab-btn{border:1px solid var(--line);background:#f8fbff;color:#33415c;padding:8px 11px;border-radius:6px;cursor:pointer;font-weight:800}.tab-btn.active{background:var(--navy);border-color:var(--navy);color:white}.tab-panel{display:none}.tab-panel.active{display:block}
+    code,pre{font-family:var(--mono)}code{padding:2px 5px;border-radius:4px;background:#eef2f7;color:#27374f}pre{overflow:auto;padding:16px;border-radius:var(--radius);background:#f6f8fb;color:#243044;border:1px solid var(--line);line-height:1.58;font-size:13px}table{width:100%;border-collapse:collapse;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}th,td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}th{background:#eef4fa;color:var(--navy)}tr:last-child td{border-bottom:0}.control{display:grid;gap:8px;margin:12px 0}.control label{font-weight:800;color:var(--navy)}input[type="range"]{width:100%}select{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;background:white;color:var(--ink);font:inherit}.metric{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.metric div{padding:12px;border:1px solid var(--line);border-radius:6px;background:#fff}.metric strong{display:block;color:var(--navy);font-size:20px}.quiz-card{border:1px solid var(--line);border-radius:var(--radius);padding:16px;background:#fbfcff;margin:12px 0}.answer{display:none;margin-top:10px;padding:12px;border-radius:6px;background:#effbff;color:#073d54}.answer.show{display:block}.bar{height:18px;border-radius:999px;background:#eef2f7;overflow:hidden}.bar span{display:block;height:100%;background:linear-gradient(90deg,var(--teal),var(--blue))}.top-link{position:fixed;right:22px;bottom:22px;width:42px;height:42px;display:grid;place-items:center;border-radius:50%;color:white;background:var(--navy);text-decoration:none;box-shadow:var(--shadow)}
+    @media(max-width:1040px){.layout{grid-template-columns:1fr}aside{position:relative;height:auto;top:0}.hero{grid-template-columns:1fr;min-height:auto;padding:26px}.cols-2,.cols-3,.cols-4,.metric{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+  <div class="layout">
+    <aside>
+      <div class="brand"><strong>D111 改进实验量化</strong><span>Aug · Prompt · Head · Quant</span></div>
+      <nav id="toc">
+        <a href="#overview">学习目标</a><a href="#matrix">实验矩阵</a><a href="#matrix-lab">矩阵生成器</a><a href="#augmentation">数据增强</a><a href="#prompt">Prompt 工程</a><a href="#action-head">动作头</a><a href="#action-repr">动作表示</a><a href="#quant">量化权衡</a><a href="#quant-lab">量化面板</a><a href="#quant-checklist">上线检查</a><a href="#eval">评估指标</a><a href="#pros-cons">优缺点</a><a href="#roadmap">改进路线</a><a href="#interview">面试问答</a><a href="#next">下一天</a>
+      </nav>
+    </aside>
+    <main>
+      <header class="hero" id="top">
+        <div>
+          <span class="eyebrow">Week 16 / Day 111 / Improvement Experiments</span>
+          <h1>OpenVLA 改进实验：从泛化、动作精度到量化部署</h1>
+          <p>D111 的核心是会设计实验矩阵：数据增强解决视觉泛化，Prompt 工程减少指令歧义，动作头改善动作表示，量化降低显存和延迟，最后用优缺点分析决定真实部署路线。</p>
+          <div class="hero-actions"><a class="btn" href="#matrix">看实验矩阵</a><a class="btn secondary" href="#quant-lab">看量化面板</a><a class="btn secondary" href="d111_improvements_quant_clean.md">查看 Markdown 原文</a></div>
+        </div>
+        <div class="hero-visual">
+          <svg viewBox="0 0 720 430" role="img" aria-label="D111 improvement experiment hero">
+            <defs><marker id="heroArrow111" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#fff"/></marker><filter id="heroShadow111" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#10243d" flood-opacity=".28"/></filter></defs>
+            <rect x="28" y="28" width="664" height="374" rx="18" fill="rgba(255,255,255,.10)" stroke="rgba(255,255,255,.26)"/>
+            <g filter="url(#heroShadow111)">
+              <rect x="70" y="70" width="155" height="72" rx="12" fill="#fff"/><text x="147" y="101" text-anchor="middle" fill="#075c57" font-size="17" font-weight="900">Aug</text><text x="147" y="125" text-anchor="middle" fill="#647084" font-size="13">泛化</text>
+              <rect x="282" y="70" width="155" height="72" rx="12" fill="#fff"/><text x="360" y="101" text-anchor="middle" fill="#453a9a" font-size="17" font-weight="900">Prompt</text><text x="360" y="125" text-anchor="middle" fill="#647084" font-size="13">指令稳定</text>
+              <rect x="495" y="70" width="155" height="72" rx="12" fill="#fff"/><text x="572" y="101" text-anchor="middle" fill="#7a4314" font-size="17" font-weight="900">Action Head</text><text x="572" y="125" text-anchor="middle" fill="#647084" font-size="13">动作精度</text>
+              <rect x="105" y="248" width="190" height="76" rx="12" fill="#fff"/><text x="200" y="279" text-anchor="middle" fill="#a33b3b" font-size="17" font-weight="900">Quantization</text><text x="200" y="303" text-anchor="middle" fill="#647084" font-size="13">显存/延迟</text>
+              <rect x="425" y="248" width="190" height="76" rx="12" fill="#fff"/><text x="520" y="279" text-anchor="middle" fill="#1f7a4d" font-size="17" font-weight="900">Evaluation</text><text x="520" y="303" text-anchor="middle" fill="#647084" font-size="13">成功率/失败表</text>
+            </g>
+            <g stroke="#fff" stroke-width="3" fill="none" marker-end="url(#heroArrow111)"><path d="M147 142 C145 190 165 225 200 248"/><path d="M360 142 C350 194 320 228 260 248"/><path d="M572 142 C590 190 575 225 530 248"/><path d="M295 286 L425 286"/></g>
+          </svg>
+        </div>
+      </header>
+
+      <section id="overview">
+        <h2>学习目标：D111 不只是罗列技巧</h2>
+        <div class="grid cols-4">
+          <div class="card"><span class="tag">泛化</span><h3>数据增强</h3><p>理解哪些增强能提升光照、遮挡、视角泛化，哪些会破坏动作标签。</p></div>
+          <div class="card"><span class="tag">指令</span><h3>Prompt 工程</h3><p>比较模板、动作描述、目标约束和上下文提示对稳定性的影响。</p></div>
+          <div class="card"><span class="tag">动作</span><h3>动作头设计</h3><p>理解离散 token、连续回归、混合动作头和不确定性输出的取舍。</p></div>
+          <div class="card"><span class="tag">部署</span><h3>量化分析</h3><p>在显存、延迟、成功率和动作误差之间做工程权衡。</p></div>
+        </div>
+        <div class="callout ok"><strong>准确口径：</strong>动作解码优先使用 <code>predict_action</code> 或官方 ActionTokenizer；不要手写 <code>token_id - 32000</code>。量化收益必须在目标硬件和目标任务上实测。</div>
+      </section>
+
+      <section id="matrix">
+        <h2>实验矩阵：改进方法要对应目标指标</h2>
+        <table><thead><tr><th>改进方法</th><th>主要目标</th><th>关键风险</th><th>必须验证</th></tr></thead><tbody><tr><td>颜色/光照增强</td><td>提升光照鲁棒性</td><td>改变物体颜色语义</td><td>不同光照 success rate</td></tr><tr><td>遮挡/裁剪增强</td><td>提升遮挡鲁棒性</td><td>遮掉关键抓取点</td><td>遮挡任务失败类型</td></tr><tr><td>Prompt 模板</td><td>减少指令歧义</td><td>训练/推理模板不一致</td><td>同场景多模板方差</td></tr><tr><td>动作头改造</td><td>提升动作精度/不确定性</td><td>训练复杂度上升</td><td>连续动作误差 + 闭环成功率</td></tr><tr><td>INT8/INT4/NF4</td><td>降低显存和延迟</td><td>动作稳定性下降</td><td>latency p99 + gripper error</td></tr></tbody></table>
+      </section>
+
+      <section id="matrix-lab">
+        <h2>交互：实验矩阵生成器</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>选择当前瓶颈</h3>
+            <div class="control"><label for="bottleneckSelect">瓶颈类型</label><select id="bottleneckSelect"><option value="generalization">新环境/新物体泛化差</option><option value="instruction">同一任务指令换写法后不稳定</option><option value="action">动作精度或gripper错误</option><option value="latency">推理延迟或显存过高</option></select></div>
+          </div>
+          <div class="card">
+            <h3>推荐实验</h3>
+            <table><tbody><tr><td>优先方法</td><td id="matrixMethod">数据增强 + held-out泛化评估</td></tr><tr><td>主要指标</td><td id="matrixMetric">success rate、failure type、视觉错误比例</td></tr><tr><td>关键风险</td><td id="matrixRisk">增强破坏动作标签或改变颜色语义</td></tr><tr><td>最小实验</td><td id="matrixMin">BF16基线 + 单一增强 + 100 episode评估</td></tr></tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <section id="augmentation">
+        <h2>数据增强：不是所有图像增强都适合机器人</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>增强类型选择</h3>
+            <div class="control"><label for="augSelect">选择增强策略</label><select id="augSelect"><option value="color">颜色/亮度增强</option><option value="occlusion">随机遮挡</option><option value="geometry">几何旋转/翻转</option><option value="workspace">工作台/背景增强</option></select></div>
+            <div class="callout ok" id="augAnswer">颜色增强通常适合提升光照鲁棒性，但要避免改变“红杯/蓝杯”等颜色语义。</div>
+          </div>
+          <div class="card">
+            <h3>动作一致性原则</h3>
+            <p>机器人数据增强必须问一个问题：增强后的图像对应的动作标签是否仍然正确。水平翻转、旋转、裁剪这类几何增强可能改变动作方向，不能像普通分类任务那样随便使用。</p>
+            <pre><code># 原则：增强图像后，如果空间关系改变，
+# action也要同步变换；做不到就不要用该增强。
+image_aug, action_aug = transform_image_and_action(image, action)</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section id="prompt">
+        <h2>Prompt 工程：模板稳定性也是实验变量</h2>
+        <div class="tabs" data-tabs="promptTabs"><button class="tab-btn active" data-tab="p-basic">基础模板</button><button class="tab-btn" data-tab="p-context">上下文模板</button><button class="tab-btn" data-tab="p-constraint">约束模板</button></div>
+        <div id="p-basic" class="tab-panel active" data-panel="promptTabs"><pre><code>In: What action should the robot take to pick up the red cup?
+Out:</code></pre><p>短、直接，适合作为基线。缺点是对复杂任务和歧义场景约束不足。</p></div>
+        <div id="p-context" class="tab-panel" data-panel="promptTabs"><pre><code>In: The robot sees a tabletop scene. The target is the red cup.
+What action should the robot take next?
+Out:</code></pre><p>加入场景和目标描述，适合多物体任务，但要保持训练/推理模板一致。</p></div>
+        <div id="p-constraint" class="tab-panel" data-panel="promptTabs"><pre><code>In: Move carefully toward the red cup and avoid the blue bowl.
+What is the next robot action?
+Out:</code></pre><p>加入避障或安全约束，适合诊断模型是否能利用语言约束。</p></div>
+        <div class="callout warn">Prompt 实验不能只看单张图的输出，要看同一任务多 episode 的成功率方差、失败类型和动作抖动。</div>
+      </section>
+
+      <section id="action-head">
+        <h2>动作头设计：动作表示决定误差形态</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1160 360" role="img" aria-label="action head comparison">
+            <defs><marker id="headArrow111" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#203657"/></marker></defs>
+            <rect x="70" y="70" width="210" height="74" rx="12" fill="#effbff" stroke="#a6ddee"/><text x="175" y="103" text-anchor="middle" fill="#07516a" font-weight="900">VLM hidden state</text><text x="175" y="127" text-anchor="middle" fill="#647084" font-size="13">vision + language</text>
+            <rect x="425" y="35" width="210" height="64" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/><text x="530" y="74" text-anchor="middle" fill="#453a9a" font-weight="900">Discrete token head</text>
+            <rect x="425" y="130" width="210" height="64" rx="12" fill="#eefaf3" stroke="#a8ddc1"/><text x="530" y="169" text-anchor="middle" fill="#1f7a4d" font-weight="900">Continuous head</text>
+            <rect x="425" y="225" width="210" height="64" rx="12" fill="#fff7ed" stroke="#f0c596"/><text x="530" y="264" text-anchor="middle" fill="#7a4314" font-weight="900">Hybrid / uncertainty</text>
+            <rect x="800" y="95" width="250" height="100" rx="12" fill="#fbfdff" stroke="#dce3ee"/><text x="925" y="135" text-anchor="middle" fill="#203657" font-weight="900">Evaluation</text><text x="925" y="162" text-anchor="middle" fill="#647084" font-size="13">action MAE + success rate</text>
+            <g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#headArrow111)"><path d="M280 107 L425 67"/><path d="M280 107 L425 162"/><path d="M280 107 C350 220 375 255 425 257"/><path d="M635 67 C730 70 760 98 800 125"/><path d="M635 162 L800 145"/><path d="M635 257 C735 235 770 185 800 162"/></g>
+          </svg>
+        </div>
+        <table><thead><tr><th>动作头</th><th>优势</th><th>风险</th><th>适合场景</th></tr></thead><tbody><tr><td>离散 action token</td><td>复用 LLM 生成范式</td><td>量化误差、decode 串行</td><td>OpenVLA 主线、可解释 token 分布</td></tr><tr><td>连续回归头</td><td>动作更直接</td><td>训练稳定性和多模态动作难处理</td><td>精细控制、低延迟场景</td></tr><tr><td>混合动作头</td><td>兼顾粗粒度和细粒度</td><td>系统复杂度高</td><td>高精度抓取、长程任务</td></tr><tr><td>不确定性头</td><td>能识别低置信动作</td><td>校准困难</td><td>安全部署、人工接管</td></tr></tbody></table>
+      </section>
+
+      <section id="action-repr">
+        <h2>动作表示：ActionTokenizer、FAST、连续头怎么选</h2>
+        <table><thead><tr><th>表示方式</th><th>核心思想</th><th>优势</th><th>主要风险</th><th>验证指标</th></tr></thead><tbody><tr><td>官方 ActionTokenizer</td><td>连续动作离散成 token，由 LLM 生成</td><td>复现 OpenVLA 主线</td><td>离散误差和自回归延迟</td><td>token accuracy、连续动作 MAE、decode latency</td></tr><tr><td>连续回归头</td><td>hidden state 直接回归动作</td><td>低延迟、无离散化</td><td>多模态动作难表达</td><td>xyz/rpy MAE、smoothness、success rate</td></tr><tr><td>FAST tokenizer</td><td>更高效地表示动作序列</td><td>降低动作 token 负担</td><td>需要对齐官方训练流程</td><td>tokens/action、latency、success rate</td></tr><tr><td>Action chunking</td><td>一次预测未来多步动作</td><td>降低推理频率、动作平滑</td><td>闭环反馈变慢</td><td>chunk success、replan frequency、jerk</td></tr></tbody></table>
+        <div class="callout cool">选择动作表示前，先确认瓶颈：decode 慢优先 FAST/chunking，动作精度差优先连续/混合头，部署安全差优先不确定性和动作平滑。</div>
+      </section>
+
+      <section id="quant">
+        <h2>量化权衡：速度、显存和动作质量一起看</h2>
+        <div class="callout danger">VLA 量化不能只报告 tokens/sec。动作 token 的微小偏差可能放大成抓取失败、碰撞或 gripper 时机错误。</div>
+        <table><thead><tr><th>量化方式</th><th>目标</th><th>风险</th><th>验证重点</th></tr></thead><tbody><tr><td>BF16/FP16</td><td>基线、稳定</td><td>显存高</td><td>作为对照组</td></tr><tr><td>INT8</td><td>平衡显存和质量</td><td>硬件/库支持影响速度</td><td>成功率、p99 延迟</td></tr><tr><td>INT4/NF4</td><td>显著降低显存</td><td>动作稳定性下降</td><td>gripper、旋转、接触前动作</td></tr><tr><td>GPTQ/AWQ</td><td>后训练量化</td><td>需要代表性校准数据</td><td>校准集覆盖任务分布</td></tr></tbody></table>
+      </section>
+
+      <section id="quant-lab">
+        <h2>交互：量化权衡面板</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>选择量化配置</h3>
+            <div class="control"><label for="quantSelect">量化方式</label><select id="quantSelect"><option value="bf16">BF16 基线</option><option value="int8">INT8</option><option value="nf4">NF4 / INT4</option><option value="awq">AWQ / GPTQ</option></select></div>
+            <div class="control"><label for="qualitySlider">任务精度要求：<span id="qualityVal">80</span>%</label><input id="qualitySlider" type="range" min="40" max="100" value="80" /></div>
+            <div class="control"><label for="memorySlider">显存预算：<span id="memoryVal">12</span> GB</label><input id="memorySlider" type="range" min="4" max="32" value="12" /></div>
+          </div>
+          <div class="card">
+            <h3>建议</h3>
+            <div class="metric"><div><strong id="qMemory">中</strong><span>显存压力</span></div><div><strong id="qLatency">中</strong><span>延迟收益</span></div><div><strong id="qRisk">中</strong><span>动作风险</span></div><div><strong id="qVerdict">先试 INT8</strong><span>结论</span></div></div>
+            <div class="callout ok" id="quantText">在质量要求较高且显存预算中等时，优先用 INT8 建立量化基线，再决定是否尝试 NF4/INT4。</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="quant-checklist">
+        <h2>量化上线 Checklist</h2>
+        <div class="callout warn">所有量化数字都必须带上下文：模型版本、checkpoint、数据集、硬件、batch、dtype、prompt模板、<code>unnorm_key</code> 和 episode 数。</div>
+        <table><thead><tr><th>阶段</th><th>要做什么</th><th>必须记录</th></tr></thead><tbody><tr><td>BF16基线</td><td>建立质量上限</td><td>success rate、action MAE、gripper error、latency p50/p90/p99</td></tr><tr><td>INT8首轮</td><td>保守量化对比</td><td>动作差异、失败类型变化、是否真的加速</td></tr><tr><td>INT4/NF4</td><td>显存压缩实验</td><td>gripper错误率、旋转误差、接触前动作抖动</td></tr><tr><td>AWQ/GPTQ</td><td>校准后训练量化</td><td>校准集来源、任务覆盖、动作分布变化</td></tr><tr><td>闭环评估</td><td>仿真/真机 episode</td><td>success rate、partial success、失败视频、控制频率</td></tr></tbody></table>
+      </section>
+
+      <section id="eval">
+        <h2>评估指标：每个实验都要能解释</h2>
+        <table><thead><tr><th>指标</th><th>回答的问题</th><th>注意事项</th></tr></thead><tbody><tr><td>Success Rate</td><td>任务是否完成</td><td>需要多 seed、多任务、失败分类</td></tr><tr><td>Action MAE</td><td>动作是否接近数据</td><td>必须 decode 到连续动作空间</td></tr><tr><td>Gripper Error</td><td>开合时机是否正确</td><td>抓取任务特别敏感</td></tr><tr><td>Latency p50/p90/p99</td><td>是否能实时控制</td><td>只看平均值不够</td></tr><tr><td>Failure Type</td><td>下一步怎么改</td><td>区分视觉、动作、系统、规划问题</td></tr></tbody></table>
+      </section>
+
+      <section id="pros-cons">
+        <h2>优缺点：把技术特点映射到落地风险</h2>
+        <div class="grid cols-2">
+          <div class="card"><h3>优势</h3><table><tbody><tr><td>端到端</td><td>图像、语言、动作统一建模，开发接口简洁。</td></tr><tr><td>预训练先验</td><td>利用视觉语言模型能力，数据效率更高。</td></tr><tr><td>模块化</td><td>视觉编码器、LLM、动作头、LoRA/量化都可独立实验。</td></tr></tbody></table></div>
+          <div class="card"><h3>劣势</h3><table><tbody><tr><td>延迟高</td><td>LLM decode 影响控制频率。</td></tr><tr><td>显存高</td><td>7B 模型部署门槛高。</td></tr><tr><td>可解释性有限</td><td>失败归因需要日志、视频和消融实验。</td></tr><tr><td>分布敏感</td><td>新物体、新平台、复杂任务仍需微调。</td></tr></tbody></table></div>
+        </div>
+      </section>
+
+      <section id="roadmap">
+        <h2>改进路线：先定位瓶颈，再选手段</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1120 420" role="img" aria-label="improvement roadmap">
+            <defs><marker id="roadArrow111" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#203657"/></marker></defs>
+            <rect x="430" y="40" width="260" height="62" rx="12" fill="#fff7ed" stroke="#f0c596"/><text x="560" y="77" text-anchor="middle" fill="#7a4314" font-weight="900">发现问题</text>
+            <rect x="70" y="165" width="210" height="72" rx="12" fill="#eefaf3" stroke="#a8ddc1"/><text x="175" y="197" text-anchor="middle" fill="#1f7a4d" font-weight="900">泛化差</text><text x="175" y="221" text-anchor="middle" fill="#647084" font-size="13">数据增强/微调</text>
+            <rect x="330" y="165" width="210" height="72" rx="12" fill="#effbff" stroke="#a6ddee"/><text x="435" y="197" text-anchor="middle" fill="#07516a" font-weight="900">指令不稳</text><text x="435" y="221" text-anchor="middle" fill="#647084" font-size="13">Prompt实验</text>
+            <rect x="590" y="165" width="210" height="72" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/><text x="695" y="197" text-anchor="middle" fill="#453a9a" font-weight="900">动作误差</text><text x="695" y="221" text-anchor="middle" fill="#647084" font-size="13">动作头/ActionTokenizer</text>
+            <rect x="850" y="165" width="210" height="72" rx="12" fill="#fff3f3" stroke="#efb3b3"/><text x="955" y="197" text-anchor="middle" fill="#a33b3b" font-weight="900">部署慢</text><text x="955" y="221" text-anchor="middle" fill="#647084" font-size="13">量化/系统优化</text>
+            <rect x="245" y="315" width="630" height="62" rx="12" fill="#fbfdff" stroke="#dce3ee"/><text x="560" y="351" text-anchor="middle" fill="#203657" font-weight="900">统一验证：success rate + action error + latency + failure type</text>
+            <g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#roadArrow111)"><path d="M560 102 L175 165"/><path d="M560 102 L435 165"/><path d="M560 102 L695 165"/><path d="M560 102 L955 165"/><path d="M175 237 C250 290 310 315 365 315"/><path d="M435 237 L470 315"/><path d="M695 237 L650 315"/><path d="M955 237 C875 285 810 315 760 315"/></g>
+          </svg>
+        </div>
+      </section>
+
+      <section id="interview">
+        <h2>面试问答：D111 高频问题</h2>
+        <div class="quiz-card"><strong>1. 如何设计 OpenVLA 改进实验？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">先定义瓶颈和指标，再做单变量实验。数据增强看泛化，Prompt 看模板稳定性，动作头看连续动作误差和成功率，量化看显存、延迟、动作质量和失败类型。</div></div>
+        <div class="quiz-card"><strong>2. 量化后速度变快但成功率下降怎么办？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">先定位下降来自 gripper、旋转、位置还是视觉误差；尝试 INT8 替代 INT4、混合精度、AWQ/GPTQ 校准、保留敏感模块高精度，并重新跑闭环评估。</div></div>
+        <div class="quiz-card"><strong>3. 为什么几何增强有风险？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">因为机器人动作和图像空间关系强绑定。水平翻转、旋转、裁剪可能改变目标相对位置，如果 action 没有同步变换，训练标签就变错。</div></div>
+      </section>
+
+      <section id="next">
+        <h2>D111 → D112：从实验进入复现交付</h2>
+        <p class="lead">D111 讲如何做改进实验。D112 会收束到复现 checklist、报告结构、代码规范和面试材料，把第16周变成可展示项目。</p>
+      </section>
+    </main>
+  </div>
+  <a class="top-link" href="#top" aria-label="返回顶部">↑</a>
+  <script>
+    const progress=document.getElementById('progress');const navLinks=Array.from(document.querySelectorAll('#toc a'));const sections=navLinks.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);function updateProgress(){const s=window.scrollY||document.documentElement.scrollTop;const h=document.documentElement.scrollHeight-window.innerHeight;progress.style.width=(h>0?s/h*100:0)+'%';let current=sections[0];for(const section of sections)if(section.getBoundingClientRect().top<=120)current=section;navLinks.forEach(a=>a.classList.toggle('active',current&&a.getAttribute('href')==='#'+current.id))}window.addEventListener('scroll',updateProgress,{passive:true});window.addEventListener('resize',updateProgress);updateProgress();
+    document.querySelectorAll('[data-tabs]').forEach(group=>{const name=group.getAttribute('data-tabs');group.querySelectorAll('.tab-btn').forEach(button=>{button.addEventListener('click',()=>{group.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));button.classList.add('active');document.querySelectorAll(`[data-panel="${name}"]`).forEach(panel=>panel.classList.toggle('active',panel.id===button.dataset.tab))})})});
+    const augSelect=document.getElementById('augSelect'),augAnswer=document.getElementById('augAnswer');const augMap={color:'颜色增强通常适合提升光照鲁棒性，但要避免改变“红杯/蓝杯”等颜色语义。',occlusion:'遮挡增强能提升遮挡鲁棒性，但遮挡抓取点或目标主体会制造错误样本。',geometry:'几何增强风险最高。若翻转或旋转改变空间关系，动作标签必须同步变换。',workspace:'背景/工作台增强适合提升场景泛化，关键是不要改变目标和机器人末端的相对关系。'};augSelect&&augSelect.addEventListener('change',()=>{augAnswer.textContent=augMap[augSelect.value]});
+    const bottleneckSelect=document.getElementById('bottleneckSelect'),matrixMethod=document.getElementById('matrixMethod'),matrixMetric=document.getElementById('matrixMetric'),matrixRisk=document.getElementById('matrixRisk'),matrixMin=document.getElementById('matrixMin');const matrixMap={generalization:['数据增强 + held-out泛化评估','success rate、failure type、视觉错误比例','增强破坏动作标签或改变颜色语义','BF16基线 + 单一增强 + 100 episode评估'],instruction:['Prompt模板消融','同场景多模板方差、动作抖动、失败类型','训练/推理模板不一致导致分布偏移','3种模板 x 50 episode，对比动作方差'],action:['动作表示/动作头对比','连续动作MAE、gripper error、jerk、success rate','新动作头训练不稳定或不兼容ActionTokenizer','官方ActionTokenizer基线 + 连续头小实验'],latency:['量化 + p99延迟评估','latency p50/p90/p99、显存峰值、成功率','平均延迟下降但长尾延迟或动作质量变差','BF16 vs INT8 vs NF4，同任务同硬件对比']};function updateMatrix(){const row=matrixMap[bottleneckSelect.value];matrixMethod.textContent=row[0];matrixMetric.textContent=row[1];matrixRisk.textContent=row[2];matrixMin.textContent=row[3]}bottleneckSelect&&bottleneckSelect.addEventListener('change',updateMatrix);updateMatrix();
+    const quantSelect=document.getElementById('quantSelect'),qualitySlider=document.getElementById('qualitySlider'),memorySlider=document.getElementById('memorySlider'),qualityVal=document.getElementById('qualityVal'),memoryVal=document.getElementById('memoryVal'),qMemory=document.getElementById('qMemory'),qLatency=document.getElementById('qLatency'),qRisk=document.getElementById('qRisk'),qVerdict=document.getElementById('qVerdict'),quantText=document.getElementById('quantText');function updateQuant(){const q=quantSelect.value,qual=Number(qualitySlider.value),mem=Number(memorySlider.value);qualityVal.textContent=qual;memoryVal.textContent=mem;let memory='中',lat='中',risk='中',verdict='先试 INT8',text='在质量要求较高且显存预算中等时，优先用 INT8 建立量化基线，再决定是否尝试 NF4/INT4。';if(q==='bf16'){memory='高';lat='低';risk='低';verdict=mem>=16?'可做基线':'显存可能不足';text='BF16适合作为质量基线。即使最终部署量化，也必须保留BF16对照组。'}else if(q==='int8'){memory='中';lat='中';risk=qual>90?'中':'中低';verdict='推荐起点';text='INT8通常是第一条量化路线，但速度收益取决于GPU和量化库，仍需实测p99延迟和成功率。'}else if(q==='nf4'){memory='低';lat='高';risk=qual>80?'高':'中高';verdict=qual>85?'谨慎验证':'可做压缩实验';text='NF4/INT4适合显存紧张场景，但必须重点看gripper、旋转、接触前动作和闭环失败类型。'}else{memory='低';lat='中高';risk='中';verdict='需要校准集';text='AWQ/GPTQ依赖代表性校准数据。校准集缺少目标任务时，量化后动作质量可能明显退化。'}if(mem<8&&q==='bf16'){verdict='不可部署';text='显存预算过低，不适合BF16部署。建议先尝试INT8或NF4，并降低batch和缓存占用。'}qMemory.textContent=memory;qLatency.textContent=lat;qRisk.textContent=risk;qVerdict.textContent=verdict;quantText.textContent=text}[quantSelect,qualitySlider,memorySlider].forEach(el=>el&&el.addEventListener('input',updateQuant));updateQuant();
+    document.querySelectorAll('.reveal').forEach(button=>{button.addEventListener('click',()=>{const answer=button.parentElement.querySelector('.answer');if(!answer)return;answer.classList.toggle('show');button.textContent=answer.classList.contains('show')?'隐藏参考答案':'显示参考答案'})});
+  </script>
+</body>
+</html>

@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>D112 OpenVLA 复现、报告、代码规范与面试准备</title>
+  <style>
+    :root{--bg:#f5f7fb;--paper:#fff;--ink:#1d2433;--muted:#647084;--line:#dce3ee;--navy:#203657;--teal:#0f9d92;--blue:#2b83d6;--orange:#f08b38;--red:#d95f5f;--green:#2f9e64;--violet:#7367d8;--shadow:0 18px 45px rgba(32,54,87,.12);--radius:8px;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;--sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--ink);background:linear-gradient(180deg,rgba(43,131,214,.12),rgba(245,247,251,0) 330px),var(--bg);font-family:var(--sans);line-height:1.72}.progress{position:fixed;top:0;left:0;height:4px;width:0;background:linear-gradient(90deg,var(--blue),var(--teal),var(--green),var(--orange));z-index:80}
+    .layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:28px;width:min(1500px,calc(100% - 36px));margin:0 auto;padding:28px 0 64px}aside{position:sticky;top:22px;align-self:start;height:calc(100vh - 44px);overflow:auto;padding:18px;background:rgba(255,255,255,.93);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);backdrop-filter:blur(10px)}.brand{display:grid;gap:6px;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:14px}.brand strong{color:var(--navy);font-size:18px}.brand span{color:var(--muted);font-size:13px}nav a{display:block;padding:9px 10px;margin:3px 0;color:#34415a;text-decoration:none;border-radius:6px;font-size:14px}nav a:hover,nav a.active{background:rgba(43,131,214,.12);color:#0b4f88}
+    main{min-width:0}.hero{min-height:540px;display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:center;padding:42px;background:linear-gradient(135deg,#203657,#145c76 50%,#0f766e);color:white;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}.eyebrow{display:inline-flex;padding:5px 10px;border:1px solid rgba(255,255,255,.34);border-radius:999px;color:rgba(255,255,255,.9);font-size:13px}h1{margin:18px 0 12px;font-size:clamp(34px,5vw,62px);line-height:1.05;letter-spacing:0}.hero p{max-width:790px;color:rgba(255,255,255,.9);font-size:18px}.hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}.btn{border:0;border-radius:6px;padding:10px 14px;font:inherit;cursor:pointer;text-decoration:none;color:#17243a;background:white;font-weight:800}.btn.secondary{color:white;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28)}.hero-visual{min-height:390px;display:grid;place-items:center}
+    section{margin-top:24px;padding:30px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 10px 28px rgba(32,54,87,.08)}section>h2{margin:0 0 14px;color:var(--navy);font-size:28px;line-height:1.25;letter-spacing:0}h3{margin:24px 0 10px;color:#263a5d;font-size:20px;letter-spacing:0}p{margin:10px 0}.lead{color:#3d4a61;font-size:17px}.grid{display:grid;gap:16px}.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}.card{padding:18px;border:1px solid var(--line);border-radius:var(--radius);background:#fbfcff}.card h3{margin-top:0}.tag{display:inline-flex;padding:4px 8px;border-radius:999px;background:rgba(43,131,214,.12);color:#0b4f88;font-size:12px;font-weight:800}.callout{padding:16px 18px;border-left:4px solid var(--blue);background:#eef7ff;border-radius:0 var(--radius) var(--radius) 0;margin:16px 0}.ok{border-left-color:var(--green);background:#eefaf3}.warn{border-left-color:var(--orange);background:#fff7ed}.danger{border-left-color:var(--red);background:#fff3f3}.cool{border-left-color:var(--violet);background:#f3f1ff}
+    .svg-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:#fbfdff;padding:10px}svg{max-width:100%;height:auto;display:block}.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 16px}.tab-btn{border:1px solid var(--line);background:#f8fbff;color:#33415c;padding:8px 11px;border-radius:6px;cursor:pointer;font-weight:800}.tab-btn.active{background:var(--navy);border-color:var(--navy);color:white}.tab-panel{display:none}.tab-panel.active{display:block}
+    code,pre{font-family:var(--mono)}code{padding:2px 5px;border-radius:4px;background:#eef2f7;color:#27374f}pre{overflow:auto;padding:16px;border-radius:var(--radius);background:#f6f8fb;color:#243044;border:1px solid var(--line);line-height:1.58;font-size:13px}table{width:100%;border-collapse:collapse;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}th,td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}th{background:#eef4fa;color:var(--navy)}tr:last-child td{border-bottom:0}.control{display:grid;gap:8px;margin:12px 0}.control label{font-weight:800;color:var(--navy)}input[type="range"]{width:100%}select{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;background:white;color:var(--ink);font:inherit}.metric{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.metric div{padding:12px;border:1px solid var(--line);border-radius:6px;background:#fff}.metric strong{display:block;color:var(--navy);font-size:20px}.quiz-card{border:1px solid var(--line);border-radius:var(--radius);padding:16px;background:#fbfcff;margin:12px 0}.answer{display:none;margin-top:10px;padding:12px;border-radius:6px;background:#effbff;color:#073d54}.answer.show{display:block}.top-link{position:fixed;right:22px;bottom:22px;width:42px;height:42px;display:grid;place-items:center;border-radius:50%;color:white;background:var(--navy);text-decoration:none;box-shadow:var(--shadow)}
+    @media(max-width:1040px){.layout{grid-template-columns:1fr}aside{position:relative;height:auto;top:0}.hero{grid-template-columns:1fr;min-height:auto;padding:26px}.cols-2,.cols-3,.cols-4,.metric{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+  <div class="layout">
+    <aside>
+      <div class="brand"><strong>D112 复现交付面试</strong><span>Repro · Report · Code · Interview</span></div>
+      <nav id="toc">
+        <a href="#overview">学习目标</a><a href="#deliverables">交付包</a><a href="#readme-template">README模板</a><a href="#troubleshooting">失败排查</a><a href="#repro-flow">复现流程</a><a href="#validation">验证脚本</a><a href="#safe-exec">安全执行</a><a href="#validation-schema">报告Schema</a><a href="#report">报告模板</a><a href="#context">数字上下文</a><a href="#code-style">代码规范</a><a href="#interview-kit">面试材料</a><a href="#storytelling">项目讲述</a><a href="#score">交付评分</a><a href="#qa">面试问答</a><a href="#next">收束</a>
+      </nav>
+    </aside>
+    <main>
+      <header class="hero" id="top">
+        <div>
+          <span class="eyebrow">Week 16 / Day 112 / Final Delivery</span>
+          <h1>OpenVLA 复现交付：从能跑到能展示</h1>
+          <p>D112 是第16周的收束日。目标是把模型架构、数据、训练、推理、量化、微调和失败分析整理成一个可复现项目包，并能在报告和面试中讲清楚取舍。</p>
+          <div class="hero-actions"><a class="btn" href="#deliverables">看交付包</a><a class="btn secondary" href="#score">交付评分</a><a class="btn secondary" href="d112_repro_report_interview_clean.md">查看 Markdown 原文</a></div>
+        </div>
+        <div class="hero-visual">
+          <svg viewBox="0 0 720 430" role="img" aria-label="D112 delivery dashboard">
+            <defs><marker id="heroArrow112" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#fff"/></marker><filter id="heroShadow112" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#10243d" flood-opacity=".28"/></filter></defs>
+            <rect x="28" y="28" width="664" height="374" rx="18" fill="rgba(255,255,255,.10)" stroke="rgba(255,255,255,.26)"/>
+            <g filter="url(#heroShadow112)">
+              <rect x="70" y="70" width="155" height="72" rx="12" fill="#fff"/><text x="147" y="101" text-anchor="middle" fill="#07516a" font-size="17" font-weight="900">Reproduce</text><text x="147" y="125" text-anchor="middle" fill="#647084" font-size="13">env + scripts</text>
+              <rect x="282" y="70" width="155" height="72" rx="12" fill="#fff"/><text x="360" y="101" text-anchor="middle" fill="#453a9a" font-size="17" font-weight="900">Validate</text><text x="360" y="125" text-anchor="middle" fill="#647084" font-size="13">tests + metrics</text>
+              <rect x="495" y="70" width="155" height="72" rx="12" fill="#fff"/><text x="572" y="101" text-anchor="middle" fill="#7a4314" font-size="17" font-weight="900">Report</text><text x="572" y="125" text-anchor="middle" fill="#647084" font-size="13">figures + limits</text>
+              <rect x="105" y="248" width="190" height="76" rx="12" fill="#fff"/><text x="200" y="279" text-anchor="middle" fill="#a33b3b" font-size="17" font-weight="900">Code Quality</text><text x="200" y="303" text-anchor="middle" fill="#647084" font-size="13">tests + style</text>
+              <rect x="425" y="248" width="190" height="76" rx="12" fill="#fff"/><text x="520" y="279" text-anchor="middle" fill="#1f7a4d" font-size="17" font-weight="900">Interview</text><text x="520" y="303" text-anchor="middle" fill="#647084" font-size="13">trade-off</text>
+            </g>
+            <g stroke="#fff" stroke-width="3" fill="none" marker-end="url(#heroArrow112)"><path d="M225 106 L282 106"/><path d="M437 106 L495 106"/><path d="M360 142 C310 210 255 238 205 248"/><path d="M572 142 C590 210 565 238 525 248"/></g>
+          </svg>
+        </div>
+      </header>
+
+      <section id="overview">
+        <h2>学习目标：把学习结果变成作品</h2>
+        <div class="grid cols-4">
+          <div class="card"><span class="tag">Repro</span><h3>可复现</h3><p>环境、配置、脚本、模型和数据路径都能被别人重新执行。</p></div>
+          <div class="card"><span class="tag">Validate</span><h3>可验证</h3><p>一键验证模型加载、推理、动作维度、延迟和报告输出。</p></div>
+          <div class="card"><span class="tag">Report</span><h3>可解释</h3><p>报告数字有上下文，结论有证据，局限性说清楚。</p></div>
+          <div class="card"><span class="tag">Interview</span><h3>可展示</h3><p>面试中能讲架构、训练、推理、量化、微调和失败分析的取舍。</p></div>
+        </div>
+        <div class="callout ok"><strong>准确口径：</strong>动作推理优先使用 <code>predict_action</code> 或官方 ActionTokenizer；复现报告中的数字必须带实验上下文。</div>
+      </section>
+
+      <section id="deliverables">
+        <h2>最终交付包 Checklist</h2>
+        <table><thead><tr><th>交付物</th><th>必须包含</th><th>验收标准</th></tr></thead><tbody><tr><td>README</td><td>目标、环境、快速开始、目录结构</td><td>新同学能按 README 跑通 demo</td></tr><tr><td>环境文件</td><td>environment.yml / requirements.txt</td><td>能重建环境</td></tr><tr><td>configs</td><td>模型、数据、推理、量化、微调配置</td><td>实验通过配置复现</td></tr><tr><td>validate.py</td><td>加载、单图推理、动作维度、延迟检查</td><td>一键判断是否复现成功</td></tr><tr><td>reports</td><td>实验表、图表、失败分析</td><td>数字有上下文和局限性</td></tr><tr><td>interview_notes</td><td>架构、训练、推理、优化问答</td><td>能讲 trade-off</td></tr></tbody></table>
+      </section>
+
+      <section id="readme-template">
+        <h2>推荐目录结构与 README 模板</h2>
+        <p class="lead">复现项目的第一目标是让别人按文档能跑起来。目录结构要把配置、脚本、源码、测试、报告和面试材料分开，README 先讲怎么跑，再讲为什么这样跑。</p>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>推荐目录结构</h3>
+            <pre><code>openvla-reproduction/
+├── README.md
+├── environment.yml
+├── requirements.txt
+├── configs/
+│   ├── model.yaml
+│   ├── inference.yaml
+│   ├── evaluation.yaml
+│   ├── quantization.yaml
+│   └── finetune_lora.yaml
+├── scripts/
+│   ├── validate.py
+│   ├── run_inference.py
+│   ├── evaluate.py
+│   ├── profile_latency.py
+│   └── export_report.py
+├── src/
+│   ├── data/
+│   ├── models/
+│   ├── evaluation/
+│   ├── profiling/
+│   └── utils/
+├── tests/
+│   ├── test_action_decode.py
+│   ├── test_config.py
+│   └── test_minimal_inference.py
+├── reports/
+│   ├── figures/
+│   ├── failure_cases/
+│   └── final_report.md
+└── interview_notes.md</code></pre>
+          </div>
+          <div class="card">
+            <h3>README 固定段落</h3>
+            <pre><code># OpenVLA Reproduction
+
+## Goal
+复现 OpenVLA 的模型加载、单图推理、
+延迟 profiling、量化评估和失败案例分析。
+
+## Environment
+- Python:
+- PyTorch:
+- CUDA:
+- GPU:
+- Checkpoint:
+
+## Quick Start
+conda env create -f environment.yml
+conda activate openvla
+python scripts/validate.py --config configs/inference.yaml
+
+## Reproduction Checklist
+- [ ] 模型可加载
+- [ ] processor 可加载
+- [ ] 单图推理动作维度正确
+- [ ] latency p50/p90/p99 已记录
+- [ ] validation_report.json 已生成
+
+## Results
+所有结果必须带 checkpoint、dataset split、
+hardware、dtype、quantization 和 seed。</code></pre>
+          </div>
+        </div>
+        <div class="callout ok"><strong>最小验收标准：</strong>模型或 mock 模型可加载；一张图和一句指令能输出动作；动作维度和范围正确；能记录 latency、显存和配置；能输出 JSON/Markdown 验证报告。</div>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>复现失败排查表</h2>
+        <p class="lead">复现失败时不要只看最后一行报错，要沿着模型、processor、动作解码、反归一化、性能和报告上下文逐层定位。</p>
+        <table><thead><tr><th>现象</th><th>优先检查</th><th>常见原因</th><th>修复建议</th></tr></thead><tbody>
+          <tr><td>模型加载失败</td><td>checkpoint、<code>trust_remote_code</code>、Transformers 版本</td><td>权重不完整、版本不匹配</td><td>固定 revision，记录依赖版本</td></tr>
+          <tr><td>processor 加载失败</td><td>processor config、tokenizer 文件</td><td>本地目录缺文件</td><td>重新下载并校验文件列表</td></tr>
+          <tr><td>动作维度不对</td><td>ActionTokenizer、<code>predict_action</code> 输出</td><td>手写解码或 API 不一致</td><td>使用官方 <code>predict_action</code> 或 ActionTokenizer</td></tr>
+          <tr><td>动作范围异常</td><td><code>unnorm_key</code>、action stats</td><td>训练/推理数据集统计不一致</td><td>核对 dataset stats 和动作空间</td></tr>
+          <tr><td>延迟异常高</td><td>dtype、device、量化是否生效</td><td>模型在 CPU、KV cache/量化未启用</td><td>打印 device map，分段 profiling</td></tr>
+          <tr><td>成功率低</td><td>prompt、数据 split、环境随机性</td><td>评估协议不一致或任务分布偏移</td><td>固定 seed，保存失败视频和动作轨迹</td></tr>
+          <tr><td>报告数字复现不了</td><td>config hash、checkpoint、seed</td><td>实验上下文缺失</td><td>强制输出 <code>experiment_context</code></td></tr>
+        </tbody></table>
+      </section>
+
+      <section id="repro-flow">
+        <h2>复现流程：从环境到报告</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1180 380" role="img" aria-label="reproduction flow">
+            <defs><marker id="flowArrow112" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#203657"/></marker></defs>
+            <rect x="55" y="90" width="150" height="72" rx="12" fill="#effbff" stroke="#a6ddee"/><text x="130" y="122" text-anchor="middle" fill="#07516a" font-weight="900">Environment</text><text x="130" y="146" text-anchor="middle" fill="#647084" font-size="13">CUDA/PyTorch</text>
+            <rect x="255" y="90" width="150" height="72" rx="12" fill="#eefaf3" stroke="#a8ddc1"/><text x="330" y="122" text-anchor="middle" fill="#1f7a4d" font-weight="900">Model</text><text x="330" y="146" text-anchor="middle" fill="#647084" font-size="13">checkpoint</text>
+            <rect x="455" y="90" width="150" height="72" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/><text x="530" y="122" text-anchor="middle" fill="#453a9a" font-weight="900">Inference</text><text x="530" y="146" text-anchor="middle" fill="#647084" font-size="13">predict_action</text>
+            <rect x="655" y="90" width="150" height="72" rx="12" fill="#fff7ed" stroke="#f0c596"/><text x="730" y="122" text-anchor="middle" fill="#7a4314" font-weight="900">Evaluate</text><text x="730" y="146" text-anchor="middle" fill="#647084" font-size="13">metrics</text>
+            <rect x="855" y="90" width="210" height="72" rx="12" fill="#fff3f3" stroke="#efb3b3"/><text x="960" y="122" text-anchor="middle" fill="#a33b3b" font-weight="900">Report</text><text x="960" y="146" text-anchor="middle" fill="#647084" font-size="13">context + conclusion</text>
+            <rect x="250" y="250" width="680" height="62" rx="12" fill="#fbfdff" stroke="#dce3ee"/><text x="590" y="286" text-anchor="middle" fill="#203657" font-weight="900">所有输出都记录：config、seed、hardware、dtype、checkpoint、metrics</text>
+            <g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#flowArrow112)"><path d="M205 126 L255 126"/><path d="M405 126 L455 126"/><path d="M605 126 L655 126"/><path d="M805 126 L855 126"/><path d="M960 162 C900 230 780 250 695 250"/></g>
+          </svg>
+        </div>
+      </section>
+
+      <section id="validation">
+        <h2>验证脚本：判断复现是否真的成功</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>最小验证项</h3>
+            <table><tbody><tr><td>模型加载</td><td>checkpoint、dtype、device_map 正确</td></tr><tr><td>单图推理</td><td>使用 <code>predict_action</code> 或官方 ActionTokenizer</td></tr><tr><td>动作检查</td><td>维度、范围、gripper 编码正确</td></tr><tr><td>性能检查</td><td>latency mean/p90/p99、显存峰值</td></tr></tbody></table>
+          </div>
+          <div class="card">
+            <h3>验证输出</h3>
+            <pre><code>{
+  "model_loaded": true,
+  "action_shape": [7],
+  "action_range_ok": true,
+  "latency_ms": {"mean": 168.0, "p90": 190.0, "p99": 240.0},
+  "memory_gb": {"peak": 14.8},
+  "config_hash": "..."
+}</code></pre>
+          </div>
+        </div>
+        <div class="callout warn">不要在验证脚本里手写 <code>token_id - 32000</code>。如果必须拆 generate 输出，也要调用当前仓库的 ActionTokenizer。</div>
+      </section>
+
+      <section id="safe-exec">
+        <h2>脚本安全执行口径</h2>
+        <p class="lead">环境搭建脚本可以讲流程，但真实复现工程要避免把用户输入拼成 shell 命令。外部命令应记录 stdout、stderr、返回码和耗时，失败时给出可操作错误。</p>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>工程要求</h3>
+            <table><tbody>
+              <tr><td>命令形式</td><td>优先使用参数列表，例如 <code>["conda", "env", "create", "-f", env_file]</code></td></tr>
+              <tr><td>输入安全</td><td>不要把用户输入直接拼进 shell 命令</td></tr>
+              <tr><td>日志记录</td><td>记录 stdout、stderr、returncode、duration</td></tr>
+              <tr><td>失败处理</td><td>输出可操作错误，不只打印异常</td></tr>
+              <tr><td>下载追踪</td><td>记录 URL、revision、hash 或依赖版本号</td></tr>
+            </tbody></table>
+          </div>
+          <div class="card">
+            <h3>安全封装示例</h3>
+            <pre><code>def run_command(args, cwd=None, timeout=None):
+    import subprocess
+    import time
+
+    start = time.time()
+    result = subprocess.run(
+        args,
+        cwd=cwd,
+        timeout=timeout,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    duration = time.time() - start
+
+    record = {
+        "cmd": args,
+        "cwd": str(cwd) if cwd else None,
+        "returncode": result.returncode,
+        "stdout": result.stdout[-4000:],
+        "stderr": result.stderr[-4000:],
+        "duration_sec": duration,
+    }
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"命令执行失败: {args}\n{result.stderr[-1000:]}"
+        )
+
+    return record</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section id="validation-schema">
+        <h2>Validation Report Schema</h2>
+        <p class="lead">把验证结果保存成统一 JSON，之后才能比较不同 checkpoint、硬件、量化配置和 prompt 模板。这个 schema 也是报告可信度的底座。</p>
+        <pre><code>{
+  "run_id": "d112_validation_001",
+  "timestamp": "2026-05-15T12:00:00+08:00",
+  "environment": {
+    "python": "3.10",
+    "torch": "2.x",
+    "cuda": "12.x",
+    "gpu": "A100-80G",
+    "os": "Linux"
+  },
+  "model": {
+    "repo_or_path": "openvla/openvla-7b",
+    "checkpoint": "hf_revision_or_local_hash",
+    "dtype": "bf16",
+    "quantization": "none",
+    "device_map": "cuda:0"
+  },
+  "config": {
+    "config_hash": "sha256...",
+    "prompt_template": "In: What action should the robot take to {instruction}? Out:",
+    "unnorm_key": "bridge_orig",
+    "seed": 42
+  },
+  "validation": {
+    "model_loaded": true,
+    "processor_loaded": true,
+    "single_image_inference": true,
+    "action_shape_ok": true,
+    "action_range_ok": true,
+    "action_decode_api": "predict_action_or_official_action_tokenizer"
+  },
+  "metrics": {
+    "latency_ms": {"mean": 0.0, "p50": 0.0, "p90": 0.0, "p99": 0.0},
+    "memory_gb": {"allocated": 0.0, "peak": 0.0}
+  },
+  "failure_cases": [
+    {
+      "test_name": "single_image_inference",
+      "error_type": "action_range_error",
+      "message": "action value out of expected range",
+      "debug_artifacts": ["logs/validation.log"]
+    }
+  ]
+}</code></pre>
+      </section>
+
+      <section id="report">
+        <h2>技术报告：结构比堆材料更重要</h2>
+        <div class="tabs" data-tabs="reportTabs"><button class="tab-btn active" data-tab="r-summary">执行摘要</button><button class="tab-btn" data-tab="r-method">方法与指标</button><button class="tab-btn" data-tab="r-results">结果与局限</button></div>
+        <div id="r-summary" class="tab-panel active" data-panel="reportTabs"><pre><code>1. 目标：复现 OpenVLA 推理、评估和优化实验
+2. 关键结论：模型能跑通，瓶颈在延迟/显存/目标任务泛化
+3. 建议：先建立 BF16 基线，再做量化和 LoRA 对比</code></pre></div>
+        <div id="r-method" class="tab-panel" data-panel="reportTabs"><pre><code>metrics:
+  - success_rate
+  - action_mae_xyz / action_mae_rot / gripper_error
+  - latency_mean / p50 / p90 / p99
+  - memory_peak
+  - failure_type_distribution</code></pre></div>
+        <div id="r-results" class="tab-panel" data-panel="reportTabs"><pre><code>每个数字都必须带：
+checkpoint, dataset split, episode count, hardware,
+dtype, quantization, prompt template, unnorm_key, seed</code></pre></div>
+      </section>
+
+      <section id="context">
+        <h2>数字上下文：没有上下文的数字不能进报告</h2>
+        <pre><code>experiment_context:
+  model: openvla/openvla-7b
+  checkpoint: hf_revision_or_local_hash
+  dataset: bridge_orig_or_custom_dataset
+  split: held_out_episodes
+  num_episodes: 100
+  hardware: A100-80G
+  dtype: bf16
+  quantization: none
+  prompt_template: "In: What action should the robot take to {instruction}? Out:"
+  action:
+    tokenizer: official_openvla_action_tokenizer
+    unnorm_key: bridge_orig</code></pre>
+      </section>
+
+      <section id="code-style">
+        <h2>代码规范：让项目能被别人接手</h2>
+        <table><thead><tr><th>规范项</th><th>要求</th><th>原因</th></tr></thead><tbody><tr><td>配置管理</td><td>实验参数放 YAML/JSON</td><td>避免命令行口口相传</td></tr><tr><td>类型提示</td><td>关键函数标注输入输出</td><td>便于阅读和测试</td></tr><tr><td>日志</td><td>记录 config hash、seed、硬件</td><td>结果可追溯</td></tr><tr><td>测试</td><td>数据处理、action decode、最小推理</td><td>防止 silent bug</td></tr><tr><td>错误处理</td><td>模型/数据/显存错误清晰报出</td><td>减少复现成本</td></tr></tbody></table>
+      </section>
+
+      <section id="interview-kit">
+        <h2>面试材料包：讲深度而不是背名词</h2>
+        <div class="grid cols-3">
+          <div class="card"><h3>架构线</h3><p>视觉编码器、projector、LLM、ActionTokenizer、动作反归一化。</p></div>
+          <div class="card"><h3>工程线</h3><p>环境复现、验证脚本、profiling、量化、LoRA、失败 case。</p></div>
+          <div class="card"><h3>取舍线</h3><p>精度 vs 延迟、显存 vs 成功率、离线 loss vs 闭环成功率。</p></div>
+        </div>
+      </section>
+
+      <section id="storytelling">
+        <h2>项目讲述模板：2分钟、5分钟、深挖版</h2>
+        <p class="lead">面试讲项目时，不要只说“我跑通了模型”。要讲清背景、架构、复现、评估、优化、工程质量和局限性。</p>
+        <div class="tabs" data-tabs="storyTabs"><button class="tab-btn active" data-tab="s-two">2分钟</button><button class="tab-btn" data-tab="s-five">5分钟</button><button class="tab-btn" data-tab="s-deep">深挖追问</button></div>
+        <div id="s-two" class="tab-panel active" data-panel="storyTabs">
+          <div class="callout ok"><strong>开场概述：</strong>我做的是 OpenVLA 的复现和工程分析项目。项目从模型加载、单图推理、动作解码、延迟 profiling 到量化和 LoRA 微调评估形成完整闭环。交付物包括可复现环境、验证脚本、评估报告、失败案例分析和面试材料。关键收获是：VLA 不能只看能否生成动作，还要看动作反归一化、闭环成功率、p99 延迟、gripper 错误和失败类型。报告中每个数字都记录 checkpoint、硬件、dtype、数据集 split、prompt 模板和 <code>unnorm_key</code>，保证结果可复查。</div>
+        </div>
+        <div id="s-five" class="tab-panel" data-panel="storyTabs">
+          <table><thead><tr><th>讲述段落</th><th>应覆盖的重点</th></tr></thead><tbody>
+            <tr><td>背景</td><td>OpenVLA 把视觉、语言和动作统一到 VLM/VLA 框架中，适合机器人指令跟随。</td></tr>
+            <tr><td>架构</td><td>视觉编码器提取图像特征，projector 对齐到 LLM 空间，LLM 生成 action tokens，ActionTokenizer 解码并反归一化为连续动作。</td></tr>
+            <tr><td>复现</td><td>搭建环境、加载 checkpoint、跑单图推理、验证动作维度和范围，记录 latency 和显存。</td></tr>
+            <tr><td>评估</td><td>不仅看离线 action error，也看 SimplerEnv/真机的闭环 success rate 和 failure type。</td></tr>
+            <tr><td>优化</td><td>量化用于降低显存和延迟，但必须验证动作质量；LoRA 用于新任务适配，但要防止 loss 下降而成功率不升。</td></tr>
+            <tr><td>工程质量</td><td>提供 README、配置文件、验证脚本、报告模板、失败案例和测试。</td></tr>
+            <tr><td>局限性</td><td>模型延迟、显存、分布偏移、可解释性和动作精度仍是部署风险。</td></tr>
+          </tbody></table>
+        </div>
+        <div id="s-deep" class="tab-panel" data-panel="storyTabs">
+          <table><thead><tr><th>追问方向</th><th>回答抓手</th></tr></thead><tbody>
+            <tr><td>为什么不用手写 action token offset？</td><td>OpenVLA 的动作 token 依赖官方 ActionTokenizer 和词表尾部 bin 设计，硬编码 offset 容易随版本失效。</td></tr>
+            <tr><td>为什么 loss 下降但成功率不升？</td><td>label mask、action stats、<code>unnorm_key</code>、prompt 模板、gripper、闭环误差累积都可能导致离线/在线不一致。</td></tr>
+            <tr><td>量化怎么判断能不能上线？</td><td>比较 BF16、INT8、NF4 的 success rate、action MAE、gripper error、latency p99、failure type。</td></tr>
+            <tr><td>如何保证复现可信？</td><td>固定 checkpoint、环境、seed、数据 split，输出 validation_report 和 config hash。</td></tr>
+            <tr><td>失败 case 怎么分析？</td><td>保存视频、动作轨迹、延迟日志、prompt 和状态，按视觉、动作、规划、控制、系统分类。</td></tr>
+          </tbody></table>
+        </div>
+      </section>
+
+      <section id="score">
+        <h2>交互：项目交付评分器</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>完成度</h3>
+            <div class="control"><label for="reproScore">复现脚本：<span id="reproVal">80</span></label><input id="reproScore" type="range" min="0" max="100" value="80" /></div>
+            <div class="control"><label for="reportScore">报告质量：<span id="reportVal">75</span></label><input id="reportScore" type="range" min="0" max="100" value="75" /></div>
+            <div class="control"><label for="testScore">测试与规范：<span id="testVal">70</span></label><input id="testScore" type="range" min="0" max="100" value="70" /></div>
+          </div>
+          <div class="card">
+            <h3>评分</h3>
+            <div class="metric"><div><strong id="finalScore">75</strong><span>总分</span></div><div><strong id="levelText">可展示</strong><span>等级</span></div><div><strong id="weakText">测试</strong><span>短板</span></div><div><strong>100</strong><span>目标</span></div></div>
+            <div class="callout ok" id="scoreAdvice">项目已具备展示基础，下一步补测试和失败案例，让报告更可信。</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="qa">
+        <h2>面试问答：D112 高频问题</h2>
+        <div class="quiz-card"><strong>1. 如何证明你真的复现了 OpenVLA？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">给出环境文件、checkpoint、验证脚本、单图推理结果、动作维度检查、延迟/显存记录和评估报告；同时说明数据集 split、硬件、dtype、prompt 和 unnorm_key。</div></div>
+        <div class="quiz-card"><strong>2. 报告里最容易被质疑的是什么？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">没有上下文的数字。成功率、延迟、显存和量化收益必须能追溯到模型版本、数据集、硬件、评估协议和随机种子。</div></div>
+        <div class="quiz-card"><strong>3. 如何展示项目深度？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">不仅说模型能跑，还要讲清架构、数据流、推理瓶颈、量化和微调取舍、失败归因，以及你如何用实验验证每个判断。</div></div>
+      </section>
+
+      <section id="next">
+        <h2>第16周收束</h2>
+        <p class="lead">到 D112，Week 16 已经形成完整闭环：架构理解、源码走读、数据环境、推理评估、微调、改进实验、复现交付和面试表达。</p>
+      </section>
+    </main>
+  </div>
+  <a class="top-link" href="#top" aria-label="返回顶部">↑</a>
+  <script>
+    const progress=document.getElementById('progress');const navLinks=Array.from(document.querySelectorAll('#toc a'));const sections=navLinks.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);function updateProgress(){const s=window.scrollY||document.documentElement.scrollTop;const h=document.documentElement.scrollHeight-window.innerHeight;progress.style.width=(h>0?s/h*100:0)+'%';let current=sections[0];for(const section of sections)if(section.getBoundingClientRect().top<=120)current=section;navLinks.forEach(a=>a.classList.toggle('active',current&&a.getAttribute('href')==='#'+current.id))}window.addEventListener('scroll',updateProgress,{passive:true});window.addEventListener('resize',updateProgress);updateProgress();
+    document.querySelectorAll('[data-tabs]').forEach(group=>{const name=group.getAttribute('data-tabs');group.querySelectorAll('.tab-btn').forEach(button=>{button.addEventListener('click',()=>{group.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));button.classList.add('active');document.querySelectorAll(`[data-panel="${name}"]`).forEach(panel=>panel.classList.toggle('active',panel.id===button.dataset.tab))})})});
+    const reproScore=document.getElementById('reproScore'),reportScore=document.getElementById('reportScore'),testScore=document.getElementById('testScore'),reproVal=document.getElementById('reproVal'),reportVal=document.getElementById('reportVal'),testVal=document.getElementById('testVal'),finalScore=document.getElementById('finalScore'),levelText=document.getElementById('levelText'),weakText=document.getElementById('weakText'),scoreAdvice=document.getElementById('scoreAdvice');function updateScore(){const r=Number(reproScore.value),p=Number(reportScore.value),t=Number(testScore.value);reproVal.textContent=r;reportVal.textContent=p;testVal.textContent=t;const score=Math.round(r*.4+p*.35+t*.25);finalScore.textContent=score;const vals=[['复现',r],['报告',p],['测试',t]].sort((a,b)=>a[1]-b[1]);weakText.textContent=vals[0][0];let level='需补强',advice='先补齐最小复现脚本和报告上下文。';if(score>=90){level='强展示';advice='项目已经具备强展示能力，重点打磨失败案例和面试叙述。'}else if(score>=75){level='可展示';advice='项目已具备展示基础，下一步补测试和失败案例，让报告更可信。'}else if(score>=60){level='可复现';advice='能跑还不够，需要补报告、测试和配置记录。'}levelText.textContent=level;scoreAdvice.textContent=advice}[reproScore,reportScore,testScore].forEach(el=>el&&el.addEventListener('input',updateScore));updateScore();
+    document.querySelectorAll('.reveal').forEach(button=>{button.addEventListener('click',()=>{const answer=button.parentElement.querySelector('.answer');if(!answer)return;answer.classList.toggle('show');button.textContent=answer.classList.contains('show')?'隐藏参考答案':'显示参考答案'})});
+  </script>
+</body>
+</html>

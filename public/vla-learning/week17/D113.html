@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>D113 π0 精讲：VLM + Flow Matching Action Expert</title>
+  <style>
+    :root{
+      --bg:#f4f7fb;--paper:#fff;--ink:#1e2736;--muted:#667085;--line:#d9e2ee;
+      --navy:#1d3557;--blue:#2878d8;--teal:#0d9488;--green:#2f9e44;--orange:#f08c00;
+      --red:#d64545;--violet:#6d5bd0;--soft:#eef6ff;--shadow:0 18px 46px rgba(29,53,87,.13);
+      --radius:8px;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+      --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;color:var(--ink);font-family:var(--sans);line-height:1.72;background:linear-gradient(180deg,#dceeff 0,#f4f7fb 380px)}
+    .progress{position:fixed;top:0;left:0;height:4px;width:0;background:linear-gradient(90deg,var(--blue),var(--teal),var(--green),var(--orange));z-index:20}
+    .layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:26px;width:min(1500px,calc(100% - 36px));margin:0 auto;padding:28px 0 70px}
+    aside{position:sticky;top:22px;align-self:start;height:calc(100vh - 44px);overflow:auto;padding:18px;background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .brand{padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--line)}
+    .brand strong{display:block;color:var(--navy);font-size:18px}
+    .brand span{display:block;color:var(--muted);font-size:13px}
+    nav a{display:block;padding:9px 10px;margin:3px 0;border-radius:6px;color:#33415c;text-decoration:none;font-size:14px}
+    nav a:hover,nav a.active{background:#e8f2ff;color:#0a5ca8}
+    main{min-width:0}
+    .hero{min-height:560px;display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center;padding:42px;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;color:white;background:linear-gradient(135deg,#1d3557,#155e75 52%,#0f766e)}
+    .eyebrow{display:inline-flex;padding:5px 10px;border:1px solid rgba(255,255,255,.34);border-radius:999px;color:rgba(255,255,255,.92);font-size:13px}
+    h1{margin:18px 0 12px;font-size:clamp(34px,5vw,62px);line-height:1.05;letter-spacing:0}
+    .hero p{max-width:760px;font-size:18px;color:rgba(255,255,255,.9)}
+    .hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
+    .btn{border:0;border-radius:6px;padding:10px 14px;font:inherit;font-weight:800;text-decoration:none;cursor:pointer;color:#17243a;background:white}
+    .btn.secondary{color:white;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28)}
+    .hero-visual{min-height:400px;display:grid;place-items:center}
+    section{margin-top:24px;padding:30px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 10px 28px rgba(29,53,87,.08)}
+    section>h2{margin:0 0 14px;color:var(--navy);font-size:28px;line-height:1.25;letter-spacing:0}
+    h3{margin:24px 0 10px;color:#263a5d;font-size:20px;letter-spacing:0}
+    p{margin:10px 0}.lead{font-size:17px;color:#3d4a61}
+    .grid{display:grid;gap:16px}.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .card{padding:18px;border:1px solid var(--line);border-radius:var(--radius);background:#fbfcff}.card h3{margin-top:0}
+    .tag{display:inline-flex;padding:4px 8px;border-radius:999px;background:#e9f4ff;color:#0b5fa5;font-size:12px;font-weight:800}
+    .callout{padding:16px 18px;border-left:4px solid var(--blue);background:#eef7ff;border-radius:0 var(--radius) var(--radius) 0;margin:16px 0}
+    .ok{border-left-color:var(--green);background:#effaf2}.warn{border-left-color:var(--orange);background:#fff7e8}.danger{border-left-color:var(--red);background:#fff1f1}.cool{border-left-color:var(--violet);background:#f4f1ff}
+    .svg-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:#fbfdff;padding:10px}svg{max-width:100%;height:auto;display:block}
+    code,pre{font-family:var(--mono)}code{padding:2px 5px;border-radius:4px;background:#eef2f7;color:#243044}
+    pre{overflow:auto;padding:16px;border:1px solid var(--line);border-radius:var(--radius);background:#f6f8fb;color:#243044;line-height:1.58;font-size:13px}
+    table{width:100%;border-collapse:collapse;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}th,td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}th{background:#edf5fc;color:var(--navy)}tr:last-child td{border-bottom:0}
+    .tabs{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 16px}.tab-btn{border:1px solid var(--line);background:#f8fbff;color:#33415c;padding:8px 11px;border-radius:6px;cursor:pointer;font-weight:800}.tab-btn.active{background:var(--navy);border-color:var(--navy);color:white}.tab-panel{display:none}.tab-panel.active{display:block}
+    .control{display:grid;gap:8px;margin:12px 0}.control label{font-weight:800;color:var(--navy)}input[type=range]{width:100%}
+    .metric{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.metric div{padding:12px;border:1px solid var(--line);border-radius:6px;background:#fff}.metric strong{display:block;color:var(--navy);font-size:20px}
+    .flow-lab{position:relative;height:132px;margin:18px 0;border:1px solid var(--line);border-radius:var(--radius);background:linear-gradient(90deg,#effaf2,#fff7e8,#fff1f1);overflow:hidden}.flow-line{position:absolute;left:7%;right:7%;top:62px;height:5px;background:#1d3557;border-radius:99px}.flow-dot{position:absolute;top:41px;left:7%;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:#fff;border:4px solid var(--teal);box-shadow:0 8px 18px rgba(29,53,87,.18);font-weight:900;color:var(--navy);transform:translateX(-50%);transition:left .12s ease}.flow-labels{position:absolute;left:7%;right:7%;top:88px;display:flex;justify-content:space-between;color:#33415c;font-weight:800}
+    .pipeline{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:16px 0}.pipe-step{position:relative;padding:14px;border:1px solid var(--line);border-radius:6px;background:#fff}.pipe-step strong{display:block;color:var(--navy);margin-bottom:6px}.pipe-step:not(:last-child)::after{content:"";position:absolute;right:-10px;top:50%;width:10px;height:2px;background:var(--blue)}
+    .quiz-card{border:1px solid var(--line);border-radius:var(--radius);padding:16px;background:#fbfcff;margin:12px 0}.answer{display:none;margin-top:10px;padding:12px;border-radius:6px;background:#effbff;color:#073d54}.answer.show{display:block}
+    .top-link{position:fixed;right:22px;bottom:22px;width:42px;height:42px;display:grid;place-items:center;border-radius:50%;color:white;background:var(--navy);text-decoration:none;box-shadow:var(--shadow)}
+    @media(max-width:1040px){.layout{grid-template-columns:1fr}aside{position:relative;height:auto;top:0}.hero{grid-template-columns:1fr;min-height:auto;padding:26px}.cols-2,.cols-3,.cols-4,.metric,.pipeline{grid-template-columns:1fr}.pipe-step:not(:last-child)::after{display:none}}
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+  <div class="layout">
+    <aside>
+      <div class="brand"><strong>D113 π0 + Flow Matching</strong><span>VLM · Action Expert · FM vs AR</span></div>
+      <nav id="toc">
+        <a href="#overview">学习目标</a>
+        <a href="#why">为什么需要π0</a>
+        <a href="#architecture">双塔架构</a>
+        <a href="#tower">双塔细节</a>
+        <a href="#fm">Flow Matching</a>
+        <a href="#inference">训练与推理</a>
+        <a href="#compare">FM vs AR</a>
+        <a href="#interactive">交互估算</a>
+        <a href="#flowlab">FM方向演示</a>
+        <a href="#execution">执行闭环</a>
+        <a href="#rigor">严谨口径</a>
+        <a href="#mistakes">常见误区</a>
+        <a href="#interview">面试表达</a>
+        <a href="#quiz">自测</a>
+        <a href="#summary">最终总结</a>
+        <a href="#next">下一步</a>
+      </nav>
+    </aside>
+    <main>
+      <header class="hero" id="top">
+        <div>
+          <span class="eyebrow">Week 17 / Day 113 / π0 精读</span>
+          <h1>π0：VLM 理解任务，Flow Matching 生成连续动作</h1>
+          <p>D113 的核心是理解 π0 为什么从 RT-2/OpenVLA 的离散动作 token 路线，转向“VLM + Flow Matching Action Expert”的双塔设计。</p>
+          <div class="hero-actions">
+            <a class="btn" href="#architecture">看双塔图</a>
+            <a class="btn secondary" href="#fm">看FM公式</a>
+            <a class="btn secondary" href="d113_pi0_fm_clean.md">查看 Markdown</a>
+          </div>
+        </div>
+        <div class="hero-visual">
+          <svg viewBox="0 0 720 430" role="img" aria-label="pi0 dual tower hero">
+            <defs>
+              <marker id="arrowHero" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#fff"/></marker>
+              <filter id="shadowHero" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#10243d" flood-opacity=".28"/></filter>
+            </defs>
+            <rect x="24" y="26" width="672" height="378" rx="18" fill="rgba(255,255,255,.1)" stroke="rgba(255,255,255,.28)"/>
+            <g filter="url(#shadowHero)">
+              <rect x="70" y="70" width="245" height="96" rx="14" fill="#fff"/>
+              <text x="192" y="108" text-anchor="middle" fill="#0b4f88" font-size="19" font-weight="900">VLM Tower</text>
+              <text x="192" y="135" text-anchor="middle" fill="#647084" font-size="13">图像 + 语言 → 语义条件</text>
+              <rect x="405" y="70" width="245" height="96" rx="14" fill="#fff"/>
+              <text x="528" y="108" text-anchor="middle" fill="#1f7a4d" font-size="19" font-weight="900">Action Expert</text>
+              <text x="528" y="135" text-anchor="middle" fill="#647084" font-size="13">噪声动作 → 连续动作chunk</text>
+              <rect x="218" y="265" width="284" height="74" rx="14" fill="#fff"/>
+              <text x="360" y="296" text-anchor="middle" fill="#7a4314" font-size="18" font-weight="900">Flow Matching ODE</text>
+              <text x="360" y="320" text-anchor="middle" fill="#647084" font-size="13">从噪声反向积分到动作</text>
+            </g>
+            <g stroke="#fff" stroke-width="3" fill="none" marker-end="url(#arrowHero)">
+              <path d="M315 118 L405 118"/>
+              <path d="M528 166 C510 214 452 246 402 266"/>
+              <path d="M192 166 C215 219 274 252 322 266"/>
+            </g>
+            <text x="360" y="210" text-anchor="middle" fill="rgba(255,255,255,.92)" font-size="15" font-weight="800">condition embedding</text>
+          </svg>
+        </div>
+      </header>
+
+      <section id="overview">
+        <h2>学习目标：D113 要真正掌握什么</h2>
+        <div class="grid cols-4">
+          <div class="card"><span class="tag">Question 1</span><h3>为什么不是离散token</h3><p>理解 RT-2/OpenVLA 把动作离散化为 token 的优点和瓶颈。</p></div>
+          <div class="card"><span class="tag">Question 2</span><h3>为什么双塔</h3><p>VLM 负责“看懂和理解”，Action Expert 负责“连续控制”。</p></div>
+          <div class="card"><span class="tag">Question 3</span><h3>FM 如何生成动作</h3><p>统一理解噪声、插值、速度场、ODE 反向积分。</p></div>
+          <div class="card"><span class="tag">Question 4</span><h3>如何面试表达</h3><p>能讲清 π0 相比 AR / Diffusion / OpenVLA 的 trade-off。</p></div>
+        </div>
+        <div class="callout ok"><strong>统一约定：</strong>本页采用 <code>a_t = (1 - t) * a_0 + t * ε</code>。因此 <code>t=0</code> 是干净动作，<code>t=1</code> 是噪声；推理从噪声回到数据，需要反向积分。</div>
+      </section>
+
+      <section id="why">
+        <h2>为什么需要 π0：从 RT-2 / OpenVLA 的局限说起</h2>
+        <p class="lead">RT-2 / OpenVLA 的关键思路是把连续动作离散成 token，然后像生成语言一样生成动作。这条路线工程上很优雅，但遇到精细控制、高维动作和长动作序列时会有天然压力。</p>
+        <div class="grid cols-3">
+          <div class="card"><h3>离散化精度</h3><p>连续动作被映射到有限 bins。bin 越少，量化误差越大；bin 越多，词表和学习难度上升。</p></div>
+          <div class="card"><h3>自回归串行</h3><p>动作 token 逐个生成。对于长 horizon 或高维灵巧手，token 数会快速增加。</p></div>
+          <div class="card"><h3>理解与控制耦合</h3><p>同一个 VLM 同时承担语言理解和动作 token 生成，微调时可能破坏预训练语义能力。</p></div>
+        </div>
+        <table>
+          <thead><tr><th>问题</th><th>RT-2/OpenVLA 风格</th><th>π0-style 思路</th></tr></thead>
+          <tbody>
+            <tr><td>动作空间</td><td>连续动作 → 离散 token</td><td>直接在连续动作空间建模</td></tr>
+            <tr><td>生成方式</td><td>Autoregressive token generation</td><td>Flow Matching 生成 action chunk</td></tr>
+            <tr><td>模块职责</td><td>VLM 同时理解和输出动作</td><td>VLM 理解，Action Expert 控制</td></tr>
+            <tr><td>主要收益</td><td>LM 兼容性强，训练目标清晰</td><td>连续精度高，动作维度可并行更新</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="architecture">
+        <h2>π0 双塔架构：理解和控制分工</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1180 560" role="img" aria-label="pi0 architecture">
+            <defs><marker id="flowArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#1d3557"/></marker></defs>
+            <rect x="40" y="40" width="1100" height="480" rx="18" fill="#fbfdff" stroke="#d9e2ee"/>
+            <rect x="80" y="90" width="360" height="330" rx="14" fill="#eef7ff" stroke="#aacdec"/>
+            <text x="260" y="128" text-anchor="middle" fill="#0b4f88" font-size="24" font-weight="900">Tower 1: VLM</text>
+            <rect x="120" y="170" width="120" height="62" rx="10" fill="#fff" stroke="#cbd9e8"/>
+            <text x="180" y="198" text-anchor="middle" fill="#1d3557" font-weight="900">Image</text>
+            <text x="180" y="218" text-anchor="middle" fill="#667085" font-size="12">多帧图像</text>
+            <rect x="280" y="170" width="120" height="62" rx="10" fill="#fff" stroke="#cbd9e8"/>
+            <text x="340" y="198" text-anchor="middle" fill="#1d3557" font-weight="900">Language</text>
+            <text x="340" y="218" text-anchor="middle" fill="#667085" font-size="12">任务指令</text>
+            <rect x="145" y="280" width="230" height="76" rx="10" fill="#fff" stroke="#cbd9e8"/>
+            <text x="260" y="312" text-anchor="middle" fill="#0b4f88" font-weight="900">中间层 VLM embedding</text>
+            <text x="260" y="336" text-anchor="middle" fill="#667085" font-size="12">目标物体 / 空间关系 / 任务语义</text>
+            <rect x="740" y="90" width="360" height="330" rx="14" fill="#effaf2" stroke="#b7dfc0"/>
+            <text x="920" y="128" text-anchor="middle" fill="#1f7a4d" font-size="24" font-weight="900">Tower 2: Action Expert</text>
+            <rect x="775" y="170" width="290" height="62" rx="10" fill="#fff" stroke="#cbd9e8"/>
+            <text x="920" y="198" text-anchor="middle" fill="#1d3557" font-weight="900">noisy action chunk a_t</text>
+            <text x="920" y="218" text-anchor="middle" fill="#667085" font-size="12">从噪声逐步反向积分</text>
+            <rect x="775" y="268" width="290" height="78" rx="10" fill="#fff" stroke="#cbd9e8"/>
+            <text x="920" y="300" text-anchor="middle" fill="#1f7a4d" font-weight="900">vθ(a_t, t, condition)</text>
+            <text x="920" y="324" text-anchor="middle" fill="#667085" font-size="12">预测速度场，输出连续动作</text>
+            <rect x="500" y="240" width="180" height="84" rx="12" fill="#fff7e8" stroke="#f2c782"/>
+            <text x="590" y="273" text-anchor="middle" fill="#8a4b00" font-size="18" font-weight="900">Condition</text>
+            <text x="590" y="298" text-anchor="middle" fill="#667085" font-size="12">语义条件注入</text>
+            <g stroke="#1d3557" stroke-width="3" fill="none" marker-end="url(#flowArrow)">
+              <path d="M180 232 L222 280"/><path d="M340 232 L298 280"/>
+              <path d="M375 318 L500 285"/><path d="M680 285 L775 202"/>
+              <path d="M920 232 L920 268"/>
+            </g>
+            <text x="260" y="462" text-anchor="middle" fill="#33415c" font-weight="800">负责“做什么”</text>
+            <text x="920" y="462" text-anchor="middle" fill="#33415c" font-weight="800">负责“怎么做”</text>
+          </svg>
+        </div>
+        <div class="callout cool">双塔设计的关键不是“两个模型堆起来”，而是把视觉语言理解和连续动作生成解耦。这样可以保留 VLM 的预训练语义能力，同时让 action expert 专注学习机器人动作分布。</div>
+      </section>
+
+      <section id="tower">
+        <h2>双塔细节：VLM 表征如何变成动作条件</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>VLM Tower 输出什么</h3>
+            <p>VLM 从图像和语言中抽取任务相关条件。它应该包含：</p>
+            <table><tbody>
+              <tr><td>目标物体</td><td>红杯子、抽屉把手、布料边缘</td></tr>
+              <tr><td>空间关系</td><td>在桌子左侧、靠近夹爪、位于容器内</td></tr>
+              <tr><td>任务意图</td><td>抓取、放置、折叠、打开、推拉</td></tr>
+              <tr><td>场景约束</td><td>障碍物、接触面、可达区域</td></tr>
+            </tbody></table>
+          </div>
+          <div class="card">
+            <h3>Action Expert 接收什么</h3>
+            <p>Action Expert 不只看 VLM embedding，还要结合当前动作噪声、时间步和本体感受。</p>
+            <pre><code>inputs:
+  noisy_actions: [B, K, action_dim]
+  t:             [B, 1, 1]
+  condition:     [B, L, hidden]
+  proprio:       [B, K, prop_dim]
+
+output:
+  velocity:      [B, K, action_dim]</code></pre>
+          </div>
+        </div>
+        <div class="callout warn"><strong>准确性提醒：</strong>“第16层”“6层 cross-attention”等属于教学示意。面试中更稳妥的说法是：π0-style 系统通常从 VLM 中间表征提取视觉语言条件，通过适配层或注意力机制注入到动作生成专家。</div>
+      </section>
+
+      <section id="fm">
+        <h2>Flow Matching：从噪声到连续动作</h2>
+        <p class="lead">Flow Matching 的核心是学习一个速度场。训练时让模型知道“在任意中间状态 a_t，应该往哪个方向流动”；推理时从纯噪声开始，沿相反方向积分回干净动作。</p>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>统一公式</h3>
+            <pre><code>a_t = (1 - t) * a_0 + t * ε
+
+t = 0: a_t = a_0   # 干净动作
+t = 1: a_t = ε     # 纯噪声
+
+forward velocity:
+u_t = ε - a_0
+
+training loss:
+L = || vθ(a_t, t, c) - (ε - a_0) ||²</code></pre>
+          </div>
+          <div class="card">
+            <h3>推理方向</h3>
+            <pre><code># 从噪声开始
+a_t = randn([B, K, D])
+t = 1.0
+
+for step in range(num_steps):
+    v = action_expert(a_t, t, condition)
+    a_t = a_t - v * dt   # 反向积分
+    t = t - dt
+
+actions = a_t</code></pre>
+          </div>
+        </div>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1080 250" role="img" aria-label="flow matching timeline">
+            <defs><marker id="timeArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#1d3557"/></marker></defs>
+            <line x1="100" y1="130" x2="960" y2="130" stroke="#1d3557" stroke-width="4" marker-end="url(#timeArrow)"/>
+            <circle cx="130" cy="130" r="28" fill="#effaf2" stroke="#2f9e44" stroke-width="3"/><text x="130" y="136" text-anchor="middle" fill="#1f7a4d" font-weight="900">t=0</text>
+            <circle cx="520" cy="130" r="28" fill="#fff7e8" stroke="#f08c00" stroke-width="3"/><text x="520" y="136" text-anchor="middle" fill="#8a4b00" font-weight="900">t</text>
+            <circle cx="930" cy="130" r="28" fill="#fff1f1" stroke="#d64545" stroke-width="3"/><text x="930" y="136" text-anchor="middle" fill="#a32828" font-weight="900">t=1</text>
+            <text x="130" y="190" text-anchor="middle" fill="#33415c" font-size="15">干净动作 a₀</text>
+            <text x="520" y="190" text-anchor="middle" fill="#33415c" font-size="15">插值动作 aₜ</text>
+            <text x="930" y="190" text-anchor="middle" fill="#33415c" font-size="15">噪声 ε</text>
+            <path d="M910 82 C740 30 350 30 160 82" fill="none" stroke="#0d9488" stroke-width="3" stroke-dasharray="8 8" marker-end="url(#timeArrow)"/>
+            <text x="535" y="52" text-anchor="middle" fill="#0d766e" font-weight="900">推理：从噪声反向积分到动作</text>
+          </svg>
+        </div>
+      </section>
+
+      <section id="inference">
+        <h2>训练与推理：代码如何对应公式</h2>
+        <div class="tabs" data-tabs="codeTabs">
+          <button class="tab-btn active" data-tab="train">训练伪代码</button>
+          <button class="tab-btn" data-tab="infer">推理伪代码</button>
+          <button class="tab-btn" data-tab="shape">张量形状</button>
+        </div>
+        <div id="train" class="tab-panel active" data-panel="codeTabs">
+          <pre><code>def train_step(images, text, actions, proprio):
+    condition = vlm.encode_mid_layer(images, text)
+
+    t = torch.rand(B, 1, 1)
+    noise = torch.randn_like(actions)
+
+    # 插值路径
+    a_t = (1 - t) * actions + t * noise
+
+    # 预测 forward velocity
+    v_pred = action_expert(a_t, t, condition, proprio)
+    v_target = noise - actions
+
+    loss = mse(v_pred, v_target)
+    return loss</code></pre>
+        </div>
+        <div id="infer" class="tab-panel" data-panel="codeTabs">
+          <pre><code>def predict_action(images, text, proprio, steps=10):
+    condition = vlm.encode_mid_layer(images, text)
+
+    a_t = torch.randn(1, K, action_dim)
+    dt = 1.0 / steps
+    t = 1.0
+
+    for _ in range(steps):
+        v = action_expert(a_t, t, condition, proprio)
+        a_t = a_t - v * dt
+        t -= dt
+
+    return denormalize(a_t)</code></pre>
+        </div>
+        <div id="shape" class="tab-panel" data-panel="codeTabs">
+          <table><thead><tr><th>变量</th><th>形状</th><th>含义</th></tr></thead><tbody>
+            <tr><td><code>actions</code></td><td><code>[B, K, D]</code></td><td>K 个动作步，每步 D 维</td></tr>
+            <tr><td><code>condition</code></td><td><code>[B, L, H]</code></td><td>VLM 的视觉语言条件序列</td></tr>
+            <tr><td><code>t</code></td><td><code>[B, 1, 1]</code></td><td>Flow Matching 时间步</td></tr>
+            <tr><td><code>v_pred</code></td><td><code>[B, K, D]</code></td><td>预测速度场</td></tr>
+          </tbody></table>
+        </div>
+      </section>
+
+      <section id="compare">
+        <h2>Flow Matching vs Autoregressive</h2>
+        <p class="lead">FM 和 AR 的差异不是简单“谁一定更快”，而是建模方式不同。AR 擅长离散 token 序列，FM 擅长连续动作分布和 action chunk 整体生成。</p>
+        <table>
+          <thead><tr><th>维度</th><th>AR 动作 token</th><th>Flow Matching action expert</th></tr></thead>
+          <tbody>
+            <tr><td>输出空间</td><td>离散 token</td><td>连续动作</td></tr>
+            <tr><td>生成方式</td><td>逐 token 自回归</td><td>ODE 多步反向积分</td></tr>
+            <tr><td>动作维度关系</td><td>依赖 tokenizer 和序列顺序</td><td>每一步可同时更新所有维度</td></tr>
+            <tr><td>精细控制</td><td>受 bins / tokenizer 精度影响</td><td>天然在连续空间建模</td></tr>
+            <tr><td>速度瓶颈</td><td>token 数、KV cache、模型大小</td><td>ODE steps、action expert 大小</td></tr>
+            <tr><td>多模态动作</td><td>可能出现 token 级混合</td><td>不同噪声可流向不同动作模态</td></tr>
+          </tbody>
+        </table>
+        <div class="callout warn">更严谨的说法：FM 的前向次数约为 ODE steps，AR 的前向次数约为 action token 数。谁更快取决于 horizon、tokenizer、KV cache、模型大小、batch 和硬件。</div>
+      </section>
+
+      <section id="interactive">
+        <h2>交互：FM vs AR 前向次数估算</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>参数</h3>
+            <div class="control"><label for="horizon">Action horizon K：<span id="horizonVal">8</span></label><input id="horizon" type="range" min="1" max="64" value="8" /></div>
+            <div class="control"><label for="dim">Action dim D：<span id="dimVal">7</span></label><input id="dim" type="range" min="1" max="32" value="7" /></div>
+            <div class="control"><label for="ode">FM ODE steps：<span id="odeVal">10</span></label><input id="ode" type="range" min="1" max="64" value="10" /></div>
+            <div class="control"><label for="tokensPerStep">AR tokens / step：<span id="tokensVal">7</span></label><input id="tokensPerStep" type="range" min="1" max="32" value="7" /></div>
+          </div>
+          <div class="card">
+            <h3>估算结果</h3>
+            <div class="metric">
+              <div><strong id="fmPass">10</strong><span>FM forward</span></div>
+              <div><strong id="arPass">56</strong><span>AR forward</span></div>
+              <div><strong id="ratio">5.6x</strong><span>AR/FM</span></div>
+              <div><strong id="winner">FM</strong><span>较少前向</span></div>
+            </div>
+            <div class="callout ok" id="advice">在当前设置下，FM 的前向次数更少。但真实延迟还取决于模型大小和硬件。</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="flowlab">
+        <h2>交互：拖动 t，看清 Flow Matching 的方向</h2>
+        <p class="lead">D113 最容易混淆的是时间方向。本页统一采用 <code>a_t = (1 - t) * a_0 + t * ε</code>：左边是干净动作，右边是噪声。训练学习从左到右的 forward velocity，推理则从右到左反向积分。</p>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>时间步</h3>
+            <div class="control"><label for="tSlider">t：<span id="tValue">0.50</span></label><input id="tSlider" type="range" min="0" max="100" value="50" /></div>
+            <div class="flow-lab">
+              <div class="flow-line"></div>
+              <div class="flow-dot" id="flowDot">aₜ</div>
+              <div class="flow-labels"><span>t=0 干净动作 a₀</span><span>t=1 噪声 ε</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>当前解释</h3>
+            <table><tbody>
+              <tr><td>插值状态</td><td id="stateText">动作和噪声的中间状态</td></tr>
+              <tr><td>训练目标</td><td><code>v_target = ε - a_0</code>，学习 data → noise 的速度场</td></tr>
+              <tr><td>推理方向</td><td><code>a_t = a_t - v * dt</code>，从 noise → data 反向积分</td></tr>
+            </tbody></table>
+            <div class="callout warn">训练时随机抽样很多不同的 <code>t</code> 来学习全局速度场；推理时才按时间网格一步步积分。不要把训练误解成固定 10 步去噪。</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="execution">
+        <h2>工程闭环：模型输出如何变成机器人动作</h2>
+        <p class="lead">π0-style 模型输出的是 action chunk，但真实机器人通常不会把整个 chunk 一次性执行到底。更稳妥的做法是滚动规划：观察、预测、执行前几步、再观察、再预测。</p>
+        <div class="pipeline">
+          <div class="pipe-step"><strong>1. Observe</strong><span>读取图像、语言指令、本体感受和夹爪状态。</span></div>
+          <div class="pipe-step"><strong>2. Condition</strong><span>VLM 提取目标物体、空间关系和任务意图。</span></div>
+          <div class="pipe-step"><strong>3. Generate</strong><span>Action Expert 通过 FM 生成 <code>K</code> 步 action chunk。</span></div>
+          <div class="pipe-step"><strong>4. Execute</strong><span>只执行前 <code>m</code> 步，并经过限幅和安全检查。</span></div>
+          <div class="pipe-step"><strong>5. Replan</strong><span>重新观察环境，避免误差和接触状态累积。</span></div>
+        </div>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>为什么只执行前几步</h3>
+            <ul>
+              <li>环境会变化，物体可能移动或接触状态异常。</li>
+              <li>模型越往后的预测越容易累积误差。</li>
+              <li>机器人控制存在延迟，闭环重规划更安全。</li>
+              <li>失败时可以尽早重新选择动作，而不是盲目执行完整轨迹。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>动作空间必须讲清楚</h3>
+            <table><tbody>
+              <tr><td>坐标系</td><td>base / camera / end-effector frame</td></tr>
+              <tr><td>动作含义</td><td>delta pose / absolute pose / joint velocity</td></tr>
+              <tr><td>控制频率</td><td>例如 5Hz、10Hz、20Hz，影响每步动作尺度</td></tr>
+              <tr><td>安全边界</td><td>速度、加速度、工作空间、夹爪范围裁剪</td></tr>
+            </tbody></table>
+          </div>
+        </div>
+        <pre><code># 训练和部署都必须保持同一套动作统计
+actions_norm = (actions_raw - action_mean) / action_std
+actions_pred = flow_model(condition)
+actions_raw = actions_pred * action_std + action_mean
+actions_raw = clip_to_robot_limits(actions_raw)</code></pre>
+      </section>
+
+      <section id="rigor">
+        <h2>严谨口径：哪些话需要加限定</h2>
+        <div class="grid cols-3">
+          <div class="card">
+            <h3>不要说：FM 一定更快</h3>
+            <p>更严谨：FM 成本主要看 ODE steps 和 action expert；AR 成本主要看 action token 数、KV cache 和模型大小。真实延迟必须实测。</p>
+          </div>
+          <div class="card">
+            <h3>不要说：连续动作任意精度</h3>
+            <p>更严谨：FM 避免了 binning 量化误差，但仍受数据、归一化、模型容量、控制频率和执行器精度限制。</p>
+          </div>
+          <div class="card">
+            <h3>不要说：VLM 完全不会受影响</h3>
+            <p>更严谨：双塔降低了动作目标干扰 VLM 语义能力的风险；如果联合微调 VLM，仍要控制学习率和数据比例。</p>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>训练策略</th><th>做法</th><th>优点</th><th>风险</th></tr></thead>
+          <tbody>
+            <tr><td>冻结 VLM</td><td>只训练 Action Expert</td><td>稳定，保留语义能力</td><td>条件表征可能不够适配机器人</td></tr>
+            <tr><td>训练 adapter</td><td>VLM 基本不动，只调适配层</td><td>稳定性和适配性折中</td><td>上限受 adapter 容量限制</td></tr>
+            <tr><td>联合微调</td><td>VLM 和 Action Expert 都更新</td><td>上限可能更高</td><td>成本高，也更容易破坏预训练能力</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="mistakes">
+        <h2>常见误区：D113 最容易讲错的地方</h2>
+        <div class="grid cols-2">
+          <div class="card"><h3>误区 1：FM 一定更快</h3><p>不一定。FM 的成本取决于 ODE steps；AR 的成本取决于 token 数和 KV cache。只能说 FM 在连续 action chunk 和并行维度更新上有结构优势。</p></div>
+          <div class="card"><h3>误区 2：双塔就是两个模型拼接</h3><p>双塔的核心是职责解耦：VLM 保留语义理解，Action Expert 专注动作分布。</p></div>
+          <div class="card"><h3>误区 3：把第16层当固定事实</h3><p>中间层条件是合理讲法，但具体层数、注入方式和训练策略要以论文/实现为准。</p></div>
+          <div class="card"><h3>误区 4：忽略动作归一化</h3><p>连续动作生成必须明确坐标系、范围、delta/absolute、gripper 编码和反归一化统计。</p></div>
+        </div>
+      </section>
+
+      <section id="interview">
+        <h2>面试表达：2分钟讲清 π0</h2>
+        <div class="tabs" data-tabs="talkTabs">
+          <button class="tab-btn active" data-tab="talk-short">短版</button>
+          <button class="tab-btn" data-tab="talk-deep">深挖版</button>
+          <button class="tab-btn" data-tab="talk-compare">对比版</button>
+        </div>
+        <div id="talk-short" class="tab-panel active" data-panel="talkTabs">
+          <div class="callout ok">π0 的核心是把视觉语言理解和连续动作生成解耦。VLM tower 负责从图像和语言中提取任务语义，Flow Matching action expert 根据这个条件在连续动作空间生成 action chunk。相比 RT-2/OpenVLA 的离散动作 token，π0 避免了部分离散化精度损失，也更自然地建模动作维度之间的联合关系。</div>
+        </div>
+        <div id="talk-deep" class="tab-panel" data-panel="talkTabs">
+          <table><thead><tr><th>追问</th><th>回答抓手</th></tr></thead><tbody>
+            <tr><td>为什么用 VLM 中间层？</td><td>中间层通常保留视觉语言融合信息，最终层更偏语言生成；但具体层数要以实现为准。</td></tr>
+            <tr><td>FM 怎么训练？</td><td>采样动作、噪声和时间步，构造插值动作，让模型预测速度场。</td></tr>
+            <tr><td>FM 怎么推理？</td><td>从噪声 action chunk 开始，按速度场反向积分到干净动作。</td></tr>
+            <tr><td>FM 和 Diffusion Policy 什么关系？</td><td>二者都从简单噪声分布生成复杂动作分布；Diffusion 更偏去噪/score 类目标，FM 直接学习速度场并用 ODE 积分。</td></tr>
+            <tr><td>action chunk 怎么执行？</td><td>通常只执行前几步，然后重新观察和规划，避免长 horizon 误差累积。</td></tr>
+            <tr><td>主要工程风险？</td><td>延迟、动作归一化、动作安全边界、失败 case、真实机器人闭环误差。</td></tr>
+          </tbody></table>
+        </div>
+        <div id="talk-compare" class="tab-panel" data-panel="talkTabs">
+          <pre><code>RT-2 / OpenVLA:
+  VLM → action tokens → autoregressive generation
+  优点：LM兼容、训练目标清晰
+  缺点：离散化误差、长动作序列token成本
+
+π0:
+  VLM condition → Flow Matching action expert
+  优点：连续动作、并行更新动作维度、职责解耦
+  缺点：需要ODE采样，工程上要优化延迟</code></pre>
+        </div>
+      </section>
+
+      <section id="quiz">
+        <h2>自测：确认你真的理解 D113</h2>
+        <div class="quiz-card"><strong>1. 为什么 π0 不继续完全沿用 RT-2 的离散 action token？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">因为离散化会带来精度损失，长动作序列会增加 token 成本，逐 token 生成也不一定适合连续动作维度的联合建模。</div></div>
+        <div class="quiz-card"><strong>2. 在本页约定中，<code>t=0</code> 和 <code>t=1</code> 分别代表什么？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer"><code>t=0</code> 是干净动作 <code>a_0</code>，<code>t=1</code> 是噪声 <code>ε</code>。训练学习 forward velocity，推理从噪声反向积分到动作。</div></div>
+        <div class="quiz-card"><strong>3. π0 双塔设计的本质是什么？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">本质是职责解耦：VLM 负责视觉语言理解，Action Expert 负责连续动作分布生成，两者通过条件表征连接。</div></div>
+        <div class="quiz-card"><strong>4. 为什么 action chunk 通常不应该一次性全部执行？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">因为真实环境会变化，越往后的预测越容易累积误差；闭环执行通常只执行前几步，然后重新观察和规划。</div></div>
+        <div class="quiz-card"><strong>5. 连续动作为什么仍然需要归一化和安全裁剪？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">不同动作维度量纲不同，模型训练依赖统一尺度；部署时还必须把输出映射回真实控制量，并限制速度、加速度和工作空间边界。</div></div>
+      </section>
+
+      <section id="summary">
+        <h2>D113 最终总结：必须带走的 5 个结论</h2>
+        <div class="grid cols-2">
+          <div class="card"><h3>1. 核心设计</h3><p>π0 的重点不是简单换动作头，而是把 VLM 语义理解和 Action Expert 连续控制解耦。</p></div>
+          <div class="card"><h3>2. FM 本质</h3><p>Flow Matching 学习速度场；训练学习 data → noise，推理从 noise → data 反向积分。</p></div>
+          <div class="card"><h3>3. 动作不是抽象向量</h3><p>必须明确坐标系、delta/absolute、控制频率、归一化和安全边界。</p></div>
+          <div class="card"><h3>4. 执行必须闭环</h3><p>action chunk 通常只执行前几步，然后重新观察和重规划。</p></div>
+          <div class="card"><h3>5. 比较要带条件</h3><p>FM、AR、Diffusion 谁更好取决于任务、机器人、模型、采样步数、缓存和硬件。</p></div>
+          <div class="card"><h3>过渡到 D114</h3><p>D114 应继续拆 Action Expert 如何接收 VLM embedding、训练是否冻结 VLM、动作空间和部署细节如何设计。</p></div>
+        </div>
+      </section>
+
+      <section id="next">
+        <h2>下一步：D114 学什么</h2>
+        <p class="lead">D113 讲清了 π0 的全局架构和 FM vs AR。D114 会继续深入三个关键问题：Action Expert 如何接收 VLM embedding、VLM 和 Action Expert 如何分阶段训练、动作空间如何设计。</p>
+      </section>
+    </main>
+  </div>
+  <a class="top-link" href="#top" aria-label="返回顶部">↑</a>
+  <script>
+    const progress=document.getElementById('progress');
+    const navLinks=Array.from(document.querySelectorAll('#toc a'));
+    const sections=navLinks.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+    function updateProgress(){
+      const s=window.scrollY||document.documentElement.scrollTop;
+      const h=document.documentElement.scrollHeight-window.innerHeight;
+      progress.style.width=(h>0?s/h*100:0)+'%';
+      let current=sections[0];
+      for(const section of sections){if(section.getBoundingClientRect().top<=120)current=section;}
+      navLinks.forEach(a=>a.classList.toggle('active',current&&a.getAttribute('href')==='#'+current.id));
+    }
+    window.addEventListener('scroll',updateProgress,{passive:true});window.addEventListener('resize',updateProgress);updateProgress();
+    document.querySelectorAll('[data-tabs]').forEach(group=>{
+      const name=group.getAttribute('data-tabs');
+      group.querySelectorAll('.tab-btn').forEach(button=>{
+        button.addEventListener('click',()=>{
+          group.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+          button.classList.add('active');
+          document.querySelectorAll(`[data-panel="${name}"]`).forEach(panel=>panel.classList.toggle('active',panel.id===button.dataset.tab));
+        });
+      });
+    });
+    const ids=['horizon','dim','ode','tokensPerStep'];
+    function updateCalc(){
+      const horizon=Number(document.getElementById('horizon').value);
+      const dim=Number(document.getElementById('dim').value);
+      const ode=Number(document.getElementById('ode').value);
+      const tokens=Number(document.getElementById('tokensPerStep').value);
+      document.getElementById('horizonVal').textContent=horizon;
+      document.getElementById('dimVal').textContent=dim;
+      document.getElementById('odeVal').textContent=ode;
+      document.getElementById('tokensVal').textContent=tokens;
+      const fm=ode;
+      const ar=horizon*tokens;
+      document.getElementById('fmPass').textContent=fm;
+      document.getElementById('arPass').textContent=ar;
+      document.getElementById('ratio').textContent=(ar/fm).toFixed(1)+'x';
+      const winner=fm<ar?'FM':(fm>ar?'AR':'相同');
+      document.getElementById('winner').textContent=winner;
+      document.getElementById('advice').textContent=winner==='FM'?'在当前设置下，FM 的前向次数更少。但真实延迟还取决于模型大小和硬件。':winner==='AR'?'在当前设置下，AR 的前向次数更少。这说明 FM 不一定总是更快。':'当前设置下两者前向次数相同，真实延迟需要实测。';
+    }
+    ids.forEach(id=>document.getElementById(id).addEventListener('input',updateCalc));updateCalc();
+    const tSlider=document.getElementById('tSlider');
+    const flowDot=document.getElementById('flowDot');
+    const tValue=document.getElementById('tValue');
+    const stateText=document.getElementById('stateText');
+    function updateFlowLab(){
+      if(!tSlider)return;
+      const t=Number(tSlider.value)/100;
+      tValue.textContent=t.toFixed(2);
+      flowDot.style.left=(7 + 86*t)+'%';
+      stateText.textContent=t<0.15?'接近干净动作 a0':t>0.85?'接近纯噪声 ε':'动作和噪声的中间状态 a_t';
+    }
+    if(tSlider){tSlider.addEventListener('input',updateFlowLab);updateFlowLab();}
+    document.querySelectorAll('.reveal').forEach(button=>{
+      button.addEventListener('click',()=>{
+        const answer=button.parentElement.querySelector('.answer');
+        answer.classList.toggle('show');
+        button.textContent=answer.classList.contains('show')?'隐藏参考答案':'显示参考答案';
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>D107 OpenVLA 代码库精读</title>
+  <style>
+    :root{--bg:#f5f7fb;--paper:#fff;--ink:#1d2433;--muted:#647084;--line:#dce3ee;--navy:#203657;--teal:#0f9d92;--cyan:#2bb8d8;--orange:#f28c38;--purple:#7367d8;--red:#d95f5f;--green:#2f9e64;--shadow:0 18px 45px rgba(32,54,87,.12);--radius:8px;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;--sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--ink);background:linear-gradient(180deg,rgba(47,158,100,.10),rgba(245,247,251,0) 280px),var(--bg);font-family:var(--sans);line-height:1.72}.progress{position:fixed;top:0;left:0;height:4px;width:0;background:linear-gradient(90deg,var(--green),var(--cyan),var(--purple),var(--orange));z-index:60}
+    .layout{display:grid;grid-template-columns:292px minmax(0,1fr);gap:28px;width:min(1480px,calc(100% - 36px));margin:0 auto;padding:28px 0 64px}aside{position:sticky;top:22px;align-self:start;height:calc(100vh - 44px);overflow:auto;padding:18px;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);backdrop-filter:blur(10px)}.brand{display:grid;gap:6px;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:14px}.brand strong{color:var(--navy);font-size:18px}.brand span{color:var(--muted);font-size:13px}nav a{display:block;padding:9px 10px;margin:3px 0;color:#34415a;text-decoration:none;border-radius:6px;font-size:14px}nav a:hover,nav a.active{color:#073d54;background:rgba(43,184,216,.13)}
+    main{min-width:0}.hero{min-height:540px;display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:center;padding:42px;background:linear-gradient(135deg,#203657,#0f776d 55%,#4a3d92);color:white;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}.eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 9px;border:1px solid rgba(255,255,255,.34);border-radius:999px;color:rgba(255,255,255,.88);font-size:13px}h1{margin:18px 0 12px;font-size:clamp(36px,5vw,64px);line-height:1.05;letter-spacing:0}.hero p{max-width:780px;color:rgba(255,255,255,.9);font-size:18px}.hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}.btn{border:0;border-radius:6px;padding:10px 14px;font:inherit;cursor:pointer;text-decoration:none;color:#17243a;background:white;font-weight:800}.btn.secondary{color:white;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28)}.hero-visual{min-height:390px;display:grid;place-items:center}
+    section{margin-top:24px;padding:30px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 10px 28px rgba(32,54,87,.08)}section>h2{margin:0 0 14px;color:var(--navy);font-size:28px;line-height:1.25;letter-spacing:0}h3{margin:24px 0 10px;color:#263a5d;font-size:20px;letter-spacing:0}p{margin:10px 0}.lead{color:#3d4a61;font-size:17px}.grid{display:grid;gap:16px}.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}.card{padding:18px;border:1px solid var(--line);border-radius:var(--radius);background:#fbfcff}.card h3{margin-top:0}.tag{display:inline-flex;padding:4px 8px;border-radius:999px;background:rgba(43,184,216,.12);color:#07516a;font-size:12px;font-weight:800}.callout{padding:16px 18px;border-left:4px solid var(--cyan);background:#effbff;border-radius:0 var(--radius) var(--radius) 0;margin:16px 0}.warn{border-left-color:var(--orange);background:#fff7ed}.cool{border-left-color:var(--purple);background:#f3f1ff}.ok{border-left-color:var(--green);background:#eefaf3}.danger{border-left-color:var(--red);background:#fff3f3}
+    .svg-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:#fbfdff;padding:10px}svg{max-width:100%;height:auto;display:block}.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 16px}.tab-btn{border:1px solid var(--line);background:#f8fbff;color:#33415c;padding:8px 11px;border-radius:6px;cursor:pointer;font-weight:800}.tab-btn.active{background:var(--navy);border-color:var(--navy);color:white}.tab-panel{display:none}.tab-panel.active{display:block}
+    details{border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;background:#fbfcff;margin:10px 0}summary{cursor:pointer;font-weight:800;color:var(--navy)}code,pre{font-family:var(--mono)}code{padding:2px 5px;border-radius:4px;background:#eef2f7;color:#27374f}pre{overflow:auto;padding:16px;border-radius:var(--radius);background:#f6f8fb;color:#243044;border:1px solid var(--line);line-height:1.58;font-size:13px}table{width:100%;border-collapse:collapse;border-radius:var(--radius);border:1px solid var(--line);overflow:hidden}th,td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}th{background:#eef4fa;color:var(--navy)}tr:last-child td{border-bottom:0}.control{display:grid;gap:8px;margin:12px 0}.control label{font-weight:800;color:var(--navy)}input[type="range"]{width:100%}select{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;background:white;color:var(--ink);font:inherit}.metric{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.metric div{padding:12px;border:1px solid var(--line);border-radius:6px;background:#fff}.metric strong{display:block;color:var(--navy);font-size:20px}.quiz-card{border:1px solid var(--line);border-radius:var(--radius);padding:16px;background:#fbfcff;margin:12px 0}.answer{display:none;margin-top:10px;padding:12px;border-radius:6px;background:#effbff;color:#073d54}.answer.show{display:block}.top-link{position:fixed;right:22px;bottom:22px;width:42px;height:42px;display:grid;place-items:center;border-radius:50%;color:white;background:var(--navy);text-decoration:none;box-shadow:var(--shadow)}
+    @media(max-width:1040px){.layout{grid-template-columns:1fr}aside{position:relative;height:auto;top:0}.hero{grid-template-columns:1fr;min-height:auto;padding:26px}.cols-2,.cols-3,.cols-4,.metric{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+  <div class="layout">
+    <aside>
+      <div class="brand"><strong>D107 代码库精读</strong><span>第16周 · Model / Data / Train</span></div>
+      <nav id="toc">
+        <a href="#overview">学习目标</a><a href="#map">代码地图</a><a href="#three-lines">三条主线</a><a href="#env">环境搭建</a><a href="#model">Model 精讲</a><a href="#params">参数训练表</a><a href="#vision">视觉编码器</a><a href="#projector">Projector</a><a href="#action">Action Tokenizer</a><a href="#data">Data Pipeline</a><a href="#collator">Collator</a><a href="#flow">完整数据流</a><a href="#train">Training</a><a href="#loss">Action Loss</a><a href="#memory">显存优化</a><a href="#modify">改造路线</a><a href="#verify">推理验证</a><a href="#debug">调试清单</a><a href="#interview">面试问答</a><a href="#next">下一天</a>
+      </nav>
+    </aside>
+    <main>
+      <header class="hero" id="top">
+        <div>
+          <span class="eyebrow">Week 16 / Day 107 / OpenVLA Code Reading</span>
+          <h1>OpenVLA 代码库精读：Model / Data / Train 全流程</h1>
+          <p>D107 的核心不是背目录名，而是把代码库压缩成三条可追踪链路：模型如何 forward，数据如何变成 batch，训练如何只在动作 token 上计算 loss。</p>
+          <div class="hero-actions"><a class="btn" href="#three-lines">看三条主线</a><a class="btn secondary" href="#flow">看完整数据流</a><a class="btn secondary" href="d107_openvla_code_clean.md">查看 Markdown 原文</a></div>
+        </div>
+        <div class="hero-visual">
+          <svg viewBox="0 0 720 430" role="img" aria-label="D107 OpenVLA code hero">
+            <defs><marker id="heroArrow107" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#fff"/></marker><filter id="heroShadow107" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#10243d" flood-opacity=".28"/></filter></defs>
+            <rect x="28" y="28" width="664" height="374" rx="18" fill="rgba(255,255,255,.10)" stroke="rgba(255,255,255,.26)"/>
+            <g filter="url(#heroShadow107)">
+              <rect x="72" y="82" width="150" height="74" rx="12" fill="#fff"/><text x="147" y="112" text-anchor="middle" fill="#0f5d65" font-size="18" font-weight="900">Data</text><text x="147" y="137" text-anchor="middle" fill="#647084" font-size="13">OXE / RLDS</text>
+              <rect x="286" y="82" width="150" height="74" rx="12" fill="#fff"/><text x="361" y="112" text-anchor="middle" fill="#203657" font-size="18" font-weight="900">Model</text><text x="361" y="137" text-anchor="middle" fill="#647084" font-size="13">PrismaticVLA</text>
+              <rect x="500" y="82" width="150" height="74" rx="12" fill="#fff"/><text x="575" y="112" text-anchor="middle" fill="#7a4314" font-size="18" font-weight="900">Train</text><text x="575" y="137" text-anchor="middle" fill="#647084" font-size="13">Accelerate</text>
+              <rect x="130" y="242" width="470" height="72" rx="12" fill="#fff"/><text x="365" y="274" text-anchor="middle" fill="#a33b3b" font-size="18" font-weight="900">image + instruction → action-token loss → continuous action</text><text x="365" y="299" text-anchor="middle" fill="#647084" font-size="13">把代码入口串成可调试的数据流</text>
+            </g>
+            <g stroke="#fff" stroke-width="3" fill="none" marker-end="url(#heroArrow107)"><path d="M222 119 L286 119"/><path d="M436 119 L500 119"/><path d="M575 156 C568 218 496 236 428 242"/><path d="M147 156 C157 218 226 236 300 242"/></g>
+          </svg>
+        </div>
+      </header>
+
+      <section id="overview">
+        <h2>学习目标：从“知道架构”到“能读代码”</h2>
+        <div class="grid cols-3">
+          <div class="card"><span class="tag">Model</span><h3>能跟 forward</h3><p>从 `pixel_values` 到视觉特征、projector、LLM embedding、action token logits，知道每一步的张量形状和代码入口。</p></div>
+          <div class="card"><span class="tag">Data</span><h3>能跟 batch</h3><p>从 OXE/RLDS 的 episode-step 结构，到 Dataset 取样、图像预处理、动作归一化、Collator 拼成训练 batch。</p></div>
+          <div class="card"><span class="tag">Train</span><h3>能解释 loss</h3><p>理解为什么文本位置不算 loss，为什么只对 7 个 action tokens 做 CrossEntropy，以及 gradient checkpointing 的显存取舍。</p></div>
+        </div>
+        <div class="callout ok"><strong>D107 的高分产出：</strong>画出 `image + instruction → visual tokens + text tokens → Llama2 → action tokens → continuous action`，并能指出每一步在哪个文件中实现。</div>
+      </section>
+
+      <section id="map">
+        <h2>代码库地图：先找入口，再看细节</h2>
+        <p class="lead">OpenVLA 代码阅读的正确顺序是先定位“主干文件”，再沿着调用链往下钻。不要一开始就陷进每个工具函数。</p>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>交互：我现在该看哪个入口？</h3>
+            <select id="entrySelect">
+              <option value="vla">模型顶层：prismatic/models/vla.py</option>
+              <option value="vision">视觉编码器：prismatic/models/visual_encoders/</option>
+              <option value="projector">投影器：prismatic/models/projectors/</option>
+              <option value="data">数据加载：OXE/RLDS Dataset</option>
+              <option value="collator">Batch 整理：prismatic/data/collators.py</option>
+              <option value="train">训练入口：vla-scripts/train.py</option>
+            </select>
+            <div class="callout ok" id="entryAnswer">先看 `prismatic/models/vla.py`：它把 vision_backbone、projector、llm_backbone、action_tokenizer 串起来，是理解全局 forward 的第一入口。</div>
+          </div>
+          <div class="card">
+            <h3>推荐阅读路径</h3>
+            <ol>
+              <li>先跑通环境和最小推理。</li>
+              <li>读 `PrismaticVLA.forward()`，标出输入输出形状。</li>
+              <li>读视觉编码器和 projector，只抓核心维度流。</li>
+              <li>读 ActionTokenizer，理解连续动作如何离散化。</li>
+              <li>读 Dataset/Collator，检查 batch 字段。</li>
+              <li>读训练脚本，定位 loss、优化器、分布式封装。</li>
+            </ol>
+          </div>
+        </div>
+        <pre><code>openvla/
+├── prismatic/models/vla.py          # VLA 顶层类：forward / predict_action
+├── prismatic/models/visual_encoders # SigLIP + DINOv2
+├── prismatic/models/projectors      # visual dim → LLM hidden dim
+├── prismatic/data/collators.py      # image/text/action → batch
+├── prismatic/training               # 分布式训练策略
+└── vla-scripts/train.py             # 训练入口，Accelerate 封装</code></pre>
+      </section>
+
+      <section id="three-lines">
+        <h2>三条主线：Model / Data / Train 如何闭环</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1180 560" role="img" aria-label="OpenVLA code three lines">
+            <defs><marker id="arrow107" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#203657"/></marker></defs>
+            <text x="60" y="46" fill="#203657" font-size="22" font-weight="900">Data 主线</text>
+            <rect x="60" y="68" width="190" height="66" rx="12" fill="#eefaf3" stroke="#a7dec1"/><text x="155" y="108" text-anchor="middle" fill="#1f7a4d" font-weight="900">OXE / RLDS</text>
+            <rect x="300" y="68" width="190" height="66" rx="12" fill="#eefaf3" stroke="#a7dec1"/><text x="395" y="108" text-anchor="middle" fill="#1f7a4d" font-weight="900">Dataset</text>
+            <rect x="540" y="68" width="190" height="66" rx="12" fill="#eefaf3" stroke="#a7dec1"/><text x="635" y="108" text-anchor="middle" fill="#1f7a4d" font-weight="900">Collator</text>
+            <rect x="780" y="68" width="260" height="66" rx="12" fill="#eefaf3" stroke="#a7dec1"/><text x="910" y="108" text-anchor="middle" fill="#1f7a4d" font-weight="900">Batch: pixel/input/labels</text>
+            <text x="60" y="218" fill="#203657" font-size="22" font-weight="900">Model 主线</text>
+            <rect x="60" y="240" width="190" height="66" rx="12" fill="#effbff" stroke="#a6ddee"/><text x="155" y="280" text-anchor="middle" fill="#07516a" font-weight="900">Vision Encoder</text>
+            <rect x="300" y="240" width="190" height="66" rx="12" fill="#effbff" stroke="#a6ddee"/><text x="395" y="280" text-anchor="middle" fill="#07516a" font-weight="900">Projector</text>
+            <rect x="540" y="240" width="190" height="66" rx="12" fill="#effbff" stroke="#a6ddee"/><text x="635" y="280" text-anchor="middle" fill="#07516a" font-weight="900">Llama2</text>
+            <rect x="780" y="240" width="260" height="66" rx="12" fill="#effbff" stroke="#a6ddee"/><text x="910" y="280" text-anchor="middle" fill="#07516a" font-weight="900">Action Token Logits</text>
+            <text x="60" y="390" fill="#203657" font-size="22" font-weight="900">Train 主线</text>
+            <rect x="60" y="412" width="190" height="66" rx="12" fill="#fff7ed" stroke="#f0c596"/><text x="155" y="452" text-anchor="middle" fill="#7a4314" font-weight="900">Forward</text>
+            <rect x="300" y="412" width="190" height="66" rx="12" fill="#fff7ed" stroke="#f0c596"/><text x="395" y="452" text-anchor="middle" fill="#7a4314" font-weight="900">Action CE Loss</text>
+            <rect x="540" y="412" width="190" height="66" rx="12" fill="#fff7ed" stroke="#f0c596"/><text x="635" y="452" text-anchor="middle" fill="#7a4314" font-weight="900">Backward</text>
+            <rect x="780" y="412" width="260" height="66" rx="12" fill="#fff7ed" stroke="#f0c596"/><text x="910" y="452" text-anchor="middle" fill="#7a4314" font-weight="900">Optimizer / Scheduler</text>
+            <g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#arrow107)">
+              <path d="M250 101 L300 101"/><path d="M490 101 L540 101"/><path d="M730 101 L780 101"/>
+              <path d="M250 273 L300 273"/><path d="M490 273 L540 273"/><path d="M730 273 L780 273"/>
+              <path d="M250 445 L300 445"/><path d="M490 445 L540 445"/><path d="M730 445 L780 445"/>
+              <path d="M910 134 C910 178 780 198 660 240"/><path d="M910 306 C895 370 755 404 490 445"/>
+            </g>
+          </svg>
+        </div>
+        <div class="callout cool"><strong>读代码时的判断标准：</strong>每看到一个函数，都问它属于哪条主线；如果它不能改变数据形状、模型输出或训练行为，先标记为辅助逻辑，不要打断主线。</div>
+      </section>
+
+      <section id="env">
+        <h2>环境搭建：先跑通，再精读</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>基础安装流程</h3>
+            <pre><code>git clone https://github.com/openvla/openvla.git
+cd openvla
+conda create -n openvla python=3.10 -y
+conda activate openvla
+pip install torch==2.2.0 torchvision==0.17.0 \
+  --index-url https://download.pytorch.org/whl/cu121
+pip install -e ".[train]"
+python -c "from prismatic.models import load; print('OK')"</code></pre>
+          </div>
+          <div class="card">
+            <h3>硬件理解</h3>
+            <table><thead><tr><th>任务</th><th>粗略显存</th><th>建议</th></tr></thead><tbody><tr><td>推理 FP16/BF16</td><td>约 14GB+</td><td>4090 / A100 比较稳</td></tr><tr><td>INT8 推理</td><td>约 8GB+</td><td>适合实验验证</td></tr><tr><td>LoRA 微调</td><td>约 20GB+</td><td>优先选择</td></tr><tr><td>全参训练</td><td>60GB+</td><td>需要 checkpointing 和多卡</td></tr></tbody></table>
+          </div>
+        </div>
+        <div class="callout warn"><strong>注意：</strong>安装命令是教学路径，真实仓库依赖可能随版本变化。复现时优先看仓库的 README、requirements 和已固定的 commit。</div>
+      </section>
+
+      <section id="model">
+        <h2>Model 精讲：PrismaticVLA 顶层 forward</h2>
+        <p class="lead">`PrismaticVLA` 是 D107 的主入口。它的本质是把视觉 token 和文本 token 拼成 LLM 可接收的 embedding 序列，再让 LLM 预测动作 token。</p>
+        <div class="tabs" data-tabs="modelTabs"><button class="tab-btn active" data-tab="m-forward">Forward 主线</button><button class="tab-btn" data-tab="m-shape">张量形状</button><button class="tab-btn" data-tab="m-pitfall">易错点</button></div>
+        <div id="m-forward" class="tab-panel active" data-panel="modelTabs">
+          <pre><code>def forward(images, input_ids, attention_mask, labels=None):
+    visual_features = vision_backbone(images)       # [B, 729, 2176]
+    visual_tokens = projector(visual_features)      # [B, 729, 4096]
+    text_embeddings = llm.embed_tokens(input_ids)   # [B, T, 4096]
+    inputs_embeds = concat(visual_tokens, text_embeddings, dim=1)
+    full_mask = concat(ones_for_visual, attention_mask, dim=1)
+    outputs = llm(inputs_embeds=inputs_embeds,
+                  attention_mask=full_mask,
+                  labels=labels)
+    return outputs</code></pre>
+        </div>
+        <div id="m-shape" class="tab-panel" data-panel="modelTabs">
+          <table><thead><tr><th>步骤</th><th>输入</th><th>输出</th><th>含义</th></tr></thead><tbody><tr><td>视觉编码</td><td>`[B,3,384,384]`</td><td>`[B,729,2176]`</td><td>729 个 patch，每个 patch 融合语义和空间特征</td></tr><tr><td>投影</td><td>`[B,729,2176]`</td><td>`[B,729,4096]`</td><td>对齐 Llama2 hidden size</td></tr><tr><td>文本 embedding</td><td>`[B,T]`</td><td>`[B,T,4096]`</td><td>语言指令 token 化</td></tr><tr><td>拼接</td><td>visual + text</td><td>`[B,729+T,4096]`</td><td>LLM 看到视觉上下文和指令</td></tr><tr><td>输出 logits</td><td>embedding 序列</td><td>`[B,S,V]`</td><td>只取动作位置计算 loss 或生成动作</td></tr></tbody></table>
+        </div>
+        <div id="m-pitfall" class="tab-panel" data-panel="modelTabs">
+          <div class="callout danger"><strong>最常见错误：</strong>把 `input_ids` 和 `inputs_embeds` 混用。视觉 token 没有词表 id，所以进入 LLM 时必须用 embedding 拼接，而不是把视觉特征硬塞成 token id。</div>
+          <div class="callout warn"><strong>第二个错误：</strong>拼接了 visual tokens 以后忘记同步扩展 `attention_mask`，会导致 LLM 对视觉 token 的注意力行为异常。</div>
+        </div>
+      </section>
+
+      <section id="params">
+        <h2>参数训练表：哪些模块冻结，哪些模块更新</h2>
+        <p class="lead">读 OpenVLA 训练代码时，要先区分“参与 forward”和“参与训练”。视觉编码器参与 forward，但通常不参与反向更新；Projector 和 LLM 才是主要学习动作映射的地方。</p>
+        <table><thead><tr><th>模块</th><th>参与 forward</th><th>通常是否训练</th><th>原因</th><th>需要重点检查</th></tr></thead><tbody><tr><td>SigLIP</td><td>是</td><td>冻结</td><td>提供语义特征，节省显存，避免破坏预训练</td><td>`requires_grad=False`，`eval()`，是否误开梯度</td></tr><tr><td>DINOv2</td><td>是</td><td>冻结</td><td>提供空间/局部结构特征</td><td>patch 数、输出层、图像尺寸</td></tr><tr><td>Projector</td><td>是</td><td>训练</td><td>把视觉特征映射到 LLM hidden space</td><td>输入维度、输出维度、初始化</td></tr><tr><td>Llama2</td><td>是</td><td>全参或 LoRA</td><td>学习根据图像和指令生成动作 token</td><td>LoRA target modules、bf16、checkpointing</td></tr><tr><td>ActionTokenizer</td><td>训练外逻辑</td><td>无参数</td><td>连续动作和 token id 互转</td><td>offset、bins、归一化范围、解码方向</td></tr></tbody></table>
+        <div class="callout ok"><strong>代码阅读动作：</strong>打印 `sum(p.numel() for p in model.parameters() if p.requires_grad)`，再按模块打印可训练参数量。这个数字比阅读配置更可靠。</div>
+        <pre><code>def count_trainable(module, name):
+    total = sum(p.numel() for p in module.parameters())
+    trainable = sum(p.numel() for p in module.parameters() if p.requires_grad)
+    print(f"{name}: trainable={trainable/1e6:.1f}M / total={total/1e6:.1f}M")</code></pre>
+      </section>
+
+      <section id="vision">
+        <h2>视觉编码器：SigLIP + DINOv2 为什么要冻结</h2>
+        <div class="grid cols-2">
+          <div class="card"><h3>代码行为</h3><p>视觉编码器通常设置 `requires_grad=False` 并在前向中使用 `torch.no_grad()`。这表示训练重点不在重新学习视觉基础能力，而在学习视觉到语言动作空间的对齐。</p><pre><code>for p in siglip_encoder.parameters():
+    p.requires_grad = False
+for p in dinov2_encoder.parameters():
+    p.requires_grad = False
+
+with torch.no_grad():
+    siglip_features = siglip_encoder(images)
+    dinov2_features = dinov2_encoder(images)</code></pre></div>
+          <div class="card"><h3>工程原因</h3><ul><li>节省视觉编码器反向传播的激活和优化器状态。</li><li>避免机器人数据规模不足时破坏预训练视觉特征。</li><li>把训练容量集中在 projector 和 LLM 的动作生成能力上。</li><li>后续若要端到端微调，需要更小学习率、更大 batch 和更强正则。</li></ul></div>
+        </div>
+      </section>
+
+      <section id="projector">
+        <h2>Projector：视觉空间翻译成语言模型空间</h2>
+        <p class="lead">Projector 不是可有可无的线性层。SigLIP、DINOv2、Llama2 来自不同训练目标，它们的特征空间不天然兼容。</p>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1080 320" role="img" aria-label="Projector dimension flow">
+            <defs><marker id="projArrow107" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#203657"/></marker></defs>
+            <rect x="70" y="70" width="220" height="70" rx="12" fill="#eefaf3" stroke="#a7dec1"/><text x="180" y="100" text-anchor="middle" fill="#1f7a4d" font-weight="900">视觉 fused features</text><text x="180" y="124" text-anchor="middle" fill="#647084" font-size="13">[B,729,2176]</text>
+            <rect x="410" y="70" width="220" height="70" rx="12" fill="#effbff" stroke="#a6ddee"/><text x="520" y="100" text-anchor="middle" fill="#07516a" font-weight="900">MLP Projector</text><text x="520" y="124" text-anchor="middle" fill="#647084" font-size="13">Linear → GELU → Linear</text>
+            <rect x="750" y="70" width="220" height="70" rx="12" fill="#fff7ed" stroke="#f0c596"/><text x="860" y="100" text-anchor="middle" fill="#7a4314" font-weight="900">LLM visual tokens</text><text x="860" y="124" text-anchor="middle" fill="#647084" font-size="13">[B,729,4096]</text>
+            <rect x="260" y="212" width="560" height="60" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/><text x="540" y="249" text-anchor="middle" fill="#453a9a" font-weight="900">核心作用：把视觉特征翻译到 Llama2 embedding 可理解的坐标系</text>
+            <g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#projArrow107)"><path d="M290 105 L410 105"/><path d="M630 105 L750 105"/></g>
+          </svg>
+        </div>
+        <pre><code>projector = nn.Sequential(
+    nn.Linear(2176, 4096),
+    nn.GELU(),
+    nn.Linear(4096, 4096),
+)</code></pre>
+      </section>
+
+      <section id="action">
+        <h2>Action Tokenizer：连续动作如何变成 LLM token</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>交互：量化精度计算</h3>
+            <div class="control"><label for="binRange">每个动作维度 bins：<span id="binValue">256</span></label><input id="binRange" type="range" min="32" max="512" step="32" value="256" /></div>
+            <div class="control"><label for="rangeSelect">动作归一化范围</label><select id="rangeSelect"><option value="2">[-1, 1]，总宽度 2</option><option value="1">[-0.5, 0.5]，总宽度 1</option><option value="6.283">旋转约 [-π, π]，总宽度 6.283</option></select></div>
+            <div class="metric"><div><strong id="binWidth">0.0078</strong><span>bin width</span></div><div><strong id="maxErr">0.0039</strong><span>最大误差</span></div><div><strong id="tokCount">256</strong><span>共享 bin token</span></div><div><strong id="actionHz">7</strong><span>生成 token</span></div></div>
+          </div>
+          <div class="card">
+            <h3>编码和解码</h3>
+            <pre><code># official idea: continuous action → shared action-bin token
+bins = np.linspace(min_action, max_action, n_bins)
+discretized_action = np.digitize(action, bins)
+token_id = tokenizer.vocab_size - discretized_action
+
+# decode: token id → continuous action
+bin_index = tokenizer.vocab_size - token_id
+bin_index = np.clip(bin_index - 1, 0, len(bin_centers) - 1)
+action = bin_centers[bin_index]</code></pre>
+          </div>
+        </div>
+        <div class="callout warn"><strong>讲解重点：</strong>官方 OpenVLA 默认让 7 个动作维度共享词表最后 256 个动作 bin token；维度由生成位置隐式区分。动作 token 化让机器人控制变成 next-token prediction，但也带来量化误差、自回归延迟和维度间相关性建模压力。</div>
+        <details open><summary>为什么动作 token 要放在词表末尾？</summary><p>LLM 原始词表已经包含语言 token。OpenVLA 借用词表末尾的低频 token 作为动作 bin token，避免和常规语言 token 混淆。训练时模型在动作位置学习输出这些末尾 token，再由 ActionTokenizer 解码回连续动作。</p></details>
+        <details><summary>为什么不是 `7 × 256 = 1792` 个动作 token？</summary><p>官方实现更节省：7 个动作维度共享最后 256 个 bin token，第 1 个生成位置表示 Δx，第 2 个表示 Δy，依次到 gripper。这样动作词表不需要按维度复制，维度语义由序列位置承载。</p></details>
+        <table><thead><tr><th>项目</th><th>容易误解的教学写法</th><th>官方实现要点</th></tr></thead><tbody><tr><td>动作词表</td><td>`7 * 256 = 1792` 个 token</td><td>默认共享最后 `256` 个动作 bin token</td></tr><tr><td>维度区分</td><td>`dim_id * n_bins + bin_index`</td><td>由 7 个生成位置隐式区分</td></tr><tr><td>编码方向</td><td>`vocab_offset + bin_index`</td><td>`tokenizer.vocab_size - discretized_action`</td></tr><tr><td>解码</td><td>手写固定 offset</td><td>使用 `decode_token_ids_to_actions()`</td></tr></tbody></table>
+      </section>
+
+      <section id="data">
+        <h2>Data Pipeline：OXE/RLDS 到 PyTorch Dataset</h2>
+        <p class="lead">OpenVLA 的数据不是普通图片分类数据，而是机器人 trajectory。训练时通常把 episode 展开成 step，单个样本包含图像、语言指令和动作标签。</p>
+        <div class="grid cols-3">
+          <div class="card"><h3>Episode</h3><p>一次完整机器人执行轨迹，包含多个 step、metadata、终止标记等。</p></div>
+          <div class="card"><h3>Step</h3><p>一个时间步，包含 observation image、action、语言任务或相关状态。</p></div>
+          <div class="card"><h3>Flat Index</h3><p>为了随机训练，把 `(episode_idx, step_idx)` 展开成一维索引。</p></div>
+        </div>
+        <pre><code>sample = {
+    "image": image_tensor,          # [3, 384, 384]
+    "instruction": "pick up the red cup",
+    "action": action_tensor,        # [7], normalized to [-1, 1]
+}</code></pre>
+        <div class="callout ok"><strong>检查点：</strong>Data pipeline 最容易错在动作归一化、图像通道顺序、语言字段选择、episode 终止步是否参与训练。</div>
+        <table><thead><tr><th>易错点</th><th>错误表现</th><th>定位方法</th><th>修复方向</th></tr></thead><tbody><tr><td>动作统计量不匹配</td><td>预测动作长期贴边，训练 loss 异常</td><td>打印原始 action、normalized action、decoded action</td><td>确认 dataset-specific min/max 或 mean/std</td></tr><tr><td>图像通道顺序错</td><td>视觉特征异常，模型像看不到目标</td><td>保存预处理前后图片，检查 RGB/BGR</td><td>统一 PIL RGB 和 processor 预处理</td></tr><tr><td>语言字段取错</td><td>模型无法区分任务，动作平均化</td><td>打印每个 batch 的 instruction</td><td>确认自然语言指令字段和 prompt 模板</td></tr><tr><td>终止步处理错</td><td>训练到无意义动作或空动作</td><td>检查 `is_terminal/is_last` 附近的 action</td><td>过滤或单独处理终止 step</td></tr></tbody></table>
+      </section>
+
+      <section id="collator">
+        <h2>Collator：单样本如何拼成训练 batch</h2>
+        <p class="lead">Dataset 返回的是单个样本，Collator 负责把一组样本变成模型可直接前向的 batch。它是 Data 和 Model 的接口。</p>
+        <table><thead><tr><th>字段</th><th>来源</th><th>输出形状</th><th>用途</th></tr></thead><tbody><tr><td>`pixel_values`</td><td>图像 stack</td><td>`[B,3,384,384]`</td><td>送入视觉编码器</td></tr><tr><td>`input_ids`</td><td>instruction prompt tokenize</td><td>`[B,T]`</td><td>文本输入</td></tr><tr><td>`attention_mask`</td><td>tokenizer padding mask</td><td>`[B,T]`</td><td>控制 padding 不参与注意力</td></tr><tr><td>`labels`</td><td>ActionTokenizer encode</td><td>`[B,7]` 或序列 labels</td><td>动作 token 监督</td></tr></tbody></table>
+        <pre><code>def collate(samples):
+    pixel_values = torch.stack([s["image"] for s in samples])
+    tokenized = tokenizer([build_prompt(s["instruction"]) for s in samples],
+                          padding=True, return_tensors="pt")
+    # 教学简化：官方通常会把 action token string 拼到序列里
+    action_token_strings = [action_tokenizer(s["action"]) for s in samples]
+    labels = build_action_labels(action_token_strings, tokenized)
+    return {
+        "pixel_values": pixel_values,
+        "input_ids": tokenized.input_ids,
+        "attention_mask": tokenized.attention_mask,
+        "labels": labels,
+    }</code></pre>
+        <div class="callout cool"><strong>官方实现对照：</strong>这里的 `OpenVLACollator` 是教学抽象。官方更接近 `PaddedCollatorForActionPrediction`，动作编码通常通过 `ActionTokenizer.__call__()` 转成动作 token 字符串，再参与 tokenizer 和 causal LM label 构造。</div>
+        <table><thead><tr><th>教学名</th><th>官方实现中更接近的组件</th><th>作用</th></tr></thead><tbody><tr><td>`OpenVLACollator`</td><td>`PaddedCollatorForActionPrediction`</td><td>padding、attention mask、labels 整理</td></tr><tr><td>`OXEDataset`</td><td>`RLDSDataset` / `RLDSBatchTransform`</td><td>RLDS 数据读取和样本转换</td></tr><tr><td>`ActionTokenizer.encode`</td><td>`ActionTokenizer.__call__`</td><td>连续动作变为动作 token 字符串</td></tr></tbody></table>
+      </section>
+
+      <section id="flow">
+        <h2>完整数据流：从磁盘到 loss</h2>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1200 700" role="img" aria-label="OpenVLA full data flow">
+            <defs><marker id="flowArrow107" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#203657"/></marker></defs>
+            <rect x="40" y="46" width="1120" height="610" rx="18" fill="#fbfdff" stroke="#dce3ee"/>
+            <rect x="80" y="90" width="180" height="62" rx="12" fill="#eefaf3" stroke="#a7dec1"/><text x="170" y="127" text-anchor="middle" fill="#1f7a4d" font-weight="900">RLDS / TFRecord</text>
+            <rect x="320" y="90" width="180" height="62" rx="12" fill="#eefaf3" stroke="#a7dec1"/><text x="410" y="127" text-anchor="middle" fill="#1f7a4d" font-weight="900">tfds.load</text>
+            <rect x="560" y="90" width="180" height="62" rx="12" fill="#eefaf3" stroke="#a7dec1"/><text x="650" y="127" text-anchor="middle" fill="#1f7a4d" font-weight="900">OXEDataset</text>
+            <rect x="800" y="90" width="260" height="62" rx="12" fill="#eefaf3" stroke="#a7dec1"/><text x="930" y="127" text-anchor="middle" fill="#1f7a4d" font-weight="900">image / instruction / action</text>
+            <rect x="130" y="238" width="260" height="70" rx="12" fill="#effbff" stroke="#a6ddee"/><text x="260" y="269" text-anchor="middle" fill="#07516a" font-weight="900">Collator</text><text x="260" y="293" text-anchor="middle" fill="#647084" font-size="13">stack / tokenize / encode</text>
+            <rect x="470" y="238" width="260" height="70" rx="12" fill="#effbff" stroke="#a6ddee"/><text x="600" y="269" text-anchor="middle" fill="#07516a" font-weight="900">Batch</text><text x="600" y="293" text-anchor="middle" fill="#647084" font-size="13">pixel_values, input_ids, labels</text>
+            <rect x="810" y="238" width="260" height="70" rx="12" fill="#effbff" stroke="#a6ddee"/><text x="940" y="269" text-anchor="middle" fill="#07516a" font-weight="900">Accelerator.prepare</text><text x="940" y="293" text-anchor="middle" fill="#647084" font-size="13">model / optimizer / loader</text>
+            <rect x="130" y="400" width="210" height="70" rx="12" fill="#fff7ed" stroke="#f0c596"/><text x="235" y="431" text-anchor="middle" fill="#7a4314" font-weight="900">Vision + Projector</text><text x="235" y="455" text-anchor="middle" fill="#647084" font-size="13">visual tokens</text>
+            <rect x="410" y="400" width="210" height="70" rx="12" fill="#fff7ed" stroke="#f0c596"/><text x="515" y="431" text-anchor="middle" fill="#7a4314" font-weight="900">Text Embedding</text><text x="515" y="455" text-anchor="middle" fill="#647084" font-size="13">language tokens</text>
+            <rect x="690" y="400" width="210" height="70" rx="12" fill="#fff7ed" stroke="#f0c596"/><text x="795" y="431" text-anchor="middle" fill="#7a4314" font-weight="900">Llama2 Forward</text><text x="795" y="455" text-anchor="middle" fill="#647084" font-size="13">logits</text>
+            <rect x="970" y="400" width="150" height="70" rx="12" fill="#fff3f3" stroke="#efb3b3"/><text x="1045" y="431" text-anchor="middle" fill="#a33b3b" font-weight="900">CE Loss</text><text x="1045" y="455" text-anchor="middle" fill="#647084" font-size="13">action only</text>
+            <rect x="410" y="548" width="380" height="58" rx="12" fill="#f3f1ff" stroke="#c8c1f2"/><text x="600" y="584" text-anchor="middle" fill="#453a9a" font-weight="900">Backward → clip grad → optimizer.step → scheduler.step</text>
+            <g stroke="#203657" stroke-width="3" fill="none" marker-end="url(#flowArrow107)">
+              <path d="M260 121 L320 121"/><path d="M500 121 L560 121"/><path d="M740 121 L800 121"/>
+              <path d="M930 152 C920 210 450 206 300 238"/><path d="M390 273 L470 273"/><path d="M730 273 L810 273"/>
+              <path d="M600 308 C540 356 340 365 255 400"/><path d="M600 308 C575 352 540 374 515 400"/><path d="M620 308 C676 356 746 374 795 400"/>
+              <path d="M900 435 L970 435"/><path d="M1045 470 C1010 545 810 570 790 577"/>
+            </g>
+          </svg>
+        </div>
+      </section>
+
+      <section id="train">
+        <h2>Training 代码：Accelerate 把分布式细节包起来</h2>
+        <p class="lead">训练脚本的骨架很标准：初始化 Accelerator，构建 model/dataset/optimizer/scheduler，调用 `accelerator.prepare()`，循环中 forward、backward、step。</p>
+        <pre><code>accelerator = Accelerator(
+    mixed_precision="bf16",
+    gradient_accumulation_steps=config.gradient_accumulation,
+)
+
+model = build_openvla_model(config)
+train_loader = DataLoader(dataset, collate_fn=collator, ...)
+optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5)
+scheduler = get_cosine_schedule_with_warmup(optimizer, ...)
+
+model, optimizer, train_loader, scheduler = accelerator.prepare(
+    model, optimizer, train_loader, scheduler
+)
+
+for batch in train_loader:
+    with accelerator.accumulate(model):
+        outputs = model(**batch)
+        loss = outputs.loss
+        accelerator.backward(loss)
+        accelerator.clip_grad_norm_(model.parameters(), 1.0)
+        optimizer.step()
+        scheduler.step()
+        optimizer.zero_grad()</code></pre>
+        <div class="grid cols-3"><div class="card"><h3>BF16</h3><p>减少显存并提升吞吐，比 FP16 更不容易数值溢出。</p></div><div class="card"><h3>梯度累积</h3><p>用多个 micro-batch 模拟更大的 global batch。</p></div><div class="card"><h3>主进程日志</h3><p>只在 `accelerator.is_main_process` 里写 wandb 或保存部分日志。</p></div></div>
+        <div class="callout warn"><strong>官方实现对照：</strong>上面的训练循环是为了讲清结构。官方微调入口更接近 `vla-scripts/finetune.py`，常见组合是 `torchrun`、DDP/PartialState、PEFT LoRA、`RLDSDataset`、`RLDSBatchTransform`、`PaddedCollatorForActionPrediction`。</div>
+        <h3>训练循环逐行理解</h3>
+        <table><thead><tr><th>代码动作</th><th>实际含义</th><th>如果出错会怎样</th></tr></thead><tbody><tr><td>`with accelerator.accumulate(model)`</td><td>控制梯度累积，多个 micro step 后再同步更新</td><td>global batch 与预期不一致，学习率等效变化</td></tr><tr><td>`outputs = model(**batch)`</td><td>完成视觉编码、token 拼接、LLM forward、loss 计算</td><td>字段名或形状不对会直接报错</td></tr><tr><td>`accelerator.backward(loss)`</td><td>兼容混合精度和分布式的反向传播</td><td>直接 `loss.backward()` 可能破坏 Accelerate 封装</td></tr><tr><td>`clip_grad_norm_`</td><td>限制梯度爆炸</td><td>不开可能出现 NaN 或 loss 突然发散</td></tr><tr><td>`optimizer.step()`</td><td>更新可训练参数</td><td>若没有 trainable params，loss 不会有效下降</td></tr><tr><td>`scheduler.step()`</td><td>更新学习率</td><td>warmup 或 cosine 计划错会影响收敛</td></tr></tbody></table>
+      </section>
+
+      <section id="loss">
+        <h2>Loss 精讲：只在 Action Token 上算 CrossEntropy</h2>
+        <p class="lead">OpenVLA 的训练目标不是让模型复述指令，而是根据图像和指令预测动作。因此视觉 token 和指令 token 通常不作为监督目标，核心监督在 7 个动作 token。</p>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 1120 300" role="img" aria-label="OpenVLA loss positions">
+            <rect x="70" y="80" width="370" height="70" rx="12" fill="#eefaf3" stroke="#a7dec1"/><text x="255" y="121" text-anchor="middle" fill="#1f7a4d" font-weight="900">V1 ... V729 visual tokens</text>
+            <rect x="470" y="80" width="270" height="70" rx="12" fill="#effbff" stroke="#a6ddee"/><text x="605" y="121" text-anchor="middle" fill="#07516a" font-weight="900">L1 ... Ln text tokens</text>
+            <rect x="770" y="80" width="260" height="70" rx="12" fill="#fff3f3" stroke="#efb3b3"/><text x="900" y="121" text-anchor="middle" fill="#a33b3b" font-weight="900">A1 ... A7 action tokens</text>
+            <text x="255" y="195" text-anchor="middle" fill="#647084" font-size="16">不算 loss</text>
+            <text x="605" y="195" text-anchor="middle" fill="#647084" font-size="16">通常 ignore_index = -100</text>
+            <text x="900" y="195" text-anchor="middle" fill="#a33b3b" font-size="18" font-weight="900">CrossEntropyLoss</text>
+          </svg>
+        </div>
+        <pre><code>action_logits = logits[:, -7:, :]       # [B, 7, vocab_size]
+loss = CrossEntropyLoss(
+    action_logits.reshape(-1, vocab_size),
+    action_labels.reshape(-1),
+)</code></pre>
+        <div class="callout cool"><strong>面试回答：</strong>动作离散化以后，本质就是 next-token prediction；差别在于 loss 的监督位置只对动作 token 生效，文本部分用于条件上下文。真实官方训练还要处理 causal LM 的 label shift，不能只机械理解成永远取 `logits[:, -7:, :]`。</div>
+      </section>
+
+      <section id="memory">
+        <h2>显存优化：冻结视觉 + Gradient Checkpointing + LoRA</h2>
+        <table><thead><tr><th>方法</th><th>节省什么</th><th>代价</th><th>适用场景</th></tr></thead><tbody><tr><td>冻结视觉编码器</td><td>视觉模块梯度和优化器状态</td><td>视觉适配能力下降</td><td>默认训练和大多数微调</td></tr><tr><td>Gradient Checkpointing</td><td>中间激活显存</td><td>反向时重算，速度下降</td><td>全参训练或长序列</td></tr><tr><td>LoRA</td><td>可训练参数和优化器状态</td><td>表达能力低于全参微调</td><td>单卡或任务适配</td></tr><tr><td>INT8/INT4</td><td>推理权重显存</td><td>可能损失精度</td><td>部署和快速验证</td></tr></tbody></table>
+        <div class="callout warn"><strong>关键判断：</strong>如果目标是复现和学习，优先 LoRA 微调；如果目标是最高性能，需要全参训练或更复杂的分阶段解冻策略。</div>
+      </section>
+
+      <section id="modify">
+        <h2>改造路线：读懂以后怎么做实验</h2>
+        <p class="lead">D107 不只是为了看懂代码，还要知道后续能从哪里下手做改进。下面按风险从低到高排列。</p>
+        <table><thead><tr><th>实验方向</th><th>改动位置</th><th>风险</th><th>观察指标</th></tr></thead><tbody><tr><td>改 prompt 模板</td><td>Collator / processor 输入</td><td>低</td><td>loss、评估成功率、动作稳定性</td></tr><tr><td>改 action bins</td><td>ActionTokenizer</td><td>中</td><td>量化误差、词表大小、推理延迟</td></tr><tr><td>LoRA 微调目标层</td><td>LLM q/k/v/o、MLP 层</td><td>中</td><td>可训练参数量、过拟合、任务成功率</td></tr><tr><td>加入多帧历史</td><td>Dataset、Collator、视觉输入拼接</td><td>高</td><td>动态任务成功率、显存、序列长度</td></tr><tr><td>解冻视觉后几层</td><td>Visual encoder requires_grad</td><td>高</td><td>视觉泛化、训练稳定性、灾难性遗忘</td></tr><tr><td>连续动作头替代 token</td><td>Model head / loss</td><td>很高</td><td>控制频率、精度、泛化能力</td></tr></tbody></table>
+        <div class="callout cool"><strong>建议顺序：</strong>先做 prompt、LoRA、action bins 这类低风险实验；等训练和评估闭环稳定后，再碰多帧、视觉解冻和动作头重构。</div>
+      </section>
+
+      <section id="verify">
+        <h2>端到端验证：最小推理闭环</h2>
+        <p class="lead">读完代码后，至少要跑一次最小推理，确认模型加载、processor、prompt、图像预处理和 action token 解码都能工作。</p>
+        <pre><code>from transformers import AutoModelForVision2Seq, AutoProcessor
+from PIL import Image
+import torch
+
+model = AutoModelForVision2Seq.from_pretrained(
+    "openvla/openvla-7b",
+    torch_dtype=torch.bfloat16,
+    low_cpu_mem_usage=True,
+    trust_remote_code=True,
+).to("cuda")
+processor = AutoProcessor.from_pretrained(
+    "openvla/openvla-7b",
+    trust_remote_code=True,
+)
+
+image = Image.open("test_image.jpg")
+prompt = "In: What action should the robot take to pick up the red cup?\nOut:"
+inputs = processor(prompt, image).to("cuda", dtype=torch.bfloat16)
+
+action = model.predict_action(
+    **inputs,
+    unnorm_key="bridge_orig",
+    do_sample=False,
+)
+print(action)</code></pre>
+      </section>
+
+      <section id="debug">
+        <h2>调试清单：代码读懂以后怎么排错</h2>
+        <div class="grid cols-2">
+          <div class="card"><h3>形状检查</h3><ul><li>`pixel_values` 是否 `[B,3,384,384]`。</li><li>`visual_tokens` 是否与 LLM hidden size 一致。</li><li>`attention_mask` 是否补上 visual token 部分。</li><li>`labels` 是否只覆盖 action token 位置。</li></ul></div>
+          <div class="card"><h3>数值检查</h3><ul><li>图像是否按正确 mean/std 归一化。</li><li>动作是否已经归一化到训练统计范围。</li><li>action token id 是否落在扩展词表范围。</li><li>loss 是否随训练下降，是否出现 NaN。</li></ul></div>
+        </div>
+        <details open><summary>如果 loss 不下降，优先查什么？</summary><p>先查 labels 是否对齐 action 位置，再查 ActionTokenizer 的 offset 和 bins，接着查图像预处理和 prompt 模板，最后再看学习率、batch size、LoRA target modules 等训练超参。</p></details>
+        <details><summary>如果推理动作全是边界值，说明什么？</summary><p>通常意味着动作归一化或解码范围有问题，也可能是模型没有正确生成动作词表范围内的 token。要打印原始 token id、bin index、连续动作值和训练数据 action stats。</p></details>
+      </section>
+
+      <section id="interview">
+        <h2>面试问答：D107 高频问题</h2>
+        <div class="quiz-card"><strong>1. 请描述 OpenVLA 从原始数据到 loss 的完整训练链路。</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">OXE/RLDS 存储 episode 和 step；Dataset 展开 step，读取图像、指令和动作；图像 resize/normalize，动作归一化；Collator/BatchTransform 把动作转成词表末尾共享 bin token，并构造序列 labels；模型把图像转成 visual tokens，与 text embeddings 拼接进 Llama2；最后只在动作 token 对应位置计算 CrossEntropyLoss，并反向传播更新参数。</div></div>
+        <div class="quiz-card"><strong>2. 为什么 forward 里要用 inputs_embeds，而不是只用 input_ids？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">视觉特征不是语言词表里的离散 id，它已经是连续 embedding。要把 visual tokens 和 text embeddings 在 hidden dimension 上对齐后拼接，因此传给 LLM 的是 `inputs_embeds`。</div></div>
+        <div class="quiz-card"><strong>3. Action Tokenizer 的主要优点和缺点是什么？</strong><button class="btn secondary reveal" type="button" style="color:#203657;background:#eef2f7;border-color:#dce3ee;">显示参考答案</button><div class="answer">优点是可以复用 LLM 的 next-token prediction 框架，把动作预测变成分类问题；官方默认共享词表最后 256 个动作 bin token，7 维动作由生成位置区分。缺点是有量化误差、维度相关性依赖序列建模，并且自回归生成会增加控制延迟。</div></div>
+      </section>
+
+      <section id="next">
+        <h2>D107 → D108：从代码主线进入数据和评估环境</h2>
+        <p class="lead">D107 已经把 Model/Data/Train 三条代码主线串起来。D108 会继续深入 BridgeData、SimplerEnv、RLDS Dataloader 和预处理细节，重点检查机器人数据如何进入评估闭环。</p>
+      </section>
+    </main>
+  </div>
+  <a class="top-link" href="#top" aria-label="返回顶部">↑</a>
+  <script>
+    const progress=document.getElementById('progress');const navLinks=Array.from(document.querySelectorAll('#toc a'));const sections=navLinks.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);function updateProgress(){const s=window.scrollY||document.documentElement.scrollTop;const h=document.documentElement.scrollHeight-window.innerHeight;progress.style.width=(h>0?s/h*100:0)+'%';let current=sections[0];for(const section of sections)if(section.getBoundingClientRect().top<=120)current=section;navLinks.forEach(a=>a.classList.toggle('active',current&&a.getAttribute('href')==='#'+current.id))}window.addEventListener('scroll',updateProgress,{passive:true});window.addEventListener('resize',updateProgress);updateProgress();
+    document.querySelectorAll('[data-tabs]').forEach(group=>{const name=group.getAttribute('data-tabs');group.querySelectorAll('.tab-btn').forEach(button=>{button.addEventListener('click',()=>{group.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));button.classList.add('active');document.querySelectorAll(`[data-panel="${name}"]`).forEach(panel=>panel.classList.toggle('active',panel.id===button.dataset.tab))})})});
+    const entrySelect=document.getElementById('entrySelect'),entryAnswer=document.getElementById('entryAnswer');const entryMap={vla:'先看 `prismatic/models/vla.py`：它把 vision_backbone、projector、llm_backbone、action_tokenizer 串起来，是理解全局 forward 的第一入口。',vision:'看 `visual_encoders/`：重点不是每层 Transformer，而是 SigLIP 和 DINOv2 的输出形状、冻结逻辑、特征拼接方式。',projector:'看 `projectors/`：重点确认 visual feature dim 如何映射到 Llama2 hidden size，以及 projector 是否参与训练。',data:'看 OXE/RLDS Dataset：重点追踪 episode 如何展开成 step，图像和动作如何预处理。',collator:'看 `collators.py`：它是 Data 和 Model 的接口，重点确认 batch 字段、padding、labels 和 action token 编码。',train:'看 `vla-scripts/train.py`：重点确认 Accelerator、optimizer、scheduler、gradient accumulation 和保存评估逻辑。'};if(entrySelect)entrySelect.addEventListener('change',()=>{entryAnswer.textContent=entryMap[entrySelect.value]});
+    const binRange=document.getElementById('binRange'),rangeSelect=document.getElementById('rangeSelect'),binValue=document.getElementById('binValue'),binWidth=document.getElementById('binWidth'),maxErr=document.getElementById('maxErr'),tokCount=document.getElementById('tokCount');function updateBins(){if(!binRange)return;const bins=Number(binRange.value);const totalRange=Number(rangeSelect.value);const width=totalRange/bins;binValue.textContent=bins;binWidth.textContent=width.toFixed(4);maxErr.textContent=(width/2).toFixed(4);tokCount.textContent=String(bins)}if(binRange)binRange.addEventListener('input',updateBins);if(rangeSelect)rangeSelect.addEventListener('change',updateBins);updateBins();
+    document.querySelectorAll('.reveal').forEach(button=>{button.addEventListener('click',()=>{const answer=button.parentElement.querySelector('.answer');if(!answer)return;answer.classList.toggle('show');button.textContent=answer.classList.contains('show')?'隐藏参考答案':'显示参考答案'})});
+  </script>
+</body>
+</html>
